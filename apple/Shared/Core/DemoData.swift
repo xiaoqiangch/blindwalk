@@ -29,16 +29,19 @@ public enum DemoData {
             )
         }
 
-        // 12 天里每天到达一次，含一次清晨与一次深夜
+        // 12 天里每天到达一次，含一次清晨与一次深夜。
+        // 以本地零点为基准减 N 天，再设时刻；今天那次若还没到点就夹到「现在之前一分钟」，
+        // 保证最近 7 个自然日各 1 次（本周惊喜值 305），也不会排到未来。
         var arrivals: [Date] = []
+        let todayStart = calendar.startOfDay(for: now)
         for day in 0..<12 {
-            var components = calendar.dateComponents([.year, .month, .day], from: now)
+            var components = calendar.dateComponents([.year, .month, .day], from: todayStart)
             components.hour = day == 5 ? 6 : (day == 8 ? 22 : 19)
             components.minute = day == 8 ? 40 : 12
-            if let date = calendar.date(from: components),
-               let shifted = calendar.date(byAdding: .day, value: -day, to: date) {
-                arrivals.append(shifted)
-            }
+            guard let anchor = calendar.date(from: components),
+                  let shifted = calendar.date(byAdding: .day, value: -day, to: anchor)
+            else { continue }
+            arrivals.append(shifted > now ? now.addingTimeInterval(-60) : shifted)
         }
 
         var profile = Profile(

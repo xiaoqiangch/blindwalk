@@ -32,6 +32,16 @@ cd prototype/web && python3 -m http.server 8788
 # 浏览器访问 http://127.0.0.1:8788/index.html
 ```
 
+### 在 iPhone 上安装（PWA，真机体验的即时方案）
+
+原生版要等 Xcode 登录 Apple ID；在此之前可把 Web 原型装到 iPhone 主屏，接近原生体验：
+
+```bash
+cd prototype/web && python3 serve.py 8799   # 终端会打印手机可访问的局域网地址
+```
+
+iPhone 用 **Safari** 打开该地址 → 分享 → **添加到主屏幕** → 从主屏启动（全屏、有图标、可离线）。
+
 ### 演示路径
 
 | 访问 | 看到什么 |

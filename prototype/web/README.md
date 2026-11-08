@@ -152,3 +152,21 @@ prototype/web/
 ---
 
 BlindWalk 0.1 · 原型 · 2026-11
+
+## 在 iPhone 上安装（PWA，推荐先这样体验）
+
+原生 iOS 版需要 Xcode 登录 Apple ID 签名后才能装真机；在那之前，可以把 Web 原型装到 iPhone 主屏，
+体验接近原生（全屏、有图标、无浏览器工具栏、可离线）。
+
+1. Mac 上启动局域网服务（手机和 Mac 要在同一个 Wi-Fi）：
+   ```bash
+   cd prototype/web && python3 serve.py 8799
+   ```
+   终端会打印 `📱 iPhone 打开：http://<你的局域网IP>:8799/`
+2. iPhone 用 **Safari** 打开这个地址（必须 Safari，Chrome 不支持"添加到主屏幕"的独立模式）
+3. 点底部 **分享** → **添加到主屏幕** → 命名「盲走」
+4. 从主屏打开：全屏、无工具栏、图标是牛皮纸礼盒
+5. 之后即使 Mac 关了服务，只要先前打开过一次，Service Worker 已缓存全部资源，仍可离线继续走
+
+> Available offline：`sw.js` 预缓存了 index/css/js/data/图标，户外没网也能用（本地数据存 localStorage）。
+

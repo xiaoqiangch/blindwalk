@@ -13,8 +13,16 @@
 
   var DAY = 86400000;
 
+  /** 本地时区的「N 天前」日期串（YYYY-MM-DD）。
+   *  不能用 toISOString()：它是 UTC，东八区早上时段会退回前一天，
+   *  导致首页「上一次的惊喜 · 已是 N 天前」多算一天。*/
   function isoDaysAgo(days) {
-    return new Date(Date.now() - days * DAY).toISOString().slice(0, 10);
+    var d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() - days);
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
   }
 
   /* MARK: - 24 个地点（河岸 8 / 老城区 8 / 附近 8）
@@ -570,7 +578,9 @@
       startedAgoSeconds: 12 * 60 + 34
     },
     reveal: { placeID: 'river-steps', serial: '0247' },
-    /* DemoData：12 天每天到达一次，含一次清晨（第 5 天 06:12）与一次深夜（第 8 天 22:40） */
+    /* DemoData：12 天每天到达一次，含一次清晨（第 5 天 06:12）与一次深夜（第 8 天 22:40）。
+       daysAgo 从 0 开始 = 今天也走过，最近 7 个自然日各 1 次 → 本周惊喜值 7×20=140。
+       今天那次若还没到 19:12，会被 app.js 夹到「现在之前一分钟」，仍算今天。 */
     arrivals: (function () {
       var list = [];
       for (var day = 0; day < 12; day += 1) {
