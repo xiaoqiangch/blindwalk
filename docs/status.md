@@ -29,6 +29,9 @@
 | task-1 | Web 高保真交互原型 | proto-dev | ✅ 完成 | 9 路由直达、闭环可走、`?demo=1`、截图友好、无外部依赖 |
 | task-2 | iOS SwiftUI App（8 页） | ios-dev | ✅ 完成 | 13 文件 4032 行，与 §5.1–5.8 对应，parse 全过 |
 | task-3 | watchOS SwiftUI App（4 界面 + 触感） | watch-dev | ✅ 完成 | 8 文件 873 行，§5.9 对应，WCSession 骨架 + 触感 |
+| task-4 | 真实定位 CoreLocation + 旅程页 | gps-dev | ✅ 完成 | 三态降级；模拟器真 GPS 实测 480→49m 自动开盒 |
+| task-5 | iOS→watchOS 实时同步 | sync-dev | ✅ 完成 | 端到端实测：推送→手表 UI 变化→打卡回传 |
+| task-6 | iOS 原生 UI 打磨 | polish-dev | ✅ 完成 | 10 文件重写，对齐 Web 原型；构建 + 截图逐屏自检 |
 | — | 共享内核 + 工程配置 | Lead | ✅ 完成 | Core typecheck 通过、project.yml 就绪 |
 | — | 校验/截图/展示图 | Lead | ✅ 完成 | check-swift + CDP 截图 + smoke test + showcase.png |
 | — | 迁移到 ~/Projects | Lead | ✅ 完成 | 主目录 = /Users/chenxiaoqiang/Projects/BlindWalk，工作区留软链 |
@@ -53,6 +56,10 @@
 | 2026-11-08 22:23 | iOS 模拟器 runtime 8.32GB 下载安装完成（iOS 27.2） |
 | 2026-11-08 22:24 | iPhone 18 Pro 模拟器实跑：修复 watch 内嵌 `WKApplication` 后安装成功，6 屏原生截图 + native-showcase.png |
 | 2026-11-08 22:27 | watchOS 27.2 runtime 安装完成；Apple Watch Series 9 45mm 模拟器跑通 4 屏 + 与 iPhone 配对，截图并入 native-showcase.png |
+| 2026-11-08 22:4x | 用户真机 iPhone 16 Pro Max 接入（USB 识别成功）；受阻于 Xcode 未登录 Apple ID（无法签名），经确认先继续开发 |
+| 2026-11-08 23:0x | Lead：新增 Geo.swift（真实地理计算）+ QuestSession/Store 的地理字段与 startQuest(origin:)；准备真机安装脚本 |
+| 2026-11-09 06:3x | v0.2 集成完成：真实定位 + 手表双向同步 + 原生 UI 打磨三路合入；构建 SUCCEEDED |
+| 2026-11-09 06:3x | Lead 集成修复：冷启动手表首帧（start(store:)）、Reveal 关闭按钮、Journey 整页滚动+高度预算（线索被遮挡）、线索文案索引错位、本周惊喜值按自然日计算（不再随时间漂移 305→325） |
 
 ## 4. 关键验证记录
 

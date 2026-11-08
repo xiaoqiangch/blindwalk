@@ -9,9 +9,11 @@
 ## v0.2 可上真机（进行中）
 - [x] Xcode 27.2 安装、iOS/watchOS 构建通过
 - [x] iPhone 18 Pro 模拟器跑通 6 屏；Apple Watch Series 9 模拟器跑通 4 屏
-- [ ] 真机跑通 GPS + 后台定位
-- [ ] CoreLocation 地理围栏替代距离阈值；后台唤醒 + 本地通知
-- [ ] WatchConnectivity 实时同步（iOS 发送端）；手表独立开盒
+- [x] 真实 CoreLocation 定位链路（Best 精度 / 5m 滤波 / heading 朝向 / 三态降级）
+- [x] WatchConnectivity 双向同步（摘要推送 + 手表打卡回传，端到端实测通过）
+- [x] 原生 UI 对齐 Web 高保真原型（10 个文件重写，含 iOS 27 浮动玻璃 TabBar 兜底）
+- [ ] 真机跑通 GPS + 后台定位（需 Xcode 登录 Apple ID + 手机开发者模式）
+- [ ] 后台唤醒 + 本地通知（Always 授权升级开关）
 - [ ] App 图标 / 启动图 / TestFlight 打包
 
 ## v0.3 社交

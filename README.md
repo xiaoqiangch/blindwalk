@@ -144,7 +144,10 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | Web 原型视觉 | ✅ 完成（见 `screenshots/showcase.png`） |
 | iOS / watchOS 源码 | ✅ 完成，✅ 构建通过并在模拟器运行（iPhone 18 Pro + Watch Series 9） |
 | 共享内核校验 | ✅ typecheck 通过 + 全部 Swift 语法通过 |
-| 真实定位 / 后台提醒 | ⏳ v0.2（模拟器已用 SimulatedLocationService 跑通） |
+| 真实定位 CoreLocation | ✅ 完成（Best 精度 / heading 朝向 / 三态降级），模拟器真 GPS 实走验证 |
+| iPhone↔Watch 同步 | ✅ 完成（摘要推送 + 打卡回传，端到端实测） |
+| 后台持续定位 / 本地通知 | ⏳ 需 Always 授权升级开关（v0.2 剩余项） |
+| 真机安装 | ⏳ 需 Xcode 登录 Apple ID（用户侧一次性操作） |
 | 账号 / 后端 / 真实好友 | ⏳ v0.3 |
 | 真实地点库 / 安全分级 | ⏳ v0.3 |
 | App 图标 / TestFlight / 上架合规 | ⏳ v0.2+ |
