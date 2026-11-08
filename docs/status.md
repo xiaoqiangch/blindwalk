@@ -1,8 +1,8 @@
 # 项目进度看板（Super Agent 协作）
 
 > 维护：Lead。每次里程碑完成后更新。
-> 工作目录：`/Users/chenxiaoqiang/.dsh/profiles/desktop/Projects/BlindWalk`
-> 最终同步位置：`~/Projects/BlindWalk`（外部卷 `/Volumes/XQProjects/projects/BlindWalk`）
+> 项目主目录：`/Users/chenxiaoqiang/Projects/BlindWalk`（外部卷 `/Volumes/XQProjects/projects/BlindWalk`）
+> 会话内相对路径：`Projects/BlindWalk`（软链，指向主目录）
 
 ## 0. 一图流
 
@@ -31,7 +31,7 @@
 | task-3 | watchOS SwiftUI App（4 界面 + 触感） | watch-dev | ✅ 完成 | 8 文件 873 行，§5.9 对应，WCSession 骨架 + 触感 |
 | — | 共享内核 + 工程配置 | Lead | ✅ 完成 | Core typecheck 通过、project.yml 就绪 |
 | — | 校验/截图/展示图 | Lead | ✅ 完成 | check-swift + CDP 截图 + smoke test + showcase.png |
-| — | 同步到 ~/Projects | Lead | ✅ 完成 | 已 rsync 到 /Volumes/XQProjects/projects/BlindWalk |
+| — | 迁移到 ~/Projects | Lead | ✅ 完成 | 主目录 = /Users/chenxiaoqiang/Projects/BlindWalk，工作区留软链 |
 
 ## 3. 里程碑
 
