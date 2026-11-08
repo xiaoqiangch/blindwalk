@@ -1,0 +1,6 @@
+.DS_Store
+.chrome-headless/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+build/

@@ -1,0 +1,82 @@
+name: BlindWalk
+options:
+  bundleIdPrefix: com.blindwalk
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "0.1"
+    ENABLE_PREVIEWS: YES
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  BlindWalk:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: App
+    dependencies:
+      - target: BlindWalkWatch
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blindwalk.app
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: 盲走
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: 盲走需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
+        INFOPLIST_KEY_UIBackgroundModes: location
+    info:
+      path: Info/BlindWalk-Info.plist
+      properties:
+        CFBundleDisplayName: 盲走
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSLocationWhenInUseUsageDescription: 盲走需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
+        UIBackgroundModes:
+          - location
+
+  BlindWalkWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Shared
+      - path: WatchApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blindwalk.app.watchkitapp
+        INFOPLIST_KEY_CFBundleDisplayName: 盲走
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.blindwalk.app
+        INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
+    info:
+      path: Info/BlindWalkWatch-Info.plist
+      properties:
+        CFBundleDisplayName: 盲走
+        WKCompanionAppBundleIdentifier: com.blindwalk.app
+        WKRunsIndependentlyOfCompanionApp: true
+
+schemes:
+  BlindWalk:
+    build:
+      targets:
+        BlindWalk: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+  BlindWalkWatch:
+    build:
+      targets:
+        BlindWalkWatch: all
+    run:
+      config: Debug
