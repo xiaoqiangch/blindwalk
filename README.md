@@ -77,7 +77,9 @@ BlindWalk/
 │   ├── smoke-test.mjs      # Web 原型端到端冒烟测试（抽盒→揭晓→收录→分享）
 │   ├── build-native.sh     # xcodebuild 构建 iOS + watchOS
 │   ├── compose-showcase.py # 拼合 Web 展示长图
-│   └── compose-native.py   # 拼合原生模拟器展示长图
+│   ├── compose-native.py   # 拼合 v0.1 原生展示长图
+│   ├── compose-v2.py       # 拼合 v0.2 原生展示长图
+│   └── install-to-device.sh # 真机安装（自动检测 iPhone + 自动签名）
 └── screenshots/            # 截图与 showcase.png
 ```
 
@@ -99,7 +101,8 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 - `BlindWalkWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
 - 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`、`WKApplication`
 - 真实定位需要在 `App/Services/LocationService.swift` 里把 `LiveLocationService` 接上（骨架已留，含权限/距离/方位角）
-- 模拟器实跑截图见 [`screenshots/native-showcase.png`](screenshots/native-showcase.png)（iPhone 18 Pro / iOS 27.2 + Apple Watch Series 9 45mm / watchOS 27.2 模拟器）
+- v0.2 六屏（真实定位 + 手表同步 + UI 打磨后）：[`screenshots/v2-showcase.png`](screenshots/v2-showcase.png)
+- v0.1 六屏基线：[`screenshots/native-showcase.png`](screenshots/native-showcase.png)（iPhone 18 Pro / iOS 27.2 + Apple Watch Series 9 45mm / watchOS 27.2 模拟器）
 - 手表运行：
   ```bash
   xcrun simctl create "Watch" com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-9-45mm com.apple.CoreSimulator.SimRuntime.watchOS-27-2
