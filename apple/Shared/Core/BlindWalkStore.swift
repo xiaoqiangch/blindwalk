@@ -46,6 +46,10 @@ public final class BlindWalkStore {
     /// 最近一次推进产生的事件（UI 用来播动画）
     public private(set) var lastEvents: [QuestEvent] = []
 
+    /// 最近一次真实定位点。抽盒时若 `startQuest(origin:)` 未显式传，就用它当起点。
+    /// 由 `LiveLocationService` 在每次定位回调写入。
+    public var lastKnownOrigin: GeoPoint? = nil
+
     private let persistence: ProfilePersisting
 
     // MARK: 初始化
@@ -76,9 +80,15 @@ public final class BlindWalkStore {
 
     // MARK: 抽盒
 
-    /// 从设置页开始一次新旅程（目的地保密）
+    /// 从设置页开始一次新旅程（目的地保密）。
+    /// - Parameter origin: 真实定位起点。给了就生成**真实目的地坐标**（真实 GPS 模式）；
+    ///   不给则进入纯演示模式（用「模拟步行 +50m」推进）。
     @discardableResult
-    public func startQuest(seed: UInt64 = UInt64(Date().timeIntervalSince1970), now: Date = Date()) -> Place? {
+    public func startQuest(
+        seed: UInt64 = UInt64(Date().timeIntervalSince1970),
+        now: Date = Date(),
+        origin: GeoPoint? = nil
+    ) -> Place? {
         let recent = Set(profile.cards
             .filter { now.timeIntervalSince($0.collectedAt) < 7 * 86_400 }
             .map(\.placeID))
@@ -86,13 +96,26 @@ public final class BlindWalkStore {
         guard let draw = engine.draw(mood: selectedMood, duration: selectedDuration, area: selectedArea, seed: seed, now: now) else {
             return nil
         }
+        var target: GeoPoint?
+        var bearing: Double?
+        if let resolvedOrigin = origin ?? lastKnownOrigin {
+            // 有真实定位 → 生成真实目的地坐标
+            // 方向由 seed 决定：同一 seed 同一方向，便于测试与复现
+            var generator = SeededGenerator(seed: seed &+ 0xA5A5)
+            let degrees = Double(Int.random(in: 0..<360, using: &generator))
+            bearing = degrees
+            target = GeoMath.offset(from: resolvedOrigin, meters: Double(draw.startMeters), bearingDegrees: degrees)
+        }
+
         let session = QuestSession(
             placeID: draw.place.id,
             startedAt: now,
             totalMeters: draw.startMeters,
             remainingMeters: draw.startMeters,
             phase: .walking,
-            unlockedHintCount: 1
+            unlockedHintCount: 1,
+            target: target,
+            currentBearing: bearing
         )
         self.session = session
         self.currentPlace = draw.place
@@ -108,6 +131,20 @@ public final class BlindWalkStore {
     public func advance(byMeters meters: Int, now: Date = Date()) -> [QuestEvent] {
         guard var session, session.phase == .walking else { return [] }
         let events = session.update(remainingMeters: session.remainingMeters - abs(meters))
+        self.session = session
+        self.lastEvents = events
+        if events.contains(.arrived) {
+            prepareReveal(now: now)
+        }
+        return events
+    }
+
+    /// 真实定位推进：根据「到目的地的距离 + 方位角」更新会话。
+    /// 由 `LiveLocationService` 在每次定位回调里调用。
+    @discardableResult
+    public func updateLocation(distanceMeters: Double, bearingDegrees: Double?, now: Date = Date()) -> [QuestEvent] {
+        guard var session, session.phase == .walking else { return [] }
+        let events = session.updateGeo(distanceMeters: distanceMeters, bearingDegrees: bearingDegrees)
         self.session = session
         self.lastEvents = events
         if events.contains(.arrived) {

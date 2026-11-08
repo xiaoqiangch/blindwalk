@@ -14,7 +14,6 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1"
     ENABLE_PREVIEWS: YES
-    DEVELOPMENT_TEAM: ""
 
 targets:
   BlindWalk:
@@ -43,6 +42,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocationWhenInUseUsageDescription: 盲走需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
+        NSLocationAlwaysAndWhenInUseUsageDescription: 盲走在散步过程中需要持续定位，才能在你接近目的地时提醒你。
         UIBackgroundModes:
           - location
 

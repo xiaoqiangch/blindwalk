@@ -3,8 +3,8 @@ import CoreLocation
 
 // MARK: - 定位权限
 
-/// 简化后的定位权限三态（不把 CoreLocation 类型暴露给 SwiftUI 视图）。
-enum LocationAuthorization: String {
+/// 简化后的定位权限四态（不把 CoreLocation 类型暴露给 SwiftUI 视图）。
+enum LocationAuthorization: String, Equatable {
     case notDetermined
     case denied
     case restricted
@@ -26,6 +26,31 @@ enum LocationAuthorization: String {
     var isAllowed: Bool {
         self == .authorized
     }
+
+    /// 系统层面已经不给定位了，只能去「设置」里改
+    var isBlocked: Bool {
+        self == .denied || self == .restricted
+    }
+}
+
+// MARK: - 定位读数
+
+/// 一次定位读数（真实 GPS / 演示模式共用同一种结构，View 只认它）。
+///
+/// 注意：`remainingMeters` / `bearingDegrees` 只有在「拿到真实目的地坐标」时才有值；
+/// `origin` 始终会给（真实定位一直能拿到自己的坐标），JourneyView 用它补目的地坐标。
+struct LocationReading: Equatable {
+    var timestamp: Date = Date()
+    /// 当前真实坐标（演示模式为 nil）
+    var origin: GeoPoint?
+    /// 到目的地的剩余距离（米）
+    var remainingMeters: Double?
+    /// 指向目的地的绝对方位角（度，0 = 正北）
+    var bearingDegrees: Double?
+    /// 手机朝向（度，0 = 正北）；只有真机才有
+    var headingDegrees: Double?
+    /// 水平精度（米，越小越好；负数表示无效）
+    var horizontalAccuracy: Double?
 }
 
 // MARK: - 定位抽象
@@ -33,15 +58,22 @@ enum LocationAuthorization: String {
 /// 与 docs/architecture.md §2 的 `LocationProviding` 对齐：
 /// - `remainingMeters`：距离目的地的剩余米数（nil = 还没拿到定位）
 /// - `bearingDegrees`：指向目的地的方位角（0 = 正北，顺时针 0…360）
-/// - `authorization`：当前定位权限
+/// - `headingDegrees`：手机朝向（真机才有，用于把箭头转成「相对你」的方向）
+/// - `authorizationStatus`：当前定位权限
 ///
-/// 演示默认用 `SimulatedLocationService`；真实步行切 `LiveLocationService`。
+/// 演示默认用 `SimulatedLocationService`；真实步行用 `LiveLocationService`。
 protocol LocationProviding: AnyObject {
     var remainingMeters: Int? { get }
     var bearingDegrees: Double? { get }
-    var authorization: LocationAuthorization { get }
+    var headingDegrees: Double? { get }
+    var authorizationStatus: LocationAuthorization { get }
     var isSimulated: Bool { get }
     var statusText: String { get }
+
+    /// 每次定位/朝向变化都会回调，View 据此刷新界面
+    var onUpdate: ((LocationReading) -> Void)? { get set }
+    /// 权限变化回调（首次授权 / 被拒绝 / 从设置返回）
+    var onAuthorizationChange: ((LocationAuthorization) -> Void)? { get set }
 
     /// 开始监听（真实实现会顺带请求权限）
     func start()
@@ -52,21 +84,29 @@ protocol LocationProviding: AnyObject {
     func simulateAdvance(meters: Int) -> Int?
 }
 
-// MARK: - 演示实现（默认）
+extension LocationProviding {
+    /// 兼容旧命名
+    var authorization: LocationAuthorization { authorizationStatus }
+}
+
+// MARK: - 演示实现（兜底）
 
 /// 模拟步行：不访问真实定位，配合 `BlindWalkStore.advance(byMeters:)` 演示整条链路。
 ///
 /// 演示流程里 JourneyView 每按一次「模拟步行 +50m」会：
 /// 1. `store.advance(byMeters: 50)` 推进业务状态（解锁线索 / 到达）
-/// 2. `simulated.simulateAdvance(meters: 50)` 推进定位服务
+/// 2. `simulateAdvance(meters: 50)` 推进定位服务
 /// 3. 用 `sync(remaining:)` 把 store 的剩余距离同步过来，保证两者一致
 ///
-/// 换成 LiveLocationService 时，第 1 步由真实定位回调驱动（见 LiveLocationService 注释）。
+/// 真实定位不可用（没授权 / 模拟器没信号 / 用户主动切演示）时走这里，保证能走通。
 final class SimulatedLocationService: LocationProviding {
 
     private(set) var remainingMeters: Int?
-    private(set) var authorization: LocationAuthorization = .authorized
+    private(set) var authorizationStatus: LocationAuthorization = .authorized
     let isSimulated = true
+
+    var onUpdate: ((LocationReading) -> Void)?
+    var onAuthorizationChange: ((LocationAuthorization) -> Void)?
 
     init(startMeters: Int? = nil) {
         self.remainingMeters = startMeters
@@ -87,11 +127,14 @@ final class SimulatedLocationService: LocationProviding {
         }
     }
 
+    var headingDegrees: Double? { nil }
+
     var statusText: String {
         "演示模式 · 模拟步行，不读取真实定位"
     }
 
     func start() {}
+
     func stop() {}
 
     /// 用 store 推进后的剩余距离同步一次
@@ -104,57 +147,117 @@ final class SimulatedLocationService: LocationProviding {
         guard let current = remainingMeters else { return nil }
         let next = max(0, current - abs(meters))
         remainingMeters = next
+        publish()
         return next
+    }
+
+    private func publish() {
+        let reading = LocationReading(
+            timestamp: Date(),
+            origin: nil,
+            remainingMeters: remainingMeters.map(Double.init),
+            bearingDegrees: bearingDegrees,
+            headingDegrees: nil,
+            horizontalAccuracy: nil
+        )
+        onUpdate?(reading)
     }
 }
 
-// MARK: - 真实定位（CoreLocation 骨架）
+// MARK: - 真实定位（CoreLocation）
 
-/// CoreLocation 骨架实现。真正接入时按下面四步走：
+/// 真实 GPS 实现。链路：
 ///
-/// 1. `start()` 请求 WhenInUse 权限并开始更新位置；
-/// 2. 目的地真实经纬度由「抽盒结果 + 后端」注入 `targetCoordinate`
-///    （MVP 地点库只有归一化抽象坐标，没有真实 POI，所以这里先留空）；
-/// 3. 每次 `didUpdateLocations` 回调计算 `remainingMeters` / `bearingDegrees`，
-///    UI 根据剩余距离调用 `store.advance(byMeters:)`（或直接 `store.arriveNow()`）；
-/// 4. Info.plist 的权限文案已在 `apple/project.yml` 配好：
-///    `NSLocationWhenInUseUsageDescription` + `UIBackgroundModes: location`。
+/// 1. `start()`：请求 WhenInUse 权限 → 开启持续定位 + 朝向；
+/// 2. `didUpdateLocations`：拿到自己坐标 → 用 `GeoMath.distance/bearing`
+///    算到目的地的距离与方位 → `onUpdate` 回调给 JourneyView；
+/// 3. JourneyView 把读数写进 `BlindWalkStore.updateLocation(...)`，
+///    由 Shared 层推进线索解锁 / 到达判定（≤30m 自动开盒）；
+/// 4. 目的地坐标由 `target` 注入（JourneyView 从 `store.session.target` 同步）。
 ///
-/// 注意：本机无 Xcode / iOS SDK，未编译验证；API 均为 iOS 14+ 常见写法。
+/// 后台定位：`allowsBackgroundLocationUpdates = true` + `pausesLocationUpdatesAutomatically = false`，
+/// Info.plist 已配 `UIBackgroundModes: location`。**真机注意**：WhenInUse 也能在后台继续收点
+/// （状态栏蓝条），但如果要 App 被彻底杀掉后仍能恢复，需要用户选「始终允许」；
+/// `requestAlwaysAuthorization()` 已实现但**不自动弹**，避免首次启动连弹两个系统弹窗。
 final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerDelegate {
 
-    /// 目的地真实坐标。真实版本从抽盒结果注入。
-    var targetCoordinate: CLLocationCoordinate2D?
+    // MARK: 回调
+
+    var onUpdate: ((LocationReading) -> Void)?
+    var onAuthorizationChange: ((LocationAuthorization) -> Void)?
+
+    /// 目的地真实坐标。由 JourneyView 从 `store.session.target` 同步过来。
+    var target: GeoPoint?
+
+    // MARK: 状态
 
     private let manager = CLLocationManager()
     private(set) var lastLocation: CLLocation?
-
     private(set) var remainingMeters: Int?
     private(set) var bearingDegrees: Double?
-    private(set) var authorization: LocationAuthorization = .notDetermined
+    private(set) var headingDegrees: Double?
+    private(set) var authorizationStatus: LocationAuthorization = .notDetermined
+    private(set) var horizontalAccuracy: Double?
+    /// 是否已经拿到过至少一个有效定位点
+    private(set) var hasFix = false
 
     let isSimulated = false
 
+    private var isRunning = false
+    private var didRequestAlways = false
+    private var issueText: String?
+
     var statusText: String {
-        "实时定位 · \(authorization.label)"
+        if let issueText { return "实时定位 · \(issueText)" }
+        switch authorizationStatus {
+        case .authorized:
+            return hasFix ? "实时定位 · 已连接" : "实时定位 · 正在搜星"
+        case .notDetermined:
+            return "实时定位 · 等待授权"
+        case .denied, .restricted:
+            return "实时定位 · 无权限（已降级演示）"
+        }
     }
+
+    // MARK: 生命周期
 
     override init() {
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = 5
+        manager.activityType = .fitness
+        manager.headingFilter = 5
+        manager.headingOrientation = .portrait
+        authorizationStatus = Self.map(manager.authorizationStatus)
+    }
+
+    deinit {
+        manager.delegate = nil
     }
 
     func start() {
-        if manager.authorizationStatus == .notDetermined {
+        isRunning = true
+        prepareBackgroundUpdatesIfNeeded()
+
+        switch manager.authorizationStatus {
+        case .notDetermined:
             manager.requestWhenInUseAuthorization()
+        case .authorizedAlways, .authorizedWhenInUse:
+            beginUpdates()
+        case .denied:
+            updateAuthorization(.denied)
+        case .restricted:
+            updateAuthorization(.restricted)
+        @unknown default:
+            break
         }
-        manager.startUpdatingLocation()
     }
 
     func stop() {
+        isRunning = false
         manager.stopUpdatingLocation()
+        manager.stopUpdatingHeading()
     }
 
     @discardableResult
@@ -163,29 +266,145 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
         nil
     }
 
+    /// 可选：升级到「始终允许」（例如用户希望锁屏后仍完整记录）。
+    /// 不自动调用——避免首次进入旅程连弹两个系统弹窗。
+    func requestAlwaysAuthorization() {
+        guard !didRequestAlways else { return }
+        guard manager.authorizationStatus == .authorizedWhenInUse else { return }
+        didRequestAlways = true
+        manager.requestAlwaysAuthorization()
+    }
+
+    // MARK: 内部
+
+    private func beginUpdates() {
+        guard isRunning else { return }
+        manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() {
+            manager.startUpdatingHeading()
+        }
+    }
+
+    /// 后台定位开关：只有 Info.plist 里有 `UIBackgroundModes: location` 才能打开，
+    /// 否则 CoreLocation 会直接抛 `NSInternalInconsistencyException`。
+    private func prepareBackgroundUpdatesIfNeeded() {
+        let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? []
+        guard modes.contains("location") else {
+            manager.allowsBackgroundLocationUpdates = false
+            return
+        }
+        manager.allowsBackgroundLocationUpdates = true
+        manager.pausesLocationUpdatesAutomatically = false
+        manager.showsBackgroundLocationIndicator = true
+    }
+
+    private func updateAuthorization(_ status: LocationAuthorization) {
+        let changed = status != authorizationStatus
+        authorizationStatus = status
+        if changed {
+            onAuthorizationChange?(status)
+        }
+    }
+
+    /// 用最新坐标 + 目的地坐标算「还剩多远、往哪走」
+    private func recompute(for location: CLLocation) {
+        guard let target else {
+            remainingMeters = nil
+            bearingDegrees = nil
+            return
+        }
+        let origin = GeoPoint(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude
+        )
+        remainingMeters = Int(GeoMath.distance(from: origin, to: target).rounded())
+        bearingDegrees = GeoMath.bearing(from: origin, to: target)
+    }
+
+    private func publish() {
+        guard let location = lastLocation else { return }
+        let origin = GeoPoint(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude
+        )
+        let reading = LocationReading(
+            timestamp: Date(),
+            origin: origin,
+            remainingMeters: remainingMeters.map(Double.init),
+            bearingDegrees: bearingDegrees,
+            headingDegrees: headingDegrees,
+            horizontalAccuracy: horizontalAccuracy
+        )
+
+        if Thread.isMainThread {
+            onUpdate?(reading)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.onUpdate?(reading)
+            }
+        }
+    }
+
     // MARK: CLLocationManagerDelegate
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorization = Self.mapAuthorization(manager.authorizationStatus)
+        let mapped = Self.map(manager.authorizationStatus)
+        updateAuthorization(mapped)
+
+        switch mapped {
+        case .authorized:
+            beginUpdates()
+        case .denied, .restricted:
+            manager.stopUpdatingLocation()
+            manager.stopUpdatingHeading()
+            remainingMeters = nil
+            bearingDegrees = nil
+        case .notDetermined:
+            break
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let latest = locations.last else { return }
+
+        // 精度为负 = 无效点；时间太旧 = 缓存兜底点，直接丢
+        guard latest.horizontalAccuracy >= 0 else { return }
+        guard abs(latest.timestamp.timeIntervalSinceNow) < 30 else { return }
+
         lastLocation = latest
-        guard let target = targetCoordinate else { return }
-        let targetLocation = CLLocation(latitude: target.latitude, longitude: target.longitude)
-        remainingMeters = Int(latest.distance(from: targetLocation).rounded())
-        bearingDegrees = Self.bearing(from: latest.coordinate, to: target)
+        horizontalAccuracy = latest.horizontalAccuracy
+        hasFix = true
+        issueText = nil
+        recompute(for: latest)
+        publish()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        guard newHeading.headingAccuracy >= 0 else { return }
+        headingDegrees = newHeading.trueHeading >= 0
+            ? newHeading.trueHeading
+            : newHeading.magneticHeading
+        publish()
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // 保持上一次的距离值；真实版本可在这里把状态显示成「定位信号弱」。
-        print("[BlindWalk] 定位失败：\(error.localizedDescription)")
+        if let clError = error as? CLError, clError.code == .denied {
+            updateAuthorization(.denied)
+            manager.stopUpdatingLocation()
+            manager.stopUpdatingHeading()
+            return
+        }
+        if let clError = error as? CLError, clError.code == .locationUnknown {
+            issueText = "信号弱"
+        } else {
+            issueText = "定位失败"
+        }
+        // 保留上一次有效距离，不把界面打回原点
     }
 
     // MARK: Helpers
 
-    private static func mapAuthorization(_ status: CLAuthorizationStatus) -> LocationAuthorization {
+    private static func map(_ status: CLAuthorizationStatus) -> LocationAuthorization {
         switch status {
         case .authorizedAlways, .authorizedWhenInUse:
             return .authorized
@@ -198,16 +417,5 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
         @unknown default:
             return .notDetermined
         }
-    }
-
-    /// 方位角：0 = 正北，顺时针
-    private static func bearing(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
-        let lat1 = from.latitude * Double.pi / 180
-        let lat2 = to.latitude * Double.pi / 180
-        let deltaLon = (to.longitude - from.longitude) * Double.pi / 180
-        let y = sin(deltaLon) * cos(lat2)
-        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon)
-        let degrees = atan2(y, x) * 180 / Double.pi
-        return (degrees + 360).truncatingRemainder(dividingBy: 360)
     }
 }

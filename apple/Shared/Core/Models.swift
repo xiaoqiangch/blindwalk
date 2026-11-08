@@ -212,6 +212,10 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
     public var phase: QuestPhase
     /// 已解锁线索数量 0…3
     public var unlockedHintCount: Int
+    /// 真实目的地坐标（真实定位模式下有值；纯演示为 nil）
+    public var target: GeoPoint?
+    /// 最近一次定位算出的方位角（度，0=正北）；演示模式为 nil
+    public var currentBearing: Double?
 
     public init(
         id: String = UUID().uuidString,
@@ -220,7 +224,9 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
         totalMeters: Int,
         remainingMeters: Int,
         phase: QuestPhase = .walking,
-        unlockedHintCount: Int = 0
+        unlockedHintCount: Int = 0,
+        target: GeoPoint? = nil,
+        currentBearing: Double? = nil
     ) {
         self.id = id
         self.placeID = placeID
@@ -229,6 +235,8 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
         self.remainingMeters = remainingMeters
         self.phase = phase
         self.unlockedHintCount = unlockedHintCount
+        self.target = target
+        self.currentBearing = currentBearing
     }
 
     public static let arriveThreshold = 30
@@ -406,7 +414,18 @@ public struct Profile: Codable, Sendable {
 
     /// 本周惊喜值（简化：按最近 7 天到达次数 × 20 + 稀有 + 任务）
     public var weeklySurprise: Int {
-        let recent = walkArrivalTimes.filter { Date().timeIntervalSince($0) < 7 * 86_400 }.count
-        return recent * 20 + rareCount * 15 + cards.filter(\.taskDone).count * 5
+        // 按「自然日」比较而不是「7×24 小时」：今天 06:33 打开时，
+        // 若用小时差，7 天前的 19:12 那次会被算进窗口（8 次），数值就会从 305 漂到 325。
+        // 用日粒度后，窗口恒为最近 7 个自然日（含今天）。
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var countedDays = Set<Date>()
+        for arrival in walkArrivalTimes where countedDays.count < 7 {
+            let day = calendar.startOfDay(for: arrival)
+            let gap = calendar.dateComponents([.day], from: day, to: today).day ?? 99
+            guard gap >= 0 && gap < 7 else { continue }
+            countedDays.insert(day)
+        }
+        return countedDays.count * 20 + rareCount * 15 + cards.filter(\.taskDone).count * 5
     }
 }

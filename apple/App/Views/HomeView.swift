@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 今日 Home（design-system §5.1）
+// MARK: - 今日 Home（design-system §5.1，视觉基准：web 原型 #/home）
 
 struct HomeView: View {
 
@@ -28,25 +28,28 @@ struct HomeView: View {
             BWPaperBackground()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 0) {
                     topBar
                     hero
                     blindBoxCard
-                    statsRow
-                    friendsRow
-                    if let place = lastCollectedPlace {
-                        lastSurprise(place)
-                    }
-                    if store.hasActiveQuest {
-                        activeQuestRow
-                    }
+                    statsRow.padding(.top, 20)
+                    friendsRow.padding(.top, 22)
+                    lastSurpriseSection.padding(.top, 20)
                 }
                 .padding(.horizontal, BWTheme.pagePadding)
-                .padding(.top, 8)
-                .padding(.bottom, 28)
+                .padding(.top, 6)
+                .padding(.bottom, 26)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .bwTabBarChrome()
+        .bwTypeBounds()
+        .onAppear {
+            // 仅用于截图/演示：`SIMCTL_CHILD_BW_PREVIEW=setup` 直达抽盒 sheet
+            if ProcessInfo.processInfo.environment["BW_PREVIEW"] == "setup" {
+                bwAfter(0.4) { onOpenSetup() }
+            }
+        }
     }
 
     // MARK: 顶栏：问候 + 连续天数
@@ -54,20 +57,23 @@ struct HomeView: View {
     private var topBar: some View {
         HStack(alignment: .center, spacing: 12) {
             Text(BWFormat.greeting(name: store.profile.displayName))
-                .font(BWTheme.title(15))
-                .foregroundStyle(BWTheme.ink2)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(BWTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 5) {
-                Text("🔥").font(.system(size: 12))
+            HStack(spacing: 4) {
+                Text("🔥").font(.system(size: 11))
                 Text("\(store.profile.streakDays) 天")
-                    .font(BWTheme.caption(12))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(BWTheme.ink)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(BWTheme.paper2)
+            .padding(.horizontal, 11)
+            .frame(height: 28)
+            .background(BWTheme.paper)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
         }
@@ -78,208 +84,211 @@ struct HomeView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("今天，想去哪儿？")
-                .font(BWTheme.title(26))
+                .font(BWType.hero())
                 .foregroundStyle(BWTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
             Text("不用选。让城市替你选。")
-                .font(BWTheme.body(15))
+                .font(.system(size: 13.5))
                 .foregroundStyle(BWTheme.ink2)
         }
+        .padding(.top, 17)
+        .padding(.bottom, 16)
     }
 
     // MARK: 今晚的盲盒主卡
 
     private var blindBoxCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center) {
                 BWMicroLabel("今日盲盒")
                 Spacer(minLength: 8)
-                Text("预计 \(store.selectedDuration.rawValue) 分钟 · \(BWFormat.distanceKilometers(store.selectedDuration.radiusMeters)) 内")
-                    .font(BWTheme.caption(10))
-                    .foregroundStyle(BWTheme.ink3)
+                if store.hasActiveQuest {
+                    resumeChip
+                }
             }
+            .frame(minHeight: 24)
 
             HStack {
                 Spacer(minLength: 0)
-                BWBoxIllustration(size: 124)
+                BWBoxIllustration(width: 118)
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, 2)
+            .padding(.top, 2)
+            .padding(.bottom, 8)
 
-            BWPrimaryButton(
-                title: "开一个盲盒",
-                icon: "shippingbox",
-                action: onOpenSetup
-            )
+            BWPrimaryButton(title: "开一个盲盒", action: onOpenSetup)
+
+            Text("预计 \(store.selectedDuration.rawValue) 分钟 · \(BWFormat.distanceKilometers(store.selectedDuration.radiusMeters)) 内")
+                .font(BWType.caption(10.5))
+                .foregroundStyle(BWTheme.ink.opacity(0.52))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.top, 8)
         }
-        .padding(20)
-        .background(
+        .padding(.horizontal, 18)
+        .padding(.top, 15)
+        .padding(.bottom, 14)
+        .background {
             ZStack {
-                LinearGradient(
-                    colors: [BWTheme.paper2, BWTheme.paper, BWTheme.amber.opacity(0.16)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                BWPaperTexture().opacity(0.5)
+                BWKraft.cardGradient
+                BWPaperTexture().opacity(0.6)
             }
-        )
+        }
         .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+                .stroke(BWTheme.ink.opacity(0.10), lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.10), radius: 18, x: 0, y: 12)
+        .shadow(color: BWTheme.ink.opacity(0.16), radius: 20, x: 0, y: 12)
+    }
+
+    /// 卡内右上角：正在走的盲盒（web .boxcard__resume）
+    private var resumeChip: some View {
+        Button(action: onOpenJourney) {
+            HStack(spacing: 3) {
+                Text("继续 · \(store.session?.remainingMeters ?? 0) m")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .monospacedDigit()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            .foregroundStyle(BWTheme.ink.opacity(0.68))
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(BWTheme.paper.opacity(0.6))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(BWTheme.ink.opacity(0.12), lineWidth: 1))
+        }
+        .buttonStyle(BWPressEffectStyle())
+        .accessibilityLabel("继续这趟盲走")
     }
 
     // MARK: 快捷统计：本周惊喜值 / 收集卡片 / 连续天数
 
     private var statsRow: some View {
-        HStack(spacing: 0) {
-            BWStatTile(value: "\(store.weeklySurprise)", title: "本周惊喜值")
-            statDivider
-            BWStatTile(value: "\(store.profile.cards.count)", title: "收集卡片")
-            statDivider
-            BWStatTile(value: "\(store.profile.streakDays)", title: "连续天数")
-        }
-        .padding(.vertical, 14)
-        .background(BWTheme.paper.opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
-        )
-    }
-
-    private var statDivider: some View {
-        Rectangle()
-            .fill(BWTheme.line)
-            .frame(width: 1, height: 28)
+        BWStatsRow(items: [
+            ("\(store.weeklySurprise)", "本周惊喜值"),
+            ("\(store.profile.cards.count)", "收集卡片"),
+            ("\(store.profile.streakDays)", "连续天数")
+        ])
     }
 
     // MARK: 好友在走
 
     private var friendsRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 14) {
+        HStack(alignment: .center, spacing: 15) {
+            HStack(spacing: -7) {
                 ForEach(friends) { friend in
-                    VStack(spacing: 6) {
-                        ZStack(alignment: .bottomTrailing) {
-                            Text(friend.emoji)
-                                .font(.system(size: 24))
-                                .frame(width: 48, height: 48)
-                                .background(BWTheme.paper2)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
-
-                            if friend.isOnline {
-                                Circle()
-                                    .fill(BWTheme.teal)
-                                    .frame(width: 11, height: 11)
-                                    .overlay(Circle().stroke(BWTheme.cream, lineWidth: 2))
-                            }
-                        }
-
-                        Text(String(friend.name.prefix(1)))
-                            .font(BWTheme.caption(10))
-                            .foregroundStyle(BWTheme.ink3)
-                    }
+                    friendAvatar(friend)
                 }
-                Spacer(minLength: 0)
             }
 
-            Text("3 个朋友今晚也在散步")
-                .font(BWTheme.caption(12))
-                .foregroundStyle(BWTheme.ink2)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("3 个朋友")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink2)
+                Text("今晚也在散步")
+                    .font(.system(size: 12))
+                    .foregroundStyle(BWTheme.ink3)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
         }
     }
 
-    // MARK: 上一次的惊喜
+    private func friendAvatar(_ friend: Friend) -> some View {
+        VStack(spacing: 3) {
+            ZStack(alignment: .bottomTrailing) {
+                Text(friend.emoji)
+                    .font(.system(size: 19))
+                    .frame(width: 42, height: 42)
+                    .background(BWTheme.paper)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
 
-    private func lastSurprise(_ place: Place) -> some View {
-        Button(action: onOpenCards) {
-            HStack(spacing: 14) {
-                VStack(spacing: 4) {
-                    Text(place.emoji)
-                        .font(.system(size: 24))
+                if friend.isOnline {
                     Circle()
-                        .fill(BWTheme.rarityColor(place.rarity))
-                        .frame(width: 6, height: 6)
+                        .fill(BWTheme.teal)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().stroke(BWTheme.cream, lineWidth: 2))
+                        .offset(x: 1, y: 1)
                 }
-                .frame(width: 58, height: 66)
-                .background(BWTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
-                )
+            }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    BWMicroLabel("上一次的惊喜")
-                    Text(place.name)
-                        .font(BWTheme.title(15))
-                        .foregroundStyle(BWTheme.ink)
-                        .lineLimit(1)
-                    if let card = store.card(for: place.id) {
+            Text(friend.name)
+                .font(.system(size: 8.5))
+                .foregroundStyle(BWTheme.ink3)
+                .lineLimit(1)
+                .fixedSize()
+        }
+    }
+
+    // MARK: 上一次的惊喜 / 第一盒还没开
+
+    @ViewBuilder
+    private var lastSurpriseSection: some View {
+        if let place = lastCollectedPlace, let card = store.card(for: place.id) {
+            Button(action: onOpenCards) {
+                HStack(spacing: 12) {
+                    Text(place.emoji)
+                        .font(.system(size: 20))
+                        .frame(width: 46, height: 56)
+                        .background(BWKraft.thumbGradient)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                        )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        BWMicroLabel("上一次的惊喜")
+                        Text(place.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(BWTheme.ink)
+                            .lineLimit(1)
                         Text(BWFormat.dayPhrase(since: card.collectedAt))
-                            .font(BWTheme.caption(11))
+                            .font(BWType.caption(11))
                             .foregroundStyle(BWTheme.ink3)
                     }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BWTheme.ink3)
                 }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                .padding(.leading, 10)
+                .padding(.trailing, 14)
+                .padding(.vertical, 10)
+                .background(BWTheme.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(BWTheme.line, lineWidth: 1)
+                )
+                .shadow(color: BWTheme.ink.opacity(0.05), radius: 12, x: 0, y: 8)
+            }
+            .buttonStyle(BWPressEffectStyle())
+            .accessibilityLabel("去回忆册看上一次的惊喜")
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("第一盒还没开。")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
+                Text("城市已经准备好了。")
+                    .font(.system(size: 12))
                     .foregroundStyle(BWTheme.ink3)
             }
-            .padding(14)
-            .background(BWTheme.paper.opacity(0.7))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 15)
+            .background(BWTheme.paper.opacity(0.5))
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                    .stroke(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
             )
         }
-        .buttonStyle(BWPressEffectStyle())
-    }
-
-    // MARK: 正在走的盲盒（演示状态快捷入口）
-
-    private var activeQuestRow: some View {
-        Button(action: onOpenJourney) {
-            HStack(spacing: 12) {
-                Image(systemName: "figure.walk")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(BWTheme.amberDeep)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("今晚的盲走还在继续")
-                        .font(BWTheme.caption(13))
-                        .foregroundStyle(BWTheme.ink)
-                    if let remaining = store.session?.remainingMeters {
-                        Text("还剩 \(remaining) 米 · 目的地保密中")
-                            .font(BWTheme.caption(11))
-                            .foregroundStyle(BWTheme.ink3)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Text("继续")
-                    .font(BWTheme.caption(12))
-                    .foregroundStyle(BWTheme.amberDeep)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(BWTheme.amberDeep)
-            }
-            .padding(14)
-            .background(BWTheme.amber.opacity(0.10))
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(BWTheme.amber.opacity(0.35), lineWidth: 1)
-            )
-        }
-        .buttonStyle(BWPressEffectStyle())
     }
 
     // MARK: 数据

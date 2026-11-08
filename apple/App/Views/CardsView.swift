@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 图鉴 Cards（design-system §5.5）
+// MARK: - 图鉴 Cards（design-system §5.5，视觉基准：web 原型 #/cards）
 
 struct CardsView: View {
 
@@ -32,9 +32,9 @@ struct CardsView: View {
     }
 
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
     ]
 
     var body: some View {
@@ -42,14 +42,14 @@ struct CardsView: View {
             BWPaperBackground()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 0) {
                     header
-                    statBar
-                    filterRow
+                    collectStats.padding(.top, 2).padding(.bottom, 12)
+                    filterRow.padding(.bottom, 15)
                     grid
                 }
                 .padding(.horizontal, BWTheme.pagePadding)
-                .padding(.top, 8)
+                .padding(.top, 6)
                 .padding(.bottom, 24)
             }
 
@@ -58,7 +58,16 @@ struct CardsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .bwTabBarChrome()
+        .bwTypeBounds()
         .animation(BWAnimation.regular, value: selectedPlace?.id)
+        .onAppear {
+            // 仅用于截图/演示：`BW_PREVIEW_DETAIL=1` 打开第一张已收集卡的详情
+            guard ProcessInfo.processInfo.environment["BW_PREVIEW_DETAIL"] == "1", selectedPlace == nil else { return }
+            bwAfter(0.5) {
+                selectedPlace = PlaceCatalog.all.first { collectedIDs.contains($0.id) }
+            }
+        }
     }
 
     // MARK: 顶栏
@@ -66,7 +75,7 @@ struct CardsView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Text("回忆册")
-                .font(BWTheme.title(26))
+                .font(BWType.pageTitle())
                 .foregroundStyle(BWTheme.ink)
 
             Spacer(minLength: 0)
@@ -80,53 +89,48 @@ struct CardsView: View {
                     }
                 }
             } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 18, weight: .semibold))
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(BWTheme.ink2)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 34, height: 34)
                     .background(BWTheme.paper)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
             }
+            .accessibilityLabel("筛选")
+        }
+        .padding(.bottom, 10)
+    }
+
+    // MARK: 统计条：已收集 18/24 · 稀有 7 · 隐藏 1（web 是一行文字，不是卡片）
+
+    private var collectStats: some View {
+        HStack(spacing: 6) {
+            statPiece("已收集", "\(collectedIDs.count)/\(PlaceCatalog.all.count)")
+            dot
+            statPiece("稀有", "\(store.profile.rareCount)")
+            dot
+            statPiece("隐藏", "\(store.profile.hiddenCount)")
+            Spacer(minLength: 0)
         }
     }
 
-    // MARK: 统计条：已收集 18/24 · 稀有 7 · 隐藏 1
-
-    private var statBar: some View {
-        HStack(spacing: 0) {
-            statCell(title: "已收集", value: "\(collectedIDs.count)/\(PlaceCatalog.all.count)")
-            statDivider
-            statCell(title: "稀有", value: "\(store.profile.rareCount)")
-            statDivider
-            statCell(title: "隐藏", value: "\(store.profile.hiddenCount)")
-        }
-        .padding(.vertical, 12)
-        .background(BWTheme.paper.opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
-        )
-    }
-
-    private func statCell(title: String, value: String) -> some View {
-        HStack(spacing: 5) {
-            Text(title)
-                .font(BWTheme.caption(10))
-                .foregroundStyle(BWTheme.ink3)
+    private func statPiece(_ label: String, _ value: String) -> some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .font(BWType.body(12))
+                .foregroundStyle(BWTheme.ink2)
             Text(value)
-                .font(BWTheme.caption(13))
+                .font(.system(size: 12, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(BWTheme.ink)
         }
-        .frame(maxWidth: .infinity)
     }
 
-    private var statDivider: some View {
-        Rectangle()
-            .fill(BWTheme.line)
-            .frame(width: 1, height: 18)
+    private var dot: some View {
+        Text("·")
+            .font(BWType.body(12))
+            .foregroundStyle(BWTheme.ink3)
     }
 
     // MARK: 筛选 chips
@@ -147,7 +151,7 @@ struct CardsView: View {
     // MARK: 3 列卡片网格
 
     private var grid: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        LazyVGrid(columns: columns, spacing: 10) {
             ForEach(visiblePlaces) { place in
                 Button {
                     if collectedIDs.contains(place.id) {
@@ -157,69 +161,70 @@ struct CardsView: View {
                     cardCell(place)
                 }
                 .buttonStyle(BWPressEffectStyle())
+                .disabled(!collectedIDs.contains(place.id))
             }
         }
     }
 
+    @ViewBuilder
     private func cardCell(_ place: Place) -> some View {
         let collected = collectedIDs.contains(place.id)
         let card = store.card(for: place.id)
 
-        return Group {
-            if collected {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(place.emoji)
-                        .font(.system(size: 26))
+        if collected {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(place.emoji)
+                    .font(.system(size: 21))
+                    .padding(.bottom, 6)
 
-                    Text(place.name)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Text(place.name)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Spacer(minLength: 0)
+                Spacer(minLength: 4)
 
-                    HStack(spacing: 4) {
-                        if let card {
-                            Text(BWFormat.shortDate(card.collectedAt))
-                                .font(.system(size: 9))
-                                .foregroundStyle(BWTheme.ink3)
-                        }
-                        Spacer(minLength: 0)
-                        Circle()
-                            .fill(BWTheme.rarityColor(place.rarity))
-                            .frame(width: 5, height: 5)
-                    }
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity)
-                .frame(height: 128)
-                .background(BWTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
-                )
-                .shadow(color: BWTheme.ink.opacity(0.06), radius: 8, x: 0, y: 4)
-            } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(BWTheme.paper2.opacity(0.5))
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-
-                    VStack(spacing: 6) {
-                        Text("?")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundStyle(BWTheme.ink3.opacity(0.7))
-                        Text("未解锁")
-                            .font(.system(size: 9))
+                HStack(alignment: .center, spacing: 0) {
+                    if let card {
+                        Text(BWFormat.compactDate(card.collectedAt))
+                            .font(.system(size: 8.5))
+                            .monospacedDigit()
                             .foregroundStyle(BWTheme.ink3)
                     }
+                    Spacer(minLength: 0)
+                    BWRarityDot(rarity: place.rarity)
                 }
-                .frame(height: 128)
             }
+            .padding(.horizontal, 9)
+            .padding(.top, 9)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .aspectRatio(0.8, contentMode: .fit)
+            .background(BWTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(BWTheme.line, lineWidth: 1)
+            )
+        } else {
+            VStack(spacing: 5) {
+                Text("?")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink3)
+                Text("未解锁")
+                    .font(.system(size: 9))
+                    .tracking(0.5)
+                    .foregroundStyle(BWTheme.ink3)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .aspectRatio(0.8, contentMode: .fit)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+            )
         }
     }
 
@@ -227,98 +232,116 @@ struct CardsView: View {
 
     private func detailOverlay(_ place: Place) -> some View {
         ZStack {
-            BWTheme.ink.opacity(0.35)
+            BWTheme.ink.opacity(0.46)
                 .ignoresSafeArea()
                 .onTapGesture {
                     selectedPlace = nil
                 }
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top) {
                         BWMicroLabel("图鉴 · \(BWFormat.areaName(place.area))")
                         Spacer(minLength: 8)
                         BWRarityBadge(rarity: place.rarity)
                     }
+                    .padding(.bottom, 13)
 
                     VStack(spacing: 6) {
                         Text(place.emoji)
                             .font(.system(size: 40))
                         Text(place.name)
-                            .font(BWTheme.title(22))
+                            .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(BWTheme.ink)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                         if let card = store.card(for: place.id) {
                             Text("\(card.serialDisplay) · \(BWFormat.shortDate(card.collectedAt))")
-                                .font(BWTheme.caption(11))
+                                .font(BWType.caption(10.5))
                                 .monospacedDigit()
                                 .foregroundStyle(BWTheme.ink3)
                         }
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.bottom, 14)
 
-                    Rectangle()
-                        .fill(BWTheme.line)
-                        .frame(height: 1)
+                    BWHairline()
 
-                    Text(place.why)
-                        .font(BWTheme.body(14))
-                        .foregroundStyle(BWTheme.ink)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        BWMicroLabel("为什么是这里")
+                        Text(place.why)
+                            .font(.system(size: 13))
+                            .foregroundStyle(BWTheme.ink2)
+                            .lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 12)
+
+                    BWHairline()
 
                     taskView(place)
+                        .padding(.top, 12)
 
-                    Button {
-                        selectedPlace = nil
-                    } label: {
-                        Text("关闭")
-                            .font(BWTheme.title(14))
-                            .foregroundStyle(BWTheme.ink2)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(BWTheme.paper2)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                    HStack(spacing: 8) {
+                        Button {
+                            selectedPlace = nil
+                        } label: {
+                            Text("关闭")
+                                .font(BWType.cta(14))
+                                .foregroundStyle(BWTheme.ink2)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        }
+                        .buttonStyle(BWPressEffectStyle())
                     }
-                    .buttonStyle(BWPressEffectStyle())
+                    .padding(.top, 14)
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 18)
                 .background(BWTheme.paper)
                 .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
-                )
-                .shadow(color: BWTheme.ink.opacity(0.18), radius: 24, x: 0, y: 16)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 60)
+                .frame(maxWidth: 322)
+                .shadow(color: BWTheme.ink.opacity(0.28), radius: 30, x: 0, y: 18)
+                .padding(.horizontal, 26)
+                .padding(.vertical, 40)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
         .transition(.opacity)
     }
 
     private func taskView(_ place: Place) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("🎯 小任务")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(BWTheme.ink2)
-            Text(place.task)
-                .font(BWTheme.body(14))
-                .foregroundStyle(BWTheme.ink)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 3) {
+                    Text("🎯").font(.system(size: 10))
+                    BWMicroLabel("小任务")
+                }
+                Text(place.task)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(BWTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            if let card = store.card(for: place.id) {
-                Text(card.taskDone ? "已完成" : "还没打卡 · 下次再去补上")
-                    .font(BWTheme.caption(10))
-                    .foregroundStyle(card.taskDone ? BWTheme.teal : BWTheme.ink3)
+                if let card = store.card(for: place.id) {
+                    Text(card.taskDone ? "已完成" : "还没打卡 · 下次再去补上")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(card.taskDone ? BWTheme.teal : BWTheme.ink3)
+                }
             }
+            Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BWTheme.paper2)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(BWTheme.line, lineWidth: 1)
+        )
     }
 
     // MARK: 数据

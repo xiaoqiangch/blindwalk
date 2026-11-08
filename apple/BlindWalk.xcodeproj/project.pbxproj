@@ -15,6 +15,7 @@
 		1CF184EA2DDCB3BE42E170CE /* QuestSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA513A9498B51AFE53978783 /* QuestSession.swift */; };
 		1EF7B8ADDA08401FFDED0A1B /* SocialFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */; };
 		1F3367FE9BF570277E85E142 /* CardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F359E858D26B6FD6D1505F63 /* CardsView.swift */; };
+		1FAFCC05B277CF5D3D01A40C /* Geo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC584FA7E099332F73FFF6 /* Geo.swift */; };
 		25A60ADFA39A5051A7425486 /* PlaceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */; };
 		322CA0A7FFEFF8A738566C43 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689294560BE4BF6181B1453D /* HomeView.swift */; };
 		35471DD9BB27D9D8199E124F /* WatchStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */; };
@@ -23,6 +24,8 @@
 		622A6CE08A4595690C4F6A17 /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */; };
 		65367C04799084881DD01F8B /* WatchRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */; };
 		6CF0F147BB80CF22136F9237 /* PlaceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */; };
+		739234F1BC84BD53D0E49268 /* WatchSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */; };
+		741C5CFE2E5C032AE541EDD3 /* WatchStatusChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07421175E805830B544FE273 /* WatchStatusChip.swift */; };
 		7787D883CF9210EA80724C12 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C002EA791982D766EFF7D65 /* Models.swift */; };
 		7F74E17A691172CB45C49507 /* SocialFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */; };
 		899D80DAD5C54859810269A8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBA8CF4BC1C0A062E8A18418 /* Theme.swift */; };
@@ -50,6 +53,7 @@
 		EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
 		FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */; };
+		FF6E51B46C4D7F475BFAF112 /* Geo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC584FA7E099332F73FFF6 /* Geo.swift */; };
 		FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */; };
 /* End PBXBuildFile section */
 
@@ -79,6 +83,7 @@
 
 /* Begin PBXFileReference section */
 		0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRevealView.swift; sourceTree = "<group>"; };
+		07421175E805830B544FE273 /* WatchStatusChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStatusChip.swift; sourceTree = "<group>"; };
 		07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkWatchApp.swift; sourceTree = "<group>"; };
 		105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStyle.swift; sourceTree = "<group>"; };
 		19DCE5FA997B304D62130D27 /* BWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWComponents.swift; sourceTree = "<group>"; };
@@ -106,8 +111,10 @@
 		CB8EF4087D54404A6C023159 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		CBA8CF4BC1C0A062E8A18418 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialFeed.swift; sourceTree = "<group>"; };
+		D4BC584FA7E099332F73FFF6 /* Geo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geo.swift; sourceTree = "<group>"; };
 		D8B5340A7CFC80269A2CE14B /* SocialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialView.swift; sourceTree = "<group>"; };
 		E25F82415EE382C5092A1911 /* BlindWalkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkApp.swift; sourceTree = "<group>"; };
+		E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncService.swift; sourceTree = "<group>"; };
 		E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyMapView.swift; sourceTree = "<group>"; };
 		EA40E0C2A43409A4E481D14E /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		F359E858D26B6FD6D1505F63 /* CardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardsView.swift; sourceTree = "<group>"; };
@@ -146,6 +153,7 @@
 				4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */,
 				85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */,
 				546E206FAC40B7771C273A42 /* DemoData.swift */,
+				D4BC584FA7E099332F73FFF6 /* Geo.swift */,
 				4C002EA791982D766EFF7D65 /* Models.swift */,
 				EA40E0C2A43409A4E481D14E /* Persistence.swift */,
 				5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */,
@@ -198,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				79E14316DB285700ADB0BCE9 /* LocationService.swift */,
+				E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -214,6 +223,7 @@
 				9DA5D682DDD8E3C01A93D097 /* ProfileView.swift */,
 				A05814C4F86D14A5BC867AA3 /* RevealView.swift */,
 				D8B5340A7CFC80269A2CE14B /* SocialView.swift */,
+				07421175E805830B544FE273 /* WatchStatusChip.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -276,11 +286,9 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					543B500624CD735D4A3A3797 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					92DE9F8F71668B236DCF03AA = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -315,6 +323,7 @@
 				FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */,
 				E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */,
 				ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */,
+				FF6E51B46C4D7F475BFAF112 /* Geo.swift in Sources */,
 				90A23F0424413427879B3ACC /* Haptics.swift in Sources */,
 				7787D883CF9210EA80724C12 /* Models.swift in Sources */,
 				414B34AF4CE288CA207ED3AA /* Persistence.swift in Sources */,
@@ -346,6 +355,7 @@
 				0473991C7CDF22D88AEB9A4C /* BoxSetupSheet.swift in Sources */,
 				1F3367FE9BF570277E85E142 /* CardsView.swift in Sources */,
 				A65B0685B66BF54C2E16AFF1 /* DemoData.swift in Sources */,
+				1FAFCC05B277CF5D3D01A40C /* Geo.swift in Sources */,
 				322CA0A7FFEFF8A738566C43 /* HomeView.swift in Sources */,
 				FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */,
 				C61F053670A332BE0C7CFFC5 /* JourneyView.swift in Sources */,
@@ -360,6 +370,8 @@
 				C26F357316EA470DEA7BB520 /* SocialView.swift in Sources */,
 				4BF57F97C11C20CA6889EBB8 /* Theme.swift in Sources */,
 				EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */,
+				741C5CFE2E5C032AE541EDD3 /* WatchStatusChip.swift in Sources */,
+				739234F1BC84BD53D0E49268 /* WatchSyncService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -411,7 +423,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -532,7 +543,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

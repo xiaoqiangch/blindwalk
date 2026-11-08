@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 成就 Achievements（design-system §5.8，push 页）
+// MARK: - 成就 Achievements（design-system §5.8，push 页；视觉基准：web 原型 #/achievements）
 
 struct AchievementsView: View {
 
@@ -13,148 +13,133 @@ struct AchievementsView: View {
             BWPaperBackground()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 0) {
                     header
-                    summary
-
-                    VStack(spacing: 12) {
+                    VStack(spacing: 9) {
                         ForEach(achievements) { achievement in
                             achievementRow(achievement)
                         }
                     }
+                    .padding(.top, 6)
                 }
                 .padding(.horizontal, BWTheme.pagePadding)
-                .padding(.top, 8)
-                .padding(.bottom, 28)
+                .padding(.top, 4)
+                .padding(.bottom, 26)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .bwTypeBounds()
     }
 
-    // MARK: 顶栏（自定义返回，兼顾 push 与独立呈现）
+    // MARK: 顶栏
 
     private var header: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 6) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink2)
-                    .frame(width: 34, height: 34)
-                    .background(BWTheme.paper)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
+                    .frame(width: 30, height: 34)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(BWPressEffectStyle())
+            .accessibilityLabel("返回")
 
             Text("成就")
-                .font(BWTheme.title(26))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(BWTheme.ink)
 
             Spacer(minLength: 0)
 
             Text("\(unlockedCount)/\(achievements.count)")
-                .font(BWTheme.caption(12))
+                .font(BWType.caption(11))
                 .monospacedDigit()
                 .foregroundStyle(BWTheme.ink3)
         }
-    }
-
-    private var summary: some View {
-        Text("已经亮起 \(unlockedCount) 个。慢慢走，会有的。")
-            .font(BWTheme.caption(12))
-            .foregroundStyle(BWTheme.ink2)
+        .padding(.bottom, 10)
     }
 
     // MARK: 成就行
 
     private func achievementRow(_ achievement: Achievement) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .center, spacing: 12) {
             Text(achievement.icon)
-                .font(.system(size: 22))
-                .frame(width: 46, height: 46)
-                .background(
-                    achievement.isUnlocked
-                        ? BWTheme.amber.opacity(0.14)
-                        : BWTheme.paper2
-                )
+                .font(.system(size: 18))
+                .frame(width: 40, height: 40)
+                .background(BWTheme.paper2)
                 .clipShape(Circle())
-                .overlay(
-                    Circle().stroke(
-                        achievement.isUnlocked
-                            ? BWTheme.amber.opacity(0.55)
-                            : BWTheme.line,
-                        lineWidth: 1
-                    )
-                )
                 .saturation(achievement.isUnlocked ? 1 : 0)
-                .opacity(achievement.isUnlocked ? 1 : 0.6)
+                .opacity(achievement.isUnlocked ? 1 : 0.45)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(achievement.name)
-                        .font(BWTheme.title(15))
-                        .foregroundStyle(BWTheme.ink)
-
-                    Spacer(minLength: 6)
-
-                    if achievement.isUnlocked {
-                        Text("已获得")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(BWTheme.amberDeep)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(BWTheme.amber.opacity(0.16))
-                            .clipShape(Capsule())
-                            .rotationEffect(.degrees(-4))
-                    }
-                }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(achievement.name)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
                 Text(achievement.detail)
-                    .font(BWTheme.caption(11))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(BWType.caption(10.5))
+                    .foregroundStyle(BWTheme.ink3)
+                    .padding(.top, 2)
+                    .padding(.bottom, 7)
 
-                HStack(spacing: 8) {
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(BWTheme.line)
-                            Capsule()
-                                .fill(
-                                    achievement.isUnlocked
-                                        ? BWTheme.amber
-                                        : BWTheme.ink3.opacity(0.5)
-                                )
-                                .frame(width: max(0, geo.size.width * CGFloat(achievement.fraction)))
-                        }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(BWTheme.paper2)
+                        Capsule()
+                            .fill(achievement.isUnlocked ? BWTheme.amber : BWTheme.ink3.opacity(0.55))
+                            .frame(width: max(0, geo.size.width * CGFloat(achievement.fraction)))
                     }
-                    .frame(height: 5)
-
-                    Text("\(achievement.progress)/\(achievement.target)")
-                        .font(.system(size: 9, weight: .medium))
-                        .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink3)
                 }
+                .frame(height: 4)
+            }
+
+            Spacer(minLength: 4)
+
+            if achievement.isUnlocked {
+                Text("已获得")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundStyle(BWTheme.amberDeep)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(BWTheme.amberDeep.opacity(0.5), lineWidth: 1)
+                    )
+                    .rotationEffect(.degrees(-6))
+            } else {
+                Text("\(achievement.progress)/\(achievement.target)")
+                    .font(.system(size: 10))
+                    .monospacedDigit()
+                    .foregroundStyle(BWTheme.ink3)
             }
         }
-        .padding(14)
-        .background(BWTheme.paper)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background {
+            if achievement.isUnlocked {
+                LinearGradient(
+                    colors: [BWTheme.paper.opacity(0.0), BWTheme.amber.opacity(0.06)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .background(BWTheme.paper)
+            } else {
+                BWTheme.paper
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(
-                    achievement.isUnlocked
-                        ? BWTheme.amber.opacity(0.45)
-                        : BWTheme.line,
-                    lineWidth: achievement.isUnlocked ? 1.4 : 1
+                    achievement.isUnlocked ? BWTheme.amber.opacity(0.48) : BWTheme.line,
+                    lineWidth: 1
                 )
-        )
-        .shadow(
-            color: BWTheme.ink.opacity(achievement.isUnlocked ? 0.08 : 0.04),
-            radius: 10,
-            x: 0,
-            y: 6
         )
     }
 

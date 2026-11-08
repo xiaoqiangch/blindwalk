@@ -51,6 +51,28 @@ public extension QuestSession {
         phase = .collected
     }
 
+    /// 用真实定位推进旅程：距离到目的地还有多少米、当前方位角。
+    /// 这是真实 GPS 模式的主入口（演示模式仍可用 `update(remainingMeters:)`）。
+    @discardableResult
+    mutating func updateGeo(distanceMeters: Double, bearingDegrees: Double?) -> [QuestEvent] {
+        if let bearingDegrees {
+            currentBearing = bearingDegrees
+        }
+        return update(remainingMeters: Int(distanceMeters.rounded()))
+    }
+
+    /// 箭头：优先用真实方位角，没有定位时退回演示用的距离分段箭头
+    var arrowSymbol: String {
+        if let currentBearing { return GeoMath.arrow(currentBearing) }
+        return bearing
+    }
+
+    /// 「往北走」这类方向文案
+    var compassCopy: String {
+        guard let currentBearing else { return "沿河往北走，别急" }
+        return "往\(GeoMath.compassLabel(currentBearing))走，别急"
+    }
+
     /// 箭头方向（演示用，按剩余距离变化）
     var bearing: String {
         switch remainingMeters {
