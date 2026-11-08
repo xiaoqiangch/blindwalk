@@ -34,6 +34,17 @@ struct BlindWalkWatchApp: App {
 /// 四个表盘的编号（TabView selection 用）
 enum WatchPage: Int, Hashable, CaseIterable {
     case progress, hints, reveal, mine
+
+    /// 截图/演示用：SIMCTL_CHILD_BW_WATCH_PAGE=progress|hints|reveal|mine
+    static func preview(_ name: String) -> WatchPage? {
+        switch name {
+        case "progress": return .progress
+        case "hints": return .hints
+        case "reveal": return .reveal
+        case "mine": return .mine
+        default: return nil
+        }
+    }
 }
 
 /// 根容器：黑底、竖滑翻页。
@@ -69,6 +80,10 @@ struct WatchRootView: View {
         .onAppear {
             bridge.activateIfNeeded()
             syncFromPhoneIfNeeded()
+            if let name = ProcessInfo.processInfo.environment["BW_WATCH_PAGE"],
+               let preview = WatchPage.preview(name) {
+                page = preview
+            }
         }
         .onChange(of: bridge.summary.generatedAt) { _, _ in
             syncFromPhoneIfNeeded()

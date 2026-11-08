@@ -6,11 +6,13 @@
 - 设计系统 / PRD / 架构文档
 - 演示截图 + 体验说明
 
-## v0.2 可上真机（下一步）
-- 装 Xcode 后修编译、真机跑通 GPS + 后台定位
-- CoreLocation 地理围栏替代距离阈值；后台唤醒 + 本地通知
-- WatchConnectivity 实时同步；手表独立开盒
-- App 图标 / 启动图 / TestFlight 打包
+## v0.2 可上真机（进行中）
+- [x] Xcode 27.2 安装、iOS/watchOS 构建通过
+- [x] iPhone 18 Pro 模拟器跑通 6 屏；Apple Watch Series 9 模拟器跑通 4 屏
+- [ ] 真机跑通 GPS + 后台定位
+- [ ] CoreLocation 地理围栏替代距离阈值；后台唤醒 + 本地通知
+- [ ] WatchConnectivity 实时同步（iOS 发送端）；手表独立开盒
+- [ ] App 图标 / 启动图 / TestFlight 打包
 
 ## v0.3 社交
 - Sign in with Apple + Supabase/Firebase 后端

@@ -14,6 +14,12 @@ ENTRIES = [
     ("native-social.png", "SOCIAL"),
     ("native-profile.png", "PROFILE"),
 ]
+WATCH_ENTRIES = [
+    ("native-watch-progress.png", "WATCH · PROGRESS"),
+    ("native-watch-hints.png", "WATCH · HINTS"),
+    ("native-watch-reveal.png", "WATCH · REVEAL"),
+    ("native-watch-mine.png", "WATCH · MINE"),
+]
 BG = (245, 238, 226)
 INK = (23, 20, 16)
 INK2 = (107, 99, 87)
@@ -37,8 +43,9 @@ def main():
     gap, margin, header = 24, 40, 118
     cols = 3
     rows = (len(ENTRIES) + cols - 1) // cols
+    watch_w, watch_h = 216, 264
     width = margin * 2 + cols * thumb_w + (cols - 1) * gap
-    height = header + margin + rows * (thumb_h + 42) + margin
+    height = header + margin + rows * (thumb_h + 42) + 44 + watch_h + 42 + margin
     canvas = Image.new("RGB", (width, height), BG)
     d = ImageDraw.Draw(canvas)
     d.text((margin, 34), "盲走 BlindWalk", font=font(40), fill=INK)
@@ -56,6 +63,21 @@ def main():
         ImageDraw.Draw(mask).rounded_rectangle([0, 0, thumb_w, thumb_h], radius=30, fill=255)
         canvas.paste(img, (x, y), mask)
         d.text((x + 4, y + thumb_h + 10), label, font=font(16), fill=INK2)
+
+    # 手表一排
+    wy = header + margin + rows * (thumb_h + 42) + 44
+    d.text((margin, wy - 30), "Apple Watch · Series 9 (45mm) 模拟器", font=font(16), fill=INK2)
+    for i, (name, label) in enumerate(WATCH_ENTRIES):
+        path = os.path.join(SHOTS, name)
+        if not os.path.exists(path):
+            print("skip", name); continue
+        img = Image.open(path).convert("RGB").resize((watch_w, watch_h), Image.LANCZOS)
+        x = margin + i * (watch_w + gap)
+        mask = Image.new("L", (watch_w, watch_h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, watch_w, watch_h], radius=44, fill=255)
+        canvas.paste(img, (x, wy), mask)
+        d.text((x + 4, wy + watch_h + 8), label, font=font(14), fill=INK2)
+
     canvas.save(OUT, quality=92)
     print("saved", OUT, canvas.size)
 

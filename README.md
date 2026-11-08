@@ -99,7 +99,16 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 - `BlindWalkWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
 - 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`、`WKApplication`
 - 真实定位需要在 `App/Services/LocationService.swift` 里把 `LiveLocationService` 接上（骨架已留，含权限/距离/方位角）
-- 模拟器实跑截图见 [`screenshots/native-showcase.png`](screenshots/native-showcase.png)（iPhone 18 Pro / iOS 27.2 模拟器）
+- 模拟器实跑截图见 [`screenshots/native-showcase.png`](screenshots/native-showcase.png)（iPhone 18 Pro / iOS 27.2 + Apple Watch Series 9 45mm / watchOS 27.2 模拟器）
+- 手表运行：
+  ```bash
+  xcrun simctl create "Watch" com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-9-45mm com.apple.CoreSimulator.SimRuntime.watchOS-27-2
+  xcrun simctl pair <watch-udid> <iphone-udid>
+  xcodebuild -project apple/BlindWalk.xcodeproj -scheme BlindWalkWatch \
+    -destination 'platform=watchOS Simulator,id=<watch-udid>' build
+  xcrun simctl install <watch-udid> <build>/BlindWalkWatch.app
+  xcrun simctl launch <watch-udid> com.blindwalk.app.watchkitapp
+  ```
 - 截图/演示专用入口：`SIMCTL_CHILD_BW_PREVIEW=journey|reveal|cards|social|profile xcrun simctl launch <UDID> com.blindwalk.app`
 
 > 构建期修正记录：`WatchApp/Haptics.swift` 的 `WKInterfaceDevice.WKHapticType` → 顶层 `WKHapticType`（watchOS SDK 实际定义）；`project.yml` 的 watch target 补 `WKApplication: true`（否则 iOS 模拟器拒绝安装内嵌 watch App）。
@@ -133,9 +142,9 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 |---|---|
 | Web 原型交互闭环 | ✅ 完成（14/14 冒烟测试通过） |
 | Web 原型视觉 | ✅ 完成（见 `screenshots/showcase.png`） |
-| iOS / watchOS 源码 | ✅ 完成（13+8 文件），⚠️ 待 Xcode 编译 |
+| iOS / watchOS 源码 | ✅ 完成，✅ 构建通过并在模拟器运行（iPhone 18 Pro + Watch Series 9） |
 | 共享内核校验 | ✅ typecheck 通过 + 全部 Swift 语法通过 |
-| 真实定位 / 后台提醒 | ⏳ v0.2 |
+| 真实定位 / 后台提醒 | ⏳ v0.2（模拟器已用 SimulatedLocationService 跑通） |
 | 账号 / 后端 / 真实好友 | ⏳ v0.3 |
 | 真实地点库 / 安全分级 | ⏳ v0.3 |
 | App 图标 / TestFlight / 上架合规 | ⏳ v0.2+ |
