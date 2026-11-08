@@ -160,12 +160,21 @@
   }
 
   function weeklySurprise() {
-    var now = Date.now();
-    var recent = state.profile.walkArrivalTimes.filter(function (t) {
-      return now - t < 7 * 86400000 && t <= now;
-    }).length;
+    /* 按「自然日」而不是「7×24 小时」统计：今天 06:33 打开时，
+       用小时差会把 7 天前 19:12 那次算进窗口（8 次 → 325），与设计口径 305 不一致。*/
+    var today = startOfDay(Date.now());
+    var seen = {};
+    var days = 0;
+    state.profile.walkArrivalTimes.forEach(function (t) {
+      if (days >= 7) return;
+      var key = startOfDay(t);
+      var gap = Math.round((today - key) / 86400000);
+      if (gap < 0 || gap >= 7 || seen[key]) return;
+      seen[key] = true;
+      days += 1;
+    });
     var tasks = state.profile.cards.filter(function (card) { return card.taskDone; }).length;
-    return recent * 20 + rareCount() * 15 + tasks * 5;
+    return days * 20 + rareCount() * 15 + tasks * 5;
   }
 
   function latestCard() {
@@ -283,10 +292,15 @@
 
     /* 12 天连续到达：最近 7 天各 1 次（保证本周惊喜值 305），含清晨与深夜各一次 */
     state.profile.walkArrivalTimes = D.DEMO.arrivals.map(function (entry) {
-      var d = new Date(now - entry.daysAgo * 86400000 - 3600000);
-      d.setHours(entry.hour, entry.minute, 0, 0);
-      if (d.getTime() > now) d.setDate(d.getDate() - 1);
-      return d.getTime();
+      // 以「本地今天零点」为基准减 N 天，再设成当时刻
+      var base = new Date();
+      base.setHours(0, 0, 0, 0);
+      base.setDate(base.getDate() - entry.daysAgo);
+      base.setHours(entry.hour, entry.minute, 0, 0);
+      // 今天那次的时刻可能还没到（例如早上打开）：夹到「现在之前一分钟」，
+      // 仍归属今天，保证最近 7 个自然日各 1 次，而不是被回退成昨天造成重复。
+      if (base.getTime() > now) return now - 60000;
+      return base.getTime();
     });
     state.profile.lastWalkAt = state.profile.walkArrivalTimes[0];
 
