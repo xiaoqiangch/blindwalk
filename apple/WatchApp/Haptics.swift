@@ -25,7 +25,7 @@ enum Haptics {
     }
 
     /// 通用入口，方便后续补「轻触 / 失败」等场景
-    static func play(_ type: WKInterfaceDevice.WKHapticType) {
+    static func play(_ type: WKHapticType) {
         WKInterfaceDevice.current().play(type)
     }
 }

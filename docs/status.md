@@ -46,7 +46,10 @@
 | 2026-11-08 21:55 | 集成：WatchSessionSummary 移入 Shared/Core，WatchBridge 复用；XcodeGen 重新生成工程（含全部源码） |
 | 2026-11-08 21:57 | 校验：Shared typecheck OK、全量 parse OK、smoke test 14/14 通过 |
 | 2026-11-08 22:0x | 截图 9 张 + showcase 展示图；README / 状态看板定稿 |
-| 2026-11-08 22:1x | 同步到 ~/Projects/BlindWalk，交付用户 |
+| 2026-11-08 22:0x | 同步到 ~/Projects/BlindWalk，交付用户 |
+| 2026-11-08 22:0x | 用户要求安装 Xcode + 迁移项目：项目主目录更新为 ~/Projects/BlindWalk（工作区软链） |
+| 2026-11-08 22:1x | Xcode 27.2 从 App Store 安装完成（mas 需 root，改由用户 GUI 安装）；osascript 管理员授权完成 license accept / first launch |
+| 2026-11-08 22:2x | 原生构建：修复 `WKHapticType` 命名空间后，iOS + watchOS 两 target **BUILD SUCCEEDED** |
 
 ## 4. 关键验证记录
 

@@ -11,7 +11,7 @@
 | 形态 | 位置 | 状态 | 用途 |
 |---|---|---|---|
 | Web 高保真交互原型 | `prototype/web/` | ✅ 可直接体验 | 立即看效果、走完整闭环、演示截图 |
-| iOS + watchOS SwiftUI 源码 | `apple/` | ✅ 源码完成 / ⚠️ 本机无 Xcode 未编译 | 正式 App 的起点，装 Xcode 后构建真机 |
+| iOS + watchOS SwiftUI 源码 | `apple/` | ✅ 已构建成功（Xcode 27.2 / iOS 27.2 SDK） | 正式 App 的起点，可模拟器运行、可连真机 |
 
 项目由 DSH Super Agent（1 名 Lead + 3 名并行开发代理）管理，进度见 [`docs/status.md`](docs/status.md)。
 
@@ -83,23 +83,22 @@ BlindWalk/
 
 ## 三、iOS / watchOS 构建（需 Xcode）
 
-本机当前只有 CommandLineTools，**没有 Xcode / iOS SDK**，所以 native 部分未做完整编译，仅完成：
-
-- ✅ `Shared/Core` + `Shared/Design` 通过 macOS SDK 完整 typecheck
-- ✅ 全部 Swift 文件通过 `swiftc -parse`
-- ⚠️ UI 层需在 Xcode 中首次编译时按报错微调（预计少量 SwiftUI API 差异）
-
-在装有 **Xcode 15+** 的 Mac 上：
+本机已安装 **Xcode 27.2**（App Store），`xcode-select` 指向 `/Applications/Xcode.app/Contents/Developer`。
+**iOS + watchOS 两个 target 已真实构建成功**（`xcodebuild ... -destination 'generic/platform=iOS Simulator'` → BUILD SUCCEEDED）。
 
 ```bash
 cd apple
-brew install xcodegen          # 只需一次
-xcodegen generate              # 生成 BlindWalk.xcodeproj
-open BlindWalk.xcodeproj
+open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
+# 或命令行构建：
+../scripts/build-native.sh
 ```
 
-然后：选择 `BlindWalk` scheme → iOS 模拟器 / 真机 Run；`BlindWalkWatch` scheme → Apple Watch 模拟器。
-工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`。
+- 选择 `BlindWalk` scheme → iOS 模拟器 / 真机 Run；App 内自动嵌入 `BlindWalkWatch`
+- `BlindWalkWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
+- 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`
+- 真实定位需要在 `App/Services/LocationService.swift` 里把 `LiveLocationService` 接上（骨架已留，含权限/距离/方位角）
+
+> 构建期修正记录：`WatchApp/Haptics.swift` 的 `WKInterfaceDevice.WKHapticType` → 顶层 `WKHapticType`（watchOS SDK 实际定义）。
 
 > 注意：XcodeGen 生成后，watch App 的嵌入关系若提示异常，在 Xcode 的
 > `BlindWalk → General → Frameworks/Libraries/Embedded Content` 里确认 `BlindWalkWatch.app` 已嵌入即可（XcodeGen 版本差异）。

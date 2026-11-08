@@ -77,7 +77,7 @@ Profile { xp, level, streakDays, totalKm, boxesOpened, cardsCollected,
   - `BlindWalkWatch`（watchOS 10，application，sources: Shared/Core + Shared/Design + WatchApp）
 - Swift 6 语言模式关闭（`SWIFT_VERSION: 5.9`）降低学习成本。
 - 生成：`brew install xcodegen && cd apple && xcodegen generate` → 打开 `BlindWalk.xcodeproj`。
-- **当前环境无法构建**：无 Xcode / iOS SDK（仅 CommandLineTools）。已用 `swiftc -parse` 校验语法，用 macOS SDK `-typecheck` 校验 Shared/Core 类型正确性。UI 层需在装有 Xcode 的机器上首次编译修错。
+- **构建状态**：Xcode 27.2 + iOS 27.2 SDK 下 iOS/watchOS 两 target 均 BUILD SUCCEEDED（2026-11-08）。唯一修正：`WKHapticType` 为 WatchKit 顶层类型。构建脚本：`scripts/build-native.sh`。
 
 - **手表同步 Schema**：`Shared/Core/WatchSessionSummary.swift`（Codable，iOS/watchOS 共用，`applicationContext` 传输）；走路途中不下发 `placeName/rarity/areaLabel`，到达后才下发。iOS 发送端为 v0.2（见 roadmap）。
 
