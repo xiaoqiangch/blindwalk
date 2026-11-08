@@ -62,7 +62,7 @@ public enum SocialFeed {
             LeaderboardEntry(id: "u1", name: "小满", emoji: "🐱", score: 520),
             LeaderboardEntry(id: "u2", name: "阿岛", emoji: "🎧", score: 465),
             LeaderboardEntry(id: "u3", name: "77", emoji: "🌙", score: 400),
-            LeaderboardEntry(id: "u4", name: "老陈", emoji: "🍜", score: 320)
+            LeaderboardEntry(id: "u4", name: "老陈", emoji: "🍜", score: 285)
         ]
         let me = LeaderboardEntry(id: "me", name: profile.displayName, emoji: "🫥", score: profile.weeklySurprise, isMe: true)
         return (others + [me]).sorted { $0.score > $1.score }

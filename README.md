@@ -71,7 +71,8 @@ BlindWalk/
 │   └── Info/               # Info.plist（由 XcodeGen 生成）
 ├── scripts/
 │   ├── check-swift.sh      # 共享内核 typecheck + 全部 Swift 语法检查
-│   ├── screenshot.sh       # Chrome headless 截取全部页面
+│   ├── screenshot.mjs      # CDP 精确模拟 390×844 @2x 截取全部页面
+│   ├── smoke-test.mjs      # Web 原型端到端冒烟测试（抽盒→揭晓→收录→分享）
 │   └── compose-showcase.py # 拼合展示长图
 └── screenshots/            # 截图与 showcase.png
 ```
@@ -125,9 +126,10 @@ open BlindWalk.xcodeproj
 
 | 项 | 状态 |
 |---|---|
-| Web 原型交互闭环 | ✅ 完成 |
+| Web 原型交互闭环 | ✅ 完成（14/14 冒烟测试通过） |
 | Web 原型视觉 | ✅ 完成（见 `screenshots/showcase.png`） |
-| iOS / watchOS 源码 | ✅ 完成，⚠️ 待 Xcode 编译 |
+| iOS / watchOS 源码 | ✅ 完成（13+8 文件），⚠️ 待 Xcode 编译 |
+| 共享内核校验 | ✅ typecheck 通过 + 全部 Swift 语法通过 |
 | 真实定位 / 后台提醒 | ⏳ v0.2 |
 | 账号 / 后端 / 真实好友 | ⏳ v0.3 |
 | 真实地点库 / 安全分级 | ⏳ v0.3 |

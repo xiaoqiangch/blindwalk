@@ -1,0 +1,117 @@
+import SwiftUI
+
+// MARK: - App 入口
+
+@main
+struct BlindWalkApp: App {
+
+    /// MVP 演示开关：
+    /// - true：用 `BlindWalkStore.demo()` 预置「已经用了 12 天 / 18 张卡 / 正在走第 3 个盲盒」的状态，
+    ///   方便录屏与走查（design-system §7 的演示数据）。
+    /// - false：走真实路径，从 UserDefaults 读回上次的 Profile（正式版默认）。
+    private static let usesDemoData = true
+
+    @State private var store: BlindWalkStore = BlindWalkApp.makeStore()
+
+    var body: some Scene {
+        WindowGroup {
+            RootView(store: store)
+                .preferredColorScheme(.light) // MVP 仅浅色（design-system §8）
+        }
+    }
+
+    /// 真实的 init 路径保留在这里：不依赖任何演示数据。
+    private static func makeStore() -> BlindWalkStore {
+        if usesDemoData {
+            return BlindWalkStore.demo()
+        }
+        let persistence = UserDefaultsProfileStore()
+        let profile = persistence.loadProfile() ?? Profile()
+        return BlindWalkStore(profile: profile, persistence: persistence)
+    }
+}
+
+// MARK: - 底部 Tab
+
+enum AppTab: Hashable {
+    case home
+    case cards
+    case social
+    case profile
+}
+
+// MARK: - 根视图
+// 4 个 Tab：今日 / 图鉴 / 圈子 / 我的（design-system §4）。
+// 旅程与揭晓用 fullScreenCover 全屏承载，盖住 Tab。
+
+struct RootView: View {
+    let store: BlindWalkStore
+
+    @State private var selectedTab: AppTab = .home
+    @State private var isSetupPresented = false
+    @State private var isJourneyPresented = false
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                HomeView(
+                    store: store,
+                    onOpenSetup: { isSetupPresented = true },
+                    onOpenJourney: { isJourneyPresented = true },
+                    onOpenCards: { selectedTab = .cards }
+                )
+            }
+            .tabItem { Label("今日", systemImage: "shippingbox") }
+            .tag(AppTab.home)
+
+            NavigationStack {
+                CardsView(store: store)
+            }
+            .tabItem { Label("图鉴", systemImage: "rectangle.stack") }
+            .tag(AppTab.cards)
+
+            NavigationStack {
+                SocialView(store: store)
+            }
+            .tabItem { Label("圈子", systemImage: "person.2") }
+            .tag(AppTab.social)
+
+            NavigationStack {
+                ProfileView(store: store)
+            }
+            .tabItem { Label("我的", systemImage: "person.crop.circle") }
+            .tag(AppTab.profile)
+        }
+        .tint(BWTheme.amberDeep)
+        .toolbarBackground(BWTheme.paper, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .sheet(isPresented: $isSetupPresented) {
+            BoxSetupSheet(
+                store: store,
+                onStart: {
+                    // 先关 sheet，稍等 dismiss 动画结束再全屏推入旅程
+                    isSetupPresented = false
+                    bwAfter(0.45) {
+                        isJourneyPresented = true
+                    }
+                },
+                onCancel: {
+                    isSetupPresented = false
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $isJourneyPresented) {
+            JourneyView(
+                store: store,
+                onClose: {
+                    isJourneyPresented = false
+                },
+                onCollected: { _ in
+                    // 收录完成：关闭旅程，切到图鉴页看新卡
+                    isJourneyPresented = false
+                    selectedTab = .cards
+                }
+            )
+        }
+    }
+}

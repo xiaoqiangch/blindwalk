@@ -19,7 +19,7 @@ public enum DemoData {
     public static func demoProfile(now: Date = Date(), calendar: Calendar = .current) -> Profile {
         let cards: [PlaceCard] = collectedPlaceIDs.enumerated().compactMap { index, placeID in
             guard PlaceCatalog.place(id: placeID) != nil else { return nil }
-            let dayOffset = -(index + 2)
+            let dayOffset = -(index + 3)
             let date = calendar.date(byAdding: .day, value: dayOffset, to: now) ?? now
             return PlaceCard(
                 placeID: placeID,

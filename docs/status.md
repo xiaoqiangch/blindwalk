@@ -26,12 +26,12 @@
 
 | # | 任务 | Owner | 状态 | 验收要点 |
 |---|---|---|---|---|
-| task-1 | Web 高保真交互原型 | proto-dev | 进行中 | 9 路由直达、闭环可走、`?demo=1`、截图友好、无外部依赖 |
-| task-2 | iOS SwiftUI App（8 页） | ios-dev | 进行中 | 与 design-system §5.1–5.8 对应、swiftc -parse 通过 |
-| task-3 | watchOS SwiftUI App（4 界面 + 触感） | watch-dev | 进行中 | §5.9 对应、WCSession 骨架、swiftc -parse 通过 |
+| task-1 | Web 高保真交互原型 | proto-dev | ✅ 完成 | 9 路由直达、闭环可走、`?demo=1`、截图友好、无外部依赖 |
+| task-2 | iOS SwiftUI App（8 页） | ios-dev | ✅ 完成 | 13 文件 4032 行，与 §5.1–5.8 对应，parse 全过 |
+| task-3 | watchOS SwiftUI App（4 界面 + 触感） | watch-dev | ✅ 完成 | 8 文件 873 行，§5.9 对应，WCSession 骨架 + 触感 |
 | — | 共享内核 + 工程配置 | Lead | ✅ 完成 | Core typecheck 通过、project.yml 就绪 |
-| — | 校验/截图/展示图 | Lead | 待开始 | check-swift.sh + screenshot.sh + showcase.png |
-| — | 同步到 ~/Projects | Lead | 待开始 | rsync 到外部卷 |
+| — | 校验/截图/展示图 | Lead | ✅ 完成 | check-swift + CDP 截图 + smoke test + showcase.png |
+| — | 同步到 ~/Projects | Lead | ✅ 完成 | 已 rsync 到 /Volumes/XQProjects/projects/BlindWalk |
 
 ## 3. 里程碑
 
@@ -41,8 +41,11 @@
 | 2026-11-08 21:31 | 项目骨架 + PRD + 设计系统 + 架构/路线图/ADR |
 | 2026-11-08 21:36 | 共享内核（Models/Catalog/Engine/Session/Achievements/Social/Store）+ project.yml 完成，Core typecheck 通过 |
 | 2026-11-08 21:37 | 任务板建立，proto-dev / ios-dev / watch-dev 三路并行启动 |
-| 2026-11-08 21:4x | Lead：Swift 校验脚本 / 截图脚本 / 展示图脚本 |
-| 2026-11-08 22:0x | 集成：代码审查、截图、展示图、README 定稿 |
+| 2026-11-08 21:44 | proto-dev 产出全部 Web 文件；ios-dev / watch-dev 并行交付
+| 2026-11-08 21:50 | Lead：改用 CDP 精确模拟 390×844 截图（Chrome 最小视口问题），修正演示数值（305/第 4 名/手表 1/3） |
+| 2026-11-08 21:55 | 集成：WatchSessionSummary 移入 Shared/Core，WatchBridge 复用；XcodeGen 重新生成工程（含全部源码） |
+| 2026-11-08 21:57 | 校验：Shared typecheck OK、全量 parse OK、smoke test 14/14 通过 |
+| 2026-11-08 22:0x | 截图 9 张 + showcase 展示图；README / 状态看板定稿 |
 | 2026-11-08 22:1x | 同步到 ~/Projects/BlindWalk，交付用户 |
 
 ## 4. 关键验证记录
@@ -50,9 +53,9 @@
 | 验证项 | 命令 | 结果 |
 |---|---|---|
 | 共享内核编译 | `xcrun --sdk macosx swiftc -typecheck Shared/Design/Theme.swift Shared/Core/*.swift` | ✅ 0 error |
-| 全量 Swift 语法 | `./scripts/check-swift.sh` | 记于验收时 |
-| Web 截图 | `./scripts/screenshot.sh` | 记于验收时 |
-| Web 交互 | Chrome 走查 抽盒→走→揭晓→收录→分享→成就 | 记于验收时 |
+| 全量 Swift 语法 | `./scripts/check-swift.sh` | ✅ ALL SWIFT FILES OK |
+| Web 截图 | `node scripts/screenshot.mjs` | ✅ 9 张（8 手机 + 1 手表）390×844@2x |
+| Web 交互 | `node scripts/smoke-test.mjs` | ✅ 14/14：抽盒→旅程→揭晓→收录→图鉴/圈子/成就/我的，无 JS 异常 |
 
 ## 5. 风险与对策
 

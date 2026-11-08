@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F5EEE2">
+<title>盲走 BlindWalk · 手表表盘</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  html, body { height: 100%; }
+
+  body.watchpage {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+
+  body.watchpage::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .05;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='wn'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23wn)'/%3E%3C/svg%3E");
+  }
+
+  body.watchpage::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(90% 80% at 50% 26%, rgba(232, 155, 76, .10) 0%, rgba(232, 155, 76, 0) 62%);
+  }
+
+  .watchboard {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    padding: 18px 22px 16px;
+  }
+
+  .watchboard__head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 0 2px;
+    font-size: 9.5px;
+    font-weight: 650;
+    letter-spacing: .16em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  .watchboard__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .watchslot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .watchslot__title {
+    font-size: 10.5px;
+    font-weight: 650;
+    letter-spacing: .18em;
+    color: var(--ink-2);
+  }
+
+  .watchslot__sub {
+    font-size: 8.5px;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+    margin-top: -4px;
+  }
+
+  .watchslot .watchface {
+    box-shadow:
+      0 30px 46px -22px rgba(23, 20, 16, .55),
+      0 0 0 1px rgba(23, 20, 16, .08);
+  }
+
+  @media (max-width: 700px) {
+    .watchboard { padding: 12px 14px 10px; }
+    .watchboard__row { gap: 10px; }
+    .watchslot .watchface { transform: scale(.78); transform-origin: top center; }
+    .watchslot { gap: 4px; }
+  }
+</style>
+</head>
+<body class="watchpage">
+  <main class="watchboard">
+    <div class="watchboard__head" aria-hidden="true">
+      <span>盲走 BlindWalk</span>
+      <span>watchOS · 198 × 242</span>
+    </div>
+
+    <div class="watchboard__row">
+
+      <section class="watchslot" aria-label="进度表盘">
+        <h1 class="watchslot__title">进度</h1>
+        <div class="watchslot__sub">剩下 480 米</div>
+        <div class="watchface watchface--progress" role="img" aria-label="进度表盘：盲盒进行中，剩余 480 米，进度 62%，线索 1/3">
+          <svg class="watchface__ring" viewBox="0 0 198 242" aria-hidden="true">
+            <circle cx="99" cy="121" r="84" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="7"/>
+            <circle cx="99" cy="121" r="84" fill="none" stroke="#E89B4C" stroke-width="7" stroke-linecap="round"
+                    stroke-dasharray="527.8" stroke-dashoffset="200.6" transform="rotate(-90 99 121)"/>
+          </svg>
+          <div class="watchface__inner">
+            <span class="watchface__cap">盲盒进行中</span>
+            <div class="watchface__big">480<small>m</small></div>
+            <span class="watchface__foot">线索 1/3 · 点按查看</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="watchslot" aria-label="线索表盘">
+        <h1 class="watchslot__title">线索</h1>
+        <div class="watchslot__sub">1 条已解锁</div>
+        <div class="watchface watchface--clues" role="img" aria-label="线索表盘：线索 1/3，仅第一条已解锁，其余锁定">
+          <div class="watchface__inner">
+            <span class="watchface__cap">线索 · 1/3</span>
+            <div class="watchface__list">
+              <div class="watchface__clue"><i aria-hidden="true">✓</i><span>往低处走。你会听到水拍石头的声音。</span></div>
+              <div class="watchface__clue watchface__clue--locked"><i aria-hidden="true">·</i><span>…</span></div>
+              <div class="watchface__clue watchface__clue--locked"><i aria-hidden="true">·</i><span>…</span></div>
+            </div>
+            <span class="watchface__foot">点按查看全部</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="watchslot" aria-label="揭晓表盘">
+        <h1 class="watchslot__title">揭晓</h1>
+        <div class="watchslot__sub">到了才看见</div>
+        <div class="watchface watchface--reveal" role="img" aria-label="揭晓表盘：到了，旧码头边的石阶，稀有，轻点打卡">
+          <div class="watchface__inner">
+            <span class="watchface__arrive">到了</span>
+            <span class="watchface__place">旧码头边的石阶</span>
+            <span class="watchface__rarity"><i aria-hidden="true"></i>稀有</span>
+            <span class="watchface__foot">轻点打卡</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

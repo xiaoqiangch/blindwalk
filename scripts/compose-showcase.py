@@ -24,9 +24,11 @@ INK2 = (107, 99, 87)
 AMBER = (232, 155, 76)
 
 FONT_CANDIDATES = [
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/System/Library/Fonts/STHeiti Light.ttc",
     "/System/Library/Fonts/PingFang.ttc",
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
     "/System/Library/Fonts/Helvetica.ttc",
-    "/System/Library/Fonts/SFNS.ttf",
 ]
 
 
