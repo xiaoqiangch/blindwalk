@@ -23,7 +23,14 @@ struct BlindWalkApp: App {
     /// 真实的 init 路径保留在这里：不依赖任何演示数据。
     private static func makeStore() -> BlindWalkStore {
         if usesDemoData {
-            return BlindWalkStore.demo()
+            let store = BlindWalkStore.demo()
+            // 仅用于截图/演示：`SIMCTL_CHILD_BW_PREVIEW=reveal` 启动即到达并开盒
+            let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+            if preview == "reveal" {
+                _ = store.arriveNow()
+                store.beginReveal()
+            }
+            return store
         }
         let persistence = UserDefaultsProfileStore()
         let profile = persistence.loadProfile() ?? Profile()
@@ -50,6 +57,24 @@ struct RootView: View {
     @State private var selectedTab: AppTab = .home
     @State private var isSetupPresented = false
     @State private var isJourneyPresented = false
+
+    /// 仅用于截图/演示：SIMCTL_CHILD_BW_PREVIEW=journey|reveal|cards|social|profile
+    private let previewScreen: String
+
+    init(store: BlindWalkStore) {
+        self.store = store
+        let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        self.previewScreen = preview
+        let tab: AppTab
+        switch preview {
+        case "cards": tab = .cards
+        case "social": tab = .social
+        case "profile": tab = .profile
+        default: tab = .home
+        }
+        _selectedTab = State(initialValue: tab)
+        _isJourneyPresented = State(initialValue: preview == "journey" || preview == "reveal")
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {

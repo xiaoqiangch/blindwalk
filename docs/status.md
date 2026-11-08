@@ -50,6 +50,8 @@
 | 2026-11-08 22:0x | 用户要求安装 Xcode + 迁移项目：项目主目录更新为 ~/Projects/BlindWalk（工作区软链） |
 | 2026-11-08 22:1x | Xcode 27.2 从 App Store 安装完成（mas 需 root，改由用户 GUI 安装）；osascript 管理员授权完成 license accept / first launch |
 | 2026-11-08 22:2x | 原生构建：修复 `WKHapticType` 命名空间后，iOS + watchOS 两 target **BUILD SUCCEEDED** |
+| 2026-11-08 22:23 | iOS 模拟器 runtime 8.32GB 下载安装完成（iOS 27.2） |
+| 2026-11-08 22:24 | iPhone 18 Pro 模拟器实跑：修复 watch 内嵌 `WKApplication` 后安装成功，6 屏原生截图 + native-showcase.png |
 
 ## 4. 关键验证记录
 

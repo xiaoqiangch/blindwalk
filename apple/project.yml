@@ -56,12 +56,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blindwalk.app.watchkitapp
         INFOPLIST_KEY_CFBundleDisplayName: 盲走
+        INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.blindwalk.app
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
     info:
       path: Info/BlindWalkWatch-Info.plist
       properties:
         CFBundleDisplayName: 盲走
+        WKApplication: true
         WKCompanionAppBundleIdentifier: com.blindwalk.app
         WKRunsIndependentlyOfCompanionApp: true
 

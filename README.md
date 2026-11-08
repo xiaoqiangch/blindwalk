@@ -75,7 +75,9 @@ BlindWalk/
 │   ├── check-swift.sh      # 共享内核 typecheck + 全部 Swift 语法检查
 │   ├── screenshot.mjs      # CDP 精确模拟 390×844 @2x 截取全部页面
 │   ├── smoke-test.mjs      # Web 原型端到端冒烟测试（抽盒→揭晓→收录→分享）
-│   └── compose-showcase.py # 拼合展示长图
+│   ├── build-native.sh     # xcodebuild 构建 iOS + watchOS
+│   ├── compose-showcase.py # 拼合 Web 展示长图
+│   └── compose-native.py   # 拼合原生模拟器展示长图
 └── screenshots/            # 截图与 showcase.png
 ```
 
@@ -95,10 +97,12 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 
 - 选择 `BlindWalk` scheme → iOS 模拟器 / 真机 Run；App 内自动嵌入 `BlindWalkWatch`
 - `BlindWalkWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
-- 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`
+- 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`、`WKApplication`
 - 真实定位需要在 `App/Services/LocationService.swift` 里把 `LiveLocationService` 接上（骨架已留，含权限/距离/方位角）
+- 模拟器实跑截图见 [`screenshots/native-showcase.png`](screenshots/native-showcase.png)（iPhone 18 Pro / iOS 27.2 模拟器）
+- 截图/演示专用入口：`SIMCTL_CHILD_BW_PREVIEW=journey|reveal|cards|social|profile xcrun simctl launch <UDID> com.blindwalk.app`
 
-> 构建期修正记录：`WatchApp/Haptics.swift` 的 `WKInterfaceDevice.WKHapticType` → 顶层 `WKHapticType`（watchOS SDK 实际定义）。
+> 构建期修正记录：`WatchApp/Haptics.swift` 的 `WKInterfaceDevice.WKHapticType` → 顶层 `WKHapticType`（watchOS SDK 实际定义）；`project.yml` 的 watch target 补 `WKApplication: true`（否则 iOS 模拟器拒绝安装内嵌 watch App）。
 
 > 注意：XcodeGen 生成后，watch App 的嵌入关系若提示异常，在 Xcode 的
 > `BlindWalk → General → Frameworks/Libraries/Embedded Content` 里确认 `BlindWalkWatch.app` 已嵌入即可（XcodeGen 版本差异）。
