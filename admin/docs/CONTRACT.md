@@ -98,6 +98,7 @@ GET /api/pois?status=draft&q=音乐&category=venue&hasPhoto=1&limit=100&offset=0
 ```
 - `status` 不传 = 全部；`q` 匹配 name/summary/tags；`category` 精确匹配
 - **`hasPhoto`**（可选）：`1` = 只看有图，`0` = 只看无图；不传 = 全部
+- 前端在 `total ≤ 100` 时允许客户端过滤，超过后必须改用服务端 `hasPhoto`（保证分页准确）
 - 排序：`updatedAt` 倒序
 
 ### 4.2 单条
@@ -141,6 +142,8 @@ GET /api/llm/status
 ```
 - 环境变量：`BW_LLM_BASE_URL`、`BW_LLM_API_KEY`、`BW_LLM_MODEL`
 - **无 Key 时 `model` 返回 `"offline-rules"`**（不是配置里的模型名），避免让人误以为模型在跑
+- **`ready` 的语义**：表示「服务端可以响应请求」，**不代表模型可用**；
+  判断是否用真模型一律看 `mode`（`ready` 在离线时也可能为 `true`）
 - **没有 key 时必须自动降级为 `offline` 规则模式**（见 §6），并在 UI 上明示「离线规则模式」
 
 ### 4.6 导出
@@ -247,6 +250,12 @@ PORT=8802
 | 测试 | `node --test admin/tests/` 全绿（至少覆盖 CRUD / 去重 / 保密 / 导出 / 离线降级） |
 
 ---
+
+## 8.1 待办
+
+- [ ] 「＋ 新建空白 POI」入口（契约已支持 `POST /api/pois`，界面暂缺）
+- [ ] 批量通过/拒绝改批量端点（当前逐条 PUT，量小无所谓）
+- [ ] 真实大模型联调（需配置 `BW_LLM_API_KEY`）
 
 ## 9. 实现状态（2026-11-09）
 

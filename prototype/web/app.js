@@ -41,7 +41,8 @@
     geoErrorCount: 0,
     lastFix: null,
     geoPoll: null,
-    geoSaveAt: 0
+    geoSaveAt: 0,
+    autoShake: false
   };
   var timers = { journey: null, reveal: [] };
 
@@ -2491,6 +2492,15 @@
     } else {
       stopRealTracking();
     }
+
+    // 从演示模式切回真实定位：渲染完抽盒页后自动摇一次
+    if (ui.autoShake && route === '/setup') {
+      ui.autoShake = false;
+      window.requestAnimationFrame(function () {
+        var shakeBtn = document.querySelector('[data-action="shake"]');
+        if (shakeBtn) shakeBtn.click();
+      });
+    }
     if (route === '/reveal') renderReveal();
     if (!isReveal) dom.overlayRoot.innerHTML = '';
   }
@@ -2825,12 +2835,9 @@
         state.reveal = null;
         state.demoSeeded = false;
         save();
+        ui.autoShake = true;
         navigate('/setup');
         showToast('正在重新获取定位…', '📡', { duration: 1600 });
-        timers.reveal.push(setTimeout(function () {
-          var btn = document.querySelector('[data-action="shake"]');
-          if (btn) btn.click();
-        }, 500));
         break;
       }
       case 'reset-demo': {
