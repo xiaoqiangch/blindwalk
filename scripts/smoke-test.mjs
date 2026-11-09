@@ -126,9 +126,17 @@ async function main() {
 
     await click('[data-action="shake"]');
     let entered = false;
-    for (let i = 0; i < 14 && !entered; i++) {
+    for (let i = 0; i < 6 && !entered; i++) {
       await wait(500);
       entered = (await hash()).includes("/journey");
+    }
+    // 无定位环境下会显示「定位受阻」面板 → 明确选择演示（这是新流程：不再静默用虚构地点）
+    if (!entered) {
+      await click('[data-action="start-demo"]');
+      for (let i = 0; i < 6 && !entered; i++) {
+        await wait(400);
+        entered = (await hash()).includes("/journey");
+      }
     }
     check("摇盒后进入旅程", entered, await hash());
     const journeyText = await text();

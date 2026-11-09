@@ -3352,3 +3352,48 @@ button, .btn {
   border: 1px solid rgba(166, 156, 140, .26);
   vertical-align: middle;
 }
+
+/* ============================================================
+   33. 账号 / 数据源设置
+   ============================================================ */
+
+.acc__form { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 2px; }
+
+.acc__label {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink3, #A69C8C);
+}
+
+.acc__input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.acc__input:focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(232, 155, 76, .16);
+}
+
+.acc__state {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--ink3, #A69C8C);
+}
+
+.dbg__label {
+  margin: 12px 0 6px;
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  color: var(--ink3, #A69C8C);
+}

@@ -949,8 +949,110 @@
     });
   }
 
-  /** 没有可用的策展点时：走自动抓取（维基 → OSM → 真实坐标兜底） */
+  /** 没有可用的策展点时：先走多数据源（高德/百度/OSM/维基），再退回旧链路 */
   function autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed) {
+    var providers = window.BW_PROVIDERS;
+    if (!providers || typeof providers.nearby !== 'function') {
+      return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+    }
+    // 硬截止 6 秒：多数据源最慢可能 8s，不能让用户干等
+    var deadline = new Promise(function (resolve) {
+      setTimeout(function () { resolve(null); }, 6000);
+    });
+    return Promise.race([
+      providers.nearby({ lat: origin.lat, lon: origin.lon, radius: radius, limit: 40 }),
+      deadline
+    ]).then(function (list) {
+      if (!list) {
+        return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+      }
+      var picked = pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed);
+      if (!picked) {
+        return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+      }
+      return {
+        place: makeProviderPlace(picked, origin, mood, startMeters),
+        cached: false,
+        poolSize: list.length,
+        source: picked.source || 'osm'
+      };
+    }).catch(function () {
+      return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+    });
+  }
+
+  /** 从多数据源候选里挑一个（距离 + 心情加权 + 可复现随机） */
+  function pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed) {
+    if (!list || !list.length) return null;
+    var pool = [];
+    for (var i = 0; i < list.length; i += 1) {
+      var c = list[i];
+      if (typeof c.lat !== 'number' || typeof c.lon !== 'number') continue;
+      var d = distanceBetween(origin, { lat: c.lat, lon: c.lon });
+      if (d < minDistance || d > maxDistance) continue;
+      var cat = c.category || 'plaza';
+      if (!CATEGORY_META[cat]) cat = 'plaza';
+      var w = 1;
+      if (mood === 'drift' && (cat === 'park' || cat === 'river' || cat === 'temple' || cat === 'historic')) w = 1.5;
+      if (mood === 'discover' && (cat === 'art' || cat === 'library' || cat === 'viewpoint' || cat === 'museum')) w = 1.7;
+      if (mood === 'lively' && (cat === 'plaza' || cat === 'market' || cat === 'cafe')) w = 1.6;
+      if (c.photoUrl) w *= 1.15;   // 有图的优先（揭晓体验更好）
+      pool.push({ poi: c, weight: w, distance: d });
+    }
+    if (!pool.length) return null;
+    var total = 0;
+    for (var j = 0; j < pool.length; j += 1) total += pool[j].weight;
+    var r = ((seed % 1000) / 1000) * total;
+    for (var k = 0; k < pool.length; k += 1) {
+      r -= pool[k].weight;
+      if (r <= 0) return pool[k].poi;
+    }
+    return pool[pool.length - 1].poi;
+  }
+
+  /** 把多数据源候选点转成可玩的 Place */
+  function makeProviderPlace(poi, origin, mood, startMeters) {
+    var cat = poi.category && CATEGORY_META[poi.category] ? poi.category : 'plaza';
+    var meta = CATEGORY_META[cat];
+    var geo = mapPointFor(origin, poi, startMeters);
+    var hints = (HINTS[cat] || HINTS.plaza).concat(['就在前面。抬手机，慢慢看。']);
+    var shortName = (poi.name || '').slice(0, 2);
+    hints = hints.map(function (h) {
+      return h.split(poi.name).join('那里').split(shortName).join('那里');
+    });
+    var hour = new Date().getHours();
+    var timeWord = hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 15 ? '午后'
+      : hour < 18 ? '傍晚前' : hour < 21 ? '入夜' : '夜里';
+    var sourceName = poi.source === 'amap' ? '高德地图'
+      : poi.source === 'baidu' ? '百度地图'
+      : poi.source === 'wiki' ? '维基百科'
+      : 'OpenStreetMap';
+    return {
+      id: (poi.source || 'osm') + '-' + (poi.id || (Math.round(poi.lat * 1e5) + '-' + Math.round(poi.lon * 1e5))),
+      name: poi.name,
+      area: cat === 'river' || cat === 'bridge' ? 'river'
+        : (cat === 'art' || cat === 'temple' || cat === 'library' || cat === 'museum' || cat === 'historic' ? 'oldtown' : 'near'),
+      category: meta.label,
+      categoryEmoji: meta.emoji,
+      rarity: meta.rarity,
+      why: '你选了「' + (mood === 'drift' ? '放空' : mood === 'discover' ? '发现' : '热闹') + '」，'
+        + timeWord + '的' + meta.label + '，是这座城市里真实存在的地方。'
+        + (poi.address ? '\n' + poi.address : ''),
+      task: meta.task,
+      hints: hints,
+      mapPoint: { x: geo.x, y: geo.y },
+      bearing: geo.bearing,
+      distance: geo.distance,
+      coordinate: { lat: poi.lat, lon: poi.lon },
+      address: poi.address || null,
+      photoUrl: poi.photoUrl || null,
+      photoCredit: poi.photoCredit || sourceName,
+      source: poi.source || 'osm',
+      collected: false
+    };
+  }
+
+  function autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed) {
     // 有旧缓存（Overpass POI）且还能挑出合适的，就直接用，省一次网络
     var cached = readCache(origin.lat, origin.lon);
     if (cached && cached.length) {

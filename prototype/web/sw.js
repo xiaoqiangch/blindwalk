@@ -5,13 +5,14 @@
  *   - 其他同源请求：网络优先，失败回落缓存
  *   - 跨域请求一律不碰
  */
-const VERSION = "blindwalk-v22";
+const VERSION = "blindwalk-v23-accounts";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./data.js",
+  "./providers.js",
   "./geo.js",
   "./watch.html",
   "./manifest.webmanifest",

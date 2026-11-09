@@ -13,3 +13,9 @@ admin/data/sessions.json
 admin/data/admin.secret.json
 admin/data/*.migrated-*
 admin/data/*.corrupt-*
+
+# 账号服务运行数据
+account/data/
+account/*.db
+account/*.db-wal
+account/*.db-shm
