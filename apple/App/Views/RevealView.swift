@@ -45,6 +45,17 @@ struct RevealView: View {
         return "No.\(BlindBoxEngine.serial(seed: seed))"
     }
 
+    /// 后台策展信息（照片 / 署名 / 简介）。只有到达后的 Reveal 页才读取；
+    /// 旅程页/首页都不会碰它（保密规则）。查不到时静默降级为普通卡片。
+    private var curatedInfo: CuratedPlaceInfo? {
+        guard let place else { return nil }
+        return AdminPOIService.shared.info(for: place)
+    }
+
+    private var isCurated: Bool {
+        place?.source == "curated"
+    }
+
     var body: some View {
         ZStack {
             if showCard {
@@ -245,7 +256,7 @@ struct RevealView: View {
 
     private func revealCard(_ place: Place) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(serialText)
                     .font(.system(size: 10, weight: .semibold))
                     .tracking(1)
@@ -254,13 +265,25 @@ struct RevealView: View {
 
                 Spacer(minLength: 8)
 
+                if isCurated {
+                    curatedTag
+                }
                 BWRarityBadge(rarity: place.rarity)
             }
             .padding(.bottom, 13)
 
+            // 编辑精选的实景照片（后台策展数据里带的 photoUrl）
+            // 只在揭晓页展示；加载失败时静默降级，不出现破图/红字。
+            if let info = curatedInfo, let url = info.photoURL {
+                curatedPhoto(url: url, credit: info.photoCredit)
+                    .padding(.bottom, 12)
+            }
+
             VStack(spacing: 7) {
-                Text(place.emoji)
-                    .font(.system(size: 46))
+                if curatedInfo?.photoURL == nil {
+                    Text(place.emoji)
+                        .font(.system(size: 46))
+                }
                 Text(place.name)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(BWTheme.ink)
@@ -313,6 +336,94 @@ struct RevealView: View {
         .scaleEffect(isCollecting ? 0.26 : 1)
         .opacity(isCollecting ? 0 : 1)
         .offset(y: isCollecting ? 250 : 0)
+    }
+
+    private var curatedTag: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 9, weight: .semibold))
+            Text("编辑精选")
+                .font(.system(size: 9.5, weight: .bold))
+                .tracking(0.6)
+        }
+        .foregroundStyle(BWTheme.amberDeep)
+        .padding(.horizontal, 8)
+        .frame(height: 22)
+        .background(BWTheme.amber.opacity(0.14))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(BWTheme.amber.opacity(0.40), lineWidth: 1))
+        .accessibilityLabel("编辑精选地点")
+    }
+
+    /// 实景照片：16:9 左右的纸卡，左上角「编辑精选」，下方图片来源署名。
+    @ViewBuilder
+    private func curatedPhoto(url: URL, credit: String?) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            ZStack(alignment: .topLeading) {
+                AsyncImage(url: url, transaction: Transaction(animation: BWAnimation.regular)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        photoPlaceholder(showProgress: false)
+                    case .empty:
+                        photoPlaceholder(showProgress: true)
+                    @unknown default:
+                        photoPlaceholder(showProgress: false)
+                    }
+                }
+                .frame(height: 172)
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(BWTheme.line, lineWidth: 1)
+                )
+                .accessibilityLabel("编辑精选地点实景照片")
+
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text("编辑精选")
+                        .font(.system(size: 9.5, weight: .bold))
+                        .tracking(0.6)
+                }
+                .foregroundStyle(BWTheme.ink)
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+                .background(BWTheme.amber)
+                .clipShape(Capsule())
+                .padding(10)
+            }
+
+            if let credit, !credit.isEmpty {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Text("图片：\(credit)")
+                        .font(.system(size: 9))
+                        .foregroundStyle(BWTheme.ink3)
+                }
+                .padding(.trailing, 2)
+            }
+        }
+    }
+
+    private func photoPlaceholder(showProgress: Bool) -> some View {
+        ZStack {
+            BWTheme.paper2
+            if showProgress {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundStyle(BWTheme.ink3)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func taskCard(_ place: Place) -> some View {

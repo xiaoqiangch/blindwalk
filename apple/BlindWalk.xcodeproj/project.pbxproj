@@ -54,6 +54,7 @@
 		D14E5970216DCFC601D88D3F /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		D482C8E10719BC15E7C2CC6A /* BWUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */; };
 		D5025E8173D9743FC3854DE7 /* BlindWalkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 62D026A54430D6071C532D3F /* BlindWalkWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8F91F82CD07252A192319D /* AdminPOIService.swift */; };
 		DB1FC20885913E7BB8C84A58 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DCE5FA997B304D62130D27 /* BWComponents.swift */; };
 		E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */; };
@@ -96,6 +97,7 @@
 		0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRevealView.swift; sourceTree = "<group>"; };
 		07421175E805830B544FE273 /* WatchStatusChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStatusChip.swift; sourceTree = "<group>"; };
 		07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkWatchApp.swift; sourceTree = "<group>"; };
+		0F8F91F82CD07252A192319D /* AdminPOIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPOIService.swift; sourceTree = "<group>"; };
 		105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStyle.swift; sourceTree = "<group>"; };
 		1848811E5667A8E2B18E2E38 /* SeekSurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeekSurpriseView.swift; sourceTree = "<group>"; };
 		19DCE5FA997B304D62130D27 /* BWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWComponents.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 		D25973A7F3834D557DAB410C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				0F8F91F82CD07252A192319D /* AdminPOIService.swift */,
 				79E14316DB285700ADB0BCE9 /* LocationService.swift */,
 				6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */,
 				95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */,
@@ -375,6 +378,7 @@
 			files = (
 				CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */,
 				BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */,
+				D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */,
 				E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */,
 				D482C8E10719BC15E7C2CC6A /* BWUtilities.swift in Sources */,
 				11AE94C165B91A4DDC56FC4E /* BlindBoxEngine.swift in Sources */,

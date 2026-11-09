@@ -329,6 +329,8 @@ struct HomeView: View {
         guard let card = cards.max(by: { $0.collectedAt < $1.collectedAt }) else {
             return nil
         }
+        // 内置地点查不到时，可能是后台「编辑精选」策展点
         return PlaceCatalog.place(id: card.placeID)
+            ?? AdminPOIService.shared.place(for: card.placeID)
     }
 }

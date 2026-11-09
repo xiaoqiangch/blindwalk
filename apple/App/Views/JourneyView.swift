@@ -61,6 +61,8 @@ struct JourneyView: View {
     @State private var pausedDuration: TimeInterval = 0
     @State private var arrivalFlash = false
     @State private var hasTriggeredArrival = false
+    /// 「这是编辑精选的地点」提示（抽到后台策展点后短暂出现）
+    @State private var curatedNoticeVisible = false
 
     var body: some View {
         ZStack {
@@ -74,6 +76,10 @@ struct JourneyView: View {
 
             if arrivalFlash {
                 arrivalOverlay
+            }
+
+            if curatedNoticeVisible {
+                curatedNotice
             }
         }
         .fullScreenCover(isPresented: $showReveal) {
@@ -248,6 +254,21 @@ struct JourneyView: View {
             .clipShape(Capsule())
             .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
 
+            // 来源标签：真实地标 / 编辑精选 / 演示（只标来源，不泄露地点信息）
+            HStack(spacing: 4) {
+                Image(systemName: questSourceIcon)
+                    .font(.system(size: 9, weight: .semibold))
+                Text(questSourceLabel)
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(questSourceTint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(questSourceTint.opacity(0.10))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(questSourceTint.opacity(0.30), lineWidth: 1))
+
             Spacer(minLength: 0)
 
             if authorization.isBlocked && locationMode == .demo {
@@ -294,6 +315,63 @@ struct JourneyView: View {
             if fixTimedOut { return "没拿到定位 · 已切演示模式" }
             return "演示模式 · 该盲盒没有真实目的地"
         }
+    }
+
+    // MARK: 来源标签（真实地标 / 编辑精选 / 演示）
+
+    private var questSourceLabel: String {
+        switch store.currentPlace?.source ?? "catalog" {
+        case "curated": return "编辑精选"
+        case "catalog": return "演示"
+        default: return "真实地标"
+        }
+    }
+
+    private var questSourceIcon: String {
+        switch store.currentPlace?.source ?? "catalog" {
+        case "curated": return "sparkles"
+        case "catalog": return "theatermasks"
+        default: return "mappin.and.ellipse"
+        }
+    }
+
+    private var questSourceTint: Color {
+        switch store.currentPlace?.source ?? "catalog" {
+        case "curated": return BWTheme.amberDeep
+        case "catalog": return BWTheme.ink3
+        default: return BWTheme.teal
+        }
+    }
+
+    /// 抽到「编辑精选」时的短提示（2.6s 淡出；不包含任何地点名）
+    private var curatedNotice: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("这是编辑精选的地点")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            Text("终点仍然保密。到了才知道是哪里。")
+                .font(.system(size: 10))
+                .foregroundStyle(BWTheme.cream.opacity(0.68))
+        }
+        .foregroundStyle(BWTheme.cream)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(BWTheme.ink.opacity(0.90))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(BWTheme.amber.opacity(0.38), lineWidth: 1)
+        )
+        .shadow(color: BWTheme.ink.opacity(0.22), radius: 18, x: 0, y: 10)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.top, 96)
+        .transition(.opacity)
+        .accessibilityLabel("这是编辑精选的地点，终点仍然保密")
     }
 
     // MARK: 抽象地图
@@ -767,7 +845,33 @@ struct JourneyView: View {
             triggerArrival()
         }
 
+        // 抽到后台策展点 → 明确提示「编辑精选」（不剧透地点）
+        if store.currentPlace?.source == "curated" {
+            withAnimation(BWAnimation.regular) {
+                curatedNoticeVisible = true
+            }
+            bwAfter(2.6) {
+                withAnimation(BWAnimation.regular) {
+                    curatedNoticeVisible = false
+                }
+            }
+        }
+
         startLiveLocationIfPossible()
+        applyAutoArrivePreviewIfNeeded()
+    }
+
+    /// 截图自检：`BW_AUTO_ARRIVE=<毫秒>` 时进入旅程后自动触发到达（便于 headless 截揭晓页）。
+    private func applyAutoArrivePreviewIfNeeded() {
+        let env = ProcessInfo.processInfo.environment
+        guard let raw = env["BW_AUTO_ARRIVE"], let milliseconds = Double(raw), milliseconds >= 0 else {
+            return
+        }
+        bwAfter(milliseconds / 1000.0) {
+            guard store.session?.phase == .walking else { return }
+            let events = store.arriveNow()
+            handle(events: events)
+        }
     }
 
     private func handleDisappear() {
@@ -789,6 +893,8 @@ struct JourneyView: View {
         let preview = env["BW_PREVIEW"] ?? ""
         let forceLive = env["BW_LIVE_GPS"] == "1" || preview == "live"
         guard preview.isEmpty || forceLive else {
+            // 截图/走查：不弹系统定位授权，直接用演示步行（来源标签仍然准确）
+            choseDemo = true
             refreshMode()
             return
         }

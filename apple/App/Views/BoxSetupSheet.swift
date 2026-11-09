@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 // MARK: - 抽盒设置 Sheet（design-system §5.2，视觉基准：web 原型 #/setup）
 
@@ -46,6 +47,7 @@ struct BoxSetupSheet: View {
         .presentationCornerRadius(BWTheme.panelRadius)
         .presentationBackground(BWTheme.paper)
         .bwTypeBounds()
+        .onAppear(perform: handleAppear)
     }
 
     // MARK: 时长 3 选 1（web .segmented：纸色凹槽 + 白纸浮起块）
@@ -210,6 +212,17 @@ struct BoxSetupSheet: View {
             }
             .buttonStyle(.plain)
 
+            if isLookingUp {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.mini)
+                    Text("正在看附近有什么…")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(BWTheme.ink3)
+                }
+                .frame(maxWidth: .infinity)
+            }
+
             if startFailed {
                 Text("这一次没抽到，再试一次。")
                     .font(.system(size: 12))
@@ -259,7 +272,8 @@ struct BoxSetupSheet: View {
         }
     }
 
-    /// 抽盒：优先用 MapKit 查到的真实 POI；查不到/超时就退回内置地点（标注演示）
+    /// 抽盒优先级：后台「编辑精选」策展 POI → MapKit 真实 POI → 内置地点（演示）。
+    /// 策展数据 3 秒超时 / 失败 / 为空时静默退回原逻辑，不阻塞、不弹错。
     private func startQuest() {
         let origin = store.lastKnownOrigin
         guard let origin else {
@@ -273,6 +287,30 @@ struct BoxSetupSheet: View {
 
         isLookingUp = true
         Task { @MainActor in
+            // ① 后台策展 POI（人工审核过的点最可靠）
+            await AdminPOIService.shared.prepare()
+            let seed = UInt64(Date().timeIntervalSince1970)
+            if let curated = AdminPOIService.shared.pickCuratedPlace(
+                origin: origin,
+                mood: store.selectedMood,
+                startMeters: store.selectedDuration.startMeters,
+                seed: seed
+            ) {
+                isLookingUp = false
+                guard store.startQuest(origin: origin) != nil else {
+                    startFailed = true
+                    return
+                }
+                adopt(curatedPlace: curated, origin: origin)
+                let photo = AdminPOIService.shared.info(for: curated)?.photoURL != nil
+                debugLog("curated pick name=\(curated.name) id=\(curated.id) source=\(curated.source) photo=\(photo) pool=\(AdminPOIService.shared.cachedCount)")
+                BWHaptics.medium()
+                onStart()
+                return
+            }
+            debugLog("curated miss (pool=\(AdminPOIService.shared.cachedCount)) → MapKit fallback")
+
+            // ② 现有 MapKit 真实 POI 流程（行为保持不变）
             let candidates = await MapKitPlaceService.shared.nearbyPlaces(
                 around: origin,
                 radiusMeters: store.selectedDuration.radiusMeters,
@@ -288,11 +326,10 @@ struct BoxSetupSheet: View {
                 seed: UInt64(Date().timeIntervalSince1970)
             )
 
-            guard let place = store.startQuest(origin: origin) else {
+            guard store.startQuest(origin: origin) != nil else {
                 startFailed = true
                 return
             }
-            _ = place
 
             if let picked {
                 let hour = Calendar.current.component(.hour, from: Date())
@@ -306,11 +343,65 @@ struct BoxSetupSheet: View {
                 // 覆盖成真实 POI：目的地坐标 + 展示用真实地点
                 store.session?.target = realPlace.coordinate
                 store.currentPlace = realPlace
-                // 首次定位点合理性：直接以真实坐标为起点重算总距离
+                debugLog("mapkit pick name=\(realPlace.name) id=\(realPlace.id) source=\(realPlace.source)")
+            } else {
+                debugLog("mapkit empty → catalog demo")
             }
 
             BWHaptics.medium()
             onStart()
         }
+    }
+
+    /// 把「编辑精选」Place 覆盖进 store：
+    /// - 目的地坐标 = 策展点真实坐标；展示地点 = 策展 Place
+    /// - 总路程改成「起点 → 目的地的真实距离」，避免出现「刚到就已走 300 米」的假进度；
+    /// - 用 store.updateLocation 正规推进一次，让线索按真实剩余距离解锁。
+    private func adopt(curatedPlace place: Place, origin: GeoPoint) {
+        guard let coordinate = place.coordinate, let current = store.session else {
+            store.currentPlace = place
+            return
+        }
+        let distance = max(Double(QuestSession.arriveThreshold + 1), GeoMath.distance(from: origin, to: coordinate))
+        let total = max(Int(distance.rounded()), QuestSession.arriveThreshold + 1)
+        let bearing = GeoMath.bearing(from: origin, to: coordinate)
+
+        // QuestSession.totalMeters 是 let，只能整体重建（保持 id / placeID / startedAt 不变）。
+        let session = QuestSession(
+            id: current.id,
+            placeID: current.placeID,
+            startedAt: current.startedAt,
+            totalMeters: total,
+            remainingMeters: total,
+            phase: .walking,
+            unlockedHintCount: 1,
+            target: coordinate,
+            currentBearing: bearing
+        )
+        store.session = session
+        store.currentPlace = place
+
+        // 起点即按真实距离解锁线索（剩余 ≤200 → 第二条；不会触发到达，因为 total ≥ 31）。
+        _ = store.updateLocation(distanceMeters: Double(total), bearingDegrees: bearing)
+    }
+
+    // MARK: 截图 / 自检辅助
+
+    /// 截图自检：`BW_PREVIEW=setup` + `BW_AUTO_START=1` 时自动用模拟器坐标摇一次盲盒。
+    private func handleAppear() {
+        // 提前预热策展数据（不阻塞 UI；3 秒超时在服务内部）
+        Task { await AdminPOIService.shared.prepare() }
+
+        let env = ProcessInfo.processInfo.environment
+        guard env["BW_AUTO_START"] == "1" else { return }
+        if store.lastKnownOrigin == nil {
+            store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
+        }
+        bwAfter(0.9) { startQuest() }
+    }
+
+    private func debugLog(_ message: String) {
+        guard ProcessInfo.processInfo.environment["BW_DEBUG_POI"] == "1" else { return }
+        print("[BlindWalk][poi] \(message)")
     }
 }

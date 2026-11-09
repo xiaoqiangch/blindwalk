@@ -64,7 +64,7 @@ struct CardsView: View {
             // 仅用于截图/演示：`BW_PREVIEW_DETAIL=1` 打开第一张已收集卡的详情
             guard ProcessInfo.processInfo.environment["BW_PREVIEW_DETAIL"] == "1", selectedPlace == nil else { return }
             bwAfter(0.5) {
-                selectedPlace = PlaceCatalog.all.first { collectedIDs.contains($0.id) }
+                selectedPlace = allPlaces.first { collectedIDs.contains($0.id) }
             }
         }
     }
@@ -105,7 +105,7 @@ struct CardsView: View {
 
     private var collectStats: some View {
         HStack(spacing: 6) {
-            statPiece("已收集", "\(collectedIDs.count)/\(PlaceCatalog.all.count)")
+            statPiece("已收集", "\(collectedIDs.count)/\(allPlaces.count)")
             dot
             statPiece("稀有", "\(store.profile.rareCount)")
             dot
@@ -353,16 +353,26 @@ struct CardsView: View {
         store.currentPlace?.area ?? .near
     }
 
+    /// 内置图鉴 + 本机已收录的策展点（后台「编辑精选」）。
+    /// 只合并「已经收进 profile.cards」的策展点，未抽到的不提前剧透。
+    private var allPlaces: [Place] {
+        let curated = store.profile.cards.compactMap { card in
+            AdminPOIService.shared.place(for: card.placeID)
+        }
+        return PlaceCatalog.all + curated
+    }
+
     private var visiblePlaces: [Place] {
+        let base = allPlaces
         switch filter {
         case .all:
-            return PlaceCatalog.all
+            return base
         case .rare:
-            return PlaceCatalog.all.filter { $0.rarity == .rare || $0.rarity == .epic }
+            return base.filter { $0.rarity == .rare || $0.rarity == .epic }
         case .hidden:
-            return PlaceCatalog.all.filter { $0.rarity == .hidden }
+            return base.filter { $0.rarity == .hidden }
         case .nearby:
-            return PlaceCatalog.all.filter { $0.area == localArea }
+            return base.filter { $0.area == localArea }
         }
     }
 }
