@@ -2382,3 +2382,31 @@ body[data-mode="standalone"] .toast-root {
 }
 
 /* ---- 暗色舞台上的坎（寻宝对比在亮底，无需特殊处理） ---- */
+
+/* ============================================================
+   21. 真实地理位置（v0.4）
+   ============================================================ */
+.journey__status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 20px 8px;
+}
+.geo-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; font-size: 11px; font-weight: 600;
+  color: var(--ink-2); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 999px;
+}
+.geo-pill i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-3); display: block;
+}
+.geo-pill--live { color: var(--teal); border-color: rgba(46, 125, 120, .3); background: rgba(46, 125, 120, .08); }
+.geo-pill--live i { background: var(--teal); box-shadow: 0 0 0 3px rgba(46, 125, 120, .18); }
+.geo-pill--gps { color: var(--teal); letter-spacing: .1em; font-size: 9.5px; }
+
+.revealcard__real {
+  display: inline-block; margin-left: 8px; padding: 2px 7px;
+  font-size: 9.5px; font-weight: 650; letter-spacing: .04em;
+  color: var(--teal); background: rgba(46, 125, 120, .1);
+  border-radius: 999px; vertical-align: middle;
+}

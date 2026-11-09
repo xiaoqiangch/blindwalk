@@ -153,6 +153,12 @@ public struct Place: Codable, Identifiable, Hashable, Sendable {
     public let hints: [String]
     public let mapPoint: MapPoint
     public let radiusMeters: Int
+    /// 真实经纬度（真实地理模式；内置虚构地点为 nil）
+    public var coordinate: GeoPoint?
+    /// 真实地址（到达后展示）
+    public var address: String?
+    /// 数据来源标记：catalog = 内置虚构 / osm = 真实 OSM / apple = MapKit
+    public var source: String
 
     public init(
         id: String,
@@ -165,7 +171,10 @@ public struct Place: Codable, Identifiable, Hashable, Sendable {
         task: String,
         hints: [String],
         mapPoint: MapPoint,
-        radiusMeters: Int
+        radiusMeters: Int,
+        coordinate: GeoPoint? = nil,
+        address: String? = nil,
+        source: String = "catalog"
     ) {
         self.id = id
         self.name = name
@@ -178,6 +187,9 @@ public struct Place: Codable, Identifiable, Hashable, Sendable {
         self.hints = hints
         self.mapPoint = mapPoint
         self.radiusMeters = radiusMeters
+        self.coordinate = coordinate
+        self.address = address
+        self.source = source
     }
 }
 

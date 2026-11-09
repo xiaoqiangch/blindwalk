@@ -125,8 +125,12 @@ async function main() {
     check("打开抽盒 sheet", (await text()).includes("这次的盲盒，你想要什么？"));
 
     await click('[data-action="shake"]');
-    await wait(1300);
-    check("摇盒后进入旅程", (await hash()).includes("/journey"), await hash());
+    let entered = false;
+    for (let i = 0; i < 14 && !entered; i++) {
+      await wait(500);
+      entered = (await hash()).includes("/journey");
+    }
+    check("摇盒后进入旅程", entered, await hash());
     const journeyText = await text();
     check("旅程显示剩余距离", /还有\s*\d+\s*米/.test(journeyText), journeyText.slice(0, 80));
     check("旅程不泄露目的地", !journeyText.includes("旧码头边的石阶"));
