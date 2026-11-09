@@ -42,7 +42,12 @@
     lastFix: null,
     geoPoll: null,
     geoSaveAt: 0,
-    autoShake: false
+    autoShake: false,
+    route: null,
+    routePlaceID: null,
+    routeWalkedMeters: 0,
+    routeManeuversStart: null,
+    routeOffRoute: 0
   };
   var timers = { journey: null, reveal: [] };
 
@@ -558,6 +563,45 @@
     return events;
   }
 
+  /** 为当前真实会话准备步行路线（失败就退回方向引导） */
+  function ensureRoute(session) {
+    if (!session || !session.coordinate || !window.BW_GEO || !window.BW_GEO.fetchRoute) return;
+    if (state.routePlaceID === session.placeID && state.route) return;
+    var origin = ui.lastFix || ui.myLocation;
+    if (!origin) return;
+    state.routePlaceID = session.placeID;
+    state.routeManeuversStart = { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) };
+    window.BW_GEO.fetchRoute(
+      { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) },
+      session.coordinate
+    ).then(function (route) {
+      if (!route) return;
+      state.route = route;
+      state.routeWalkedMeters = 0;
+      if (currentRoute() === '/journey') renderJourney(true);
+    }).catch(function () { /* 静默降级 */ });
+  }
+
+  /** 把当前位置投影到路线上，得到沿线已走距离与偏离距离 */
+  function updateRouteProgress(session, here) {
+    if (!state.route || !window.BW_GEO.routeProgress) return;
+    var progress = window.BW_GEO.routeProgress(state.route, here);
+    if (!progress) return;
+    state.routeWalkedMeters = Math.max(0, Math.min(state.route.distanceMeters, progress.walked));
+    state.routeOffRoute = progress.offRoute;
+
+    // 偏离路线太远（走错路/抄近道）：限频重算一次
+    if (progress.offRoute > 80) {
+      var now = Date.now();
+      if (!ui.routeRefreshAt || now - ui.routeRefreshAt > 45000) {
+        ui.routeRefreshAt = now;
+        state.route = null;
+        state.routePlaceID = null;
+        ensureRoute(session);
+      }
+    }
+  }
+
   /** 把一次定位读数应用到会话（watch 回调 / 初始读数共用） */
   function applyFixToSession(pos) {
     window.__bwStat = window.__bwStat || { starts: 0, fixes: 0, early: '', src: '', hasTarget: false };
@@ -576,6 +620,8 @@
     if (d === null || d === undefined) return;
     var heading = pos.coords.heading;
     ui.lastHeading = (heading === null || isNaN(heading)) ? null : heading;
+    if (!state.route) ensureRoute(session);
+    updateRouteProgress(session, here);
     var prev = session.remainingMeters;
     var events = applyRealDistance(d, pos.coords.accuracy);
     if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
@@ -1255,17 +1301,14 @@
       '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
       '</div>' +
       '<div class="journey__status">' + realStatusHTML() + '</div>' +
-      '<div class="journey__map">' + mapSVG(place) +
-      (isRealSession(session)
-        ? '<span class="journey__mapcap">真实位置 · 目的地保密中 · 还有 ' + remaining + ' 米</span>'
-        : '<span class="journey__mapcap">目的地保密中 · 还有 ' + remaining + ' 米</span>') +
-      '</div>' +
+      navPanelHTML(session) +
       '<div class="journey__side">' +
       '<div class="journey__distance">' +
       '<div><span class="journey__digits">' + remaining + '</span><span class="journey__unit">米</span></div>' +
       '<div class="journey__bearing"><b aria-hidden="true">' + realBearingSymbol(session, remaining) + '</b><span>' + esc(realWalkCopy(session, walkCopy)) + '</span></div>' +
       '</div>' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
+      navUpcomingHTML(session) +
       '</div>' +
       '<div class="journey__actions">' +
       (arrived
@@ -1276,6 +1319,79 @@
       '<button type="button" class="btn btn--quiet" data-action="arrive" aria-label="我到了，直接揭晓">我到了</button>' +
       '</div>' +
       '</div>';
+  }
+
+  /** 导航面板：不画地图，只给「还有多少米 + 再过多少米往哪拐」 */
+  function navPanelHTML(session) {
+    var remaining = session.remainingMeters;
+    var guidance = null;
+
+    if (isRealSession(session) && state.route && typeof state.routeWalkedMeters === 'number') {
+      guidance = window.BW_GEO.guidanceFor(state.route, state.routeWalkedMeters);
+    }
+
+    // 没有路线数据（首次还没取到 / 无网 / 演示）：退回方向 + 距离
+    if (!guidance) {
+      var compass = '';
+      if (isRealSession(session) && typeof session.bearing === 'number') {
+        var dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+        compass = dirs[Math.round(((session.bearing % 360) + 360) % 360 / 45) % 8];
+      }
+      guidance = {
+        kind: 'fallback',
+        main: isRealSession(session) ? (compass ? '往' + compass + '走' : '继续走') : '继续走',
+        sub: '还有 ' + remaining + ' 米',
+        turnInMeters: null,
+        direction: 'straight',
+        emphasis: false
+      };
+    }
+
+    var arrow = guidance.kind === 'fallback'
+      ? realBearingSymbol(session, remaining)
+      : window.BW_GEO.directionArrow(guidance.direction);
+
+    var nextHint = '';
+    if (isRealSession(session) && state.route && guidance.kind !== 'arrive') {
+      var next2 = window.BW_GEO.guidanceFor(state.route, state.routeWalkedMeters + 25);
+      if (next2 && next2.main && next2.main !== guidance.main) {
+        nextHint = '前面准备：' + next2.main;
+      }
+    }
+
+    return '<div class="navpanel' + (guidance.emphasis ? ' navpanel--now' : '') + '" role="status" aria-live="polite">' +
+      '<div class="navpanel__arrow" aria-hidden="true">' + arrow + '</div>' +
+      '<div class="navpanel__body">' +
+      '<p class="navpanel__main">' + esc(guidance.main) + '</p>' +
+      '<p class="navpanel__sub">' + esc(guidance.sub || '') + '</p>' +
+      (nextHint ? '<p class="navpanel__next">' + esc(nextHint) + '</p>' : '') +
+      '</div>' +
+      '</div>';
+  }
+
+  /** 接下来的几步转向（提前量：不只提示下一步，还能看到后面两步） */
+  function navUpcomingHTML(session) {
+    if (!isRealSession(session) || !state.route || !window.BW_GEO.routeProgress) return '';
+    var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
+    if (!progress) return '';
+    var ms = state.route.maneuvers || [];
+    var walked = progress.walked;
+    var rows = [];
+    for (var i = 0; i < ms.length; i += 1) {
+      var m = ms[i];
+      if (m.direction === 'start' || m.direction === 'arrive') continue;
+      var at = m.cumulative - walked;
+      if (at < -5) continue;
+      if (rows.length >= 3) break;
+      rows.push('<div class="upcoming__row">' +
+        '<span class="upcoming__arrow" aria-hidden="true">' + window.BW_GEO.directionArrow(m.direction) + '</span>' +
+        '<span class="upcoming__label">' + esc(m.label) + '</span>' +
+        '<span class="upcoming__dist">' + Math.max(0, Math.round(at)) + ' 米</span>' +
+        '</div>');
+    }
+    if (rows.length < 2) return '';
+    return '<section class="upcoming" aria-label="接下来的路线">' +
+      '<p class="upcoming__title">接下来</p>' + rows.join('') + '</section>';
   }
 
   /** 真实来源：OSM POI / 维基百科地标 / 仅真实坐标，都算「真的在城市里走」 */

@@ -861,6 +861,7 @@ svg { display: block; }
 .clue--new { animation: clue-pop var(--slow) var(--ease) both; }
 
 .journey__actions {
+  margin-top: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -3019,3 +3020,164 @@ body[data-mode="standalone"] .toast-root {
     padding-right: 18px;
   }
 }
+
+/* ============================================================
+   28. 导航面板（取代地图）
+   只显示「还有多少米 + 再过多少米往哪拐」
+   ============================================================ */
+
+.navpanel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 20px 4px;
+  padding: 16px 16px 15px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 2px 0 rgba(23, 20, 16, .03);
+  transition: border-color .18s ease, background .18s ease;
+}
+
+/* 快该拐了：强调（不刺眼，靠左边一条琥珀色） */
+.navpanel--now {
+  border-color: rgba(232, 155, 76, .55);
+  background: linear-gradient(90deg, rgba(232, 155, 76, .10), var(--paper) 42%);
+}
+
+.navpanel__arrow {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--cream2, #EFE6D6);
+  border-radius: 16px;
+}
+
+.navpanel--now .navpanel__arrow {
+  background: var(--amber);
+  color: #FFFBF3;
+}
+
+.navpanel__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.navpanel__main {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1.28;
+  color: var(--ink);
+}
+
+.navpanel__sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink2);
+}
+
+.navpanel__next {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink3, #A69C8C);
+}
+
+.navpanel__left {
+  flex: 0 0 auto;
+  text-align: right;
+  color: var(--ink2);
+}
+
+.navpanel__left b {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+
+.navpanel__left span {
+  margin-left: 2px;
+  font-size: 11px;
+}
+
+/* 移除地图后，距离区更靠上更醒目 */
+.journey__distance {
+  padding: 10px 20px 2px;
+}
+
+/* 窄屏（折叠态）收紧 */
+@media (max-height: 720px) {
+  html.is-touch .navpanel {
+    margin: 0 16px 2px;
+    padding: 12px 14px;
+    gap: 11px;
+  }
+  html.is-touch .navpanel__arrow {
+    width: 46px;
+    height: 46px;
+    font-size: 25px;
+    border-radius: 13px;
+  }
+  html.is-touch .navpanel__main {
+    font-size: 16.5px;
+  }
+  html.is-touch .journey__digits {
+    font-size: 44px;
+  }
+}
+
+/* 接下来几步（提前量预览） */
+.upcoming {
+  margin: 12px 20px 0;
+  padding: 12px 14px 10px;
+  background: rgba(255, 251, 243, .72);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.upcoming__title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: .10em;
+  color: var(--ink3, #A69C8C);
+}
+
+.upcoming__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.upcoming__row + .upcoming__row { border-top: 1px dashed rgba(23, 20, 16, .07); }
+
+.upcoming__arrow {
+  flex: 0 0 20px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.upcoming__label { flex: 1; color: var(--ink); }
+
+.upcoming__dist {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 去掉地图后内容偏短：让线索区更宽松 */
+.journey__clues { margin-top: 14px; }
