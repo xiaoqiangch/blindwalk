@@ -1,0 +1,6 @@
+{
+  "name": "blindwalk-admin-tests",
+  "private": true,
+  "type": "module",
+  "main": "index.mjs"
+}

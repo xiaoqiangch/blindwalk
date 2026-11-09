@@ -1208,7 +1208,7 @@
 
   /** 真实来源：OSM POI / 维基百科地标 / 仅真实坐标，都算「真的在城市里走」 */
   function isRealSource(source) {
-    return source === 'osm' || source === 'geo' || source === 'wikipedia';
+    return source === 'osm' || source === 'geo' || source === 'wikipedia' || source === 'curated';
   }
 
   function isRealSession(session) {
@@ -2441,7 +2441,9 @@
       ui.shaking = false;
       if (currentRoute() === '/setup') navigate('/journey');
       else render();
-      if (place.source === 'wikipedia') {
+      if (place.source === 'curated') {
+        showToast('这是编辑精选的地点', '✨', { duration: 1800 });
+      } else if (place.source === 'wikipedia') {
         showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地标', '📍', { duration: 1800 });
       } else if (place.source === 'osm') {
         showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地点', '📍', { duration: 1800 });

@@ -168,7 +168,8 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | 真实定位 CoreLocation | ✅ 完成（Best 精度 / heading 朝向 / 三态降级），模拟器真 GPS 实走验证 |
 | 埋惊喜 / 寻惊喜（v0.3） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
 | **真实地理信息（v0.4）** | ✅ Web 用 Overpass 真实 POI + Nominatim 真实街道名；iOS 用 MapKit 真实 POI + 真实地图；目的地仍然保密 |
-| **公开数据兴趣点 + 图片（v0.7 新）** | ✅ 维基百科地理搜索：真实地标 + 简介 + 实景照片（Wikimedia Commons），无需 API Key |
+| **兴趣点管理后台（v0.8 新）** | ✅ 公开数据抓取 + 大模型整理/编辑/分析 + 人工审核 + 导出给 App；`bash scripts/start-admin.sh`，见 [admin/README.md](admin/README.md) |
+| **公开数据兴趣点 + 图片（v0.7）** | ✅ 维基百科地理搜索：真实地标 + 简介 + 实景照片（Wikimedia Commons），无需 API Key |
 | 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
 | **鸿蒙移植（HarmonyOS NEXT）** | ✅ v0.6 代码完成：ArkTS/ArkUI 工程 + 逻辑层 39 项测试全绿 + 7 个主界面，待 DevEco 首编，见 [harmony/docs/HARMONY.md](harmony/docs/HARMONY.md) |
 | **折叠屏适配（iPhone Duo）** | ✅ Web 已全量验证（466×678 / 669×951）；iOS 已实现待 GUI 复核，见 [foldable.md](docs/foldable.md) |

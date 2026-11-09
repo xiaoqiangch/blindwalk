@@ -535,6 +535,86 @@
     };
   }
 
+
+  /* ============================================================
+     后台策展兴趣点（admin 导出 → pois.json）
+     - 优先级最高：人工审核过的点比自动抓的可靠
+     - 文件不存在/请求失败时静默跳过，不影响自动抓取
+     ============================================================ */
+  var CURATED_URL = 'pois.json';
+  var curatedCache = null;
+  var curatedPending = null;
+
+  function loadCuratedPOIs() {
+    if (curatedCache) return Promise.resolve(curatedCache);
+    if (curatedPending) return curatedPending;
+    curatedPending = fetchJSON(CURATED_URL + '?t=' + Math.floor(Date.now() / 3600000), 3500)
+      .then(function (data) {
+        var list = (data && data.pois) || [];
+        curatedCache = Array.isArray(list) ? list : [];
+        return curatedCache;
+      })
+      .catch(function () {
+        curatedCache = [];
+        return curatedCache;
+      });
+    return curatedPending;
+  }
+
+  /** 从后台策展数据里挑一个（已经带 why/task/hints/图片，无需再生成） */
+  function pickCurated(candidates, origin, mood, startMeters, minDistance, maxDistance) {
+    if (!candidates || !candidates.length) return null;
+    var pool = [];
+    for (var i = 0; i < candidates.length; i += 1) {
+      var c = candidates[i];
+      if (typeof c.lat !== 'number' || typeof c.lon !== 'number') continue;
+      var d = distanceBetween(origin, { lat: c.lat, lon: c.lon });
+      if (d < minDistance || d > maxDistance) continue;
+      var w = 1;
+      var cat = c.category || 'plaza';
+      if (mood === 'drift' && (cat === 'park' || cat === 'river' || cat === 'temple' || cat === 'historic')) w = 1.5;
+      if (mood === 'discover' && (cat === 'art' || cat === 'library' || cat === 'viewpoint' || cat === 'museum')) w = 1.7;
+      if (mood === 'lively' && (cat === 'plaza' || cat === 'market' || cat === 'cafe')) w = 1.6;
+      pool.push({ poi: c, weight: w });
+    }
+    if (!pool.length) return null;
+    var total = 0;
+    for (var j = 0; j < pool.length; j += 1) total += pool[j].weight;
+    var r = Math.random() * total;
+    for (var k = 0; k < pool.length; k += 1) {
+      r -= pool[k].weight;
+      if (r <= 0) return pool[k].poi;
+    }
+    return pool[pool.length - 1].poi;
+  }
+
+  /** 把后台策展数据转成 App 的 Place 结构 */
+  function makeCuratedPlace(poi, origin, startMeters) {
+    var meta = CATEGORY_META[poi.category] || CATEGORY_META.plaza;
+    var geo = mapPointFor(origin, poi, startMeters);
+    return {
+      id: 'curated-' + poi.id,
+      name: poi.name,
+      area: poi.area || 'near',
+      category: meta.label,
+      categoryEmoji: poi.emoji || meta.emoji,
+      rarity: poi.rarity || meta.rarity,
+      why: poi.why || ('在' + (poi.summary || '这里') + '停下看看。'),
+      task: poi.task || meta.task,
+      hints: (poi.hints && poi.hints.length ? poi.hints : (HINTS[poi.category] || HINTS.plaza)).slice(0, 3),
+      mapPoint: { x: geo.x, y: geo.y },
+      bearing: geo.bearing,
+      distance: geo.distance,
+      coordinate: { lat: poi.lat, lon: poi.lon },
+      address: poi.address || null,
+      photoUrl: poi.photoUrl || null,
+      photoCredit: poi.photoCredit || null,
+      summary: poi.summary || '',
+      source: 'curated',
+      collected: false
+    };
+  }
+
   function findRealPlace(rawOrigin, mood, startMeters) {
     var origin = norm(rawOrigin);
     if (!origin) return Promise.resolve({ place: null, reason: 'no-origin' });
@@ -545,6 +625,23 @@
     var minDistance = Math.max(110, Math.round(startMeters * 0.35));
     var maxDistance = Math.round(startMeters * 1.7);
 
+    // ① 后台策展数据优先：人工审核过的点最可靠
+    return loadCuratedPOIs().then(function (curated) {
+      var curatedPick = pickCurated(curated, origin, mood, startMeters, minDistance, maxDistance);
+      if (curatedPick) {
+        return {
+          place: makeCuratedPlace(curatedPick, origin, startMeters),
+          cached: false,
+          poolSize: curated.length,
+          source: 'curated'
+        };
+      }
+      return autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+    });
+  }
+
+  /** 没有可用的策展点时：走自动抓取（维基 → OSM → 真实坐标兜底） */
+  function autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed) {
     // 有旧缓存（Overpass POI）且还能挑出合适的，就直接用，省一次网络
     var cached = readCache(origin.lat, origin.lon);
     if (cached && cached.length) {
@@ -979,6 +1076,7 @@
     proceduralPlace: proceduralPlace,
     wikipediaPOIs: wikipediaPOIs,
     makeWikiPlace: makeWikiPlace,
+    loadCuratedPOIs: loadCuratedPOIs,
     enrichWithAddress: enrichWithAddress,
     reverseGeocode: reverseGeocode,
     makePlace: makePlace,
