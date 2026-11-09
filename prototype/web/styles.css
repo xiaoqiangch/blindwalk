@@ -2205,3 +2205,180 @@ body[data-mode="standalone"] .toast-root {
     border-radius: 0;
   }
 }
+
+/* ============================================================
+   20. 埋惊喜 / 寻惊喜（v0.3）
+   ============================================================ */
+
+/* ---- 首页入口卡 ---- */
+.hub {
+  margin-top: 20px;
+  padding: 16px 18px 15px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 30px var(--shadow);
+}
+.hub__top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.hub__meta { font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.hub__copy { margin: 7px 0 12px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.hub__actions { display: flex; gap: 8px; }
+.hub__btn { flex: 1; padding: 11px 10px; font-size: 13px; }
+
+/* ---- 通用页面容器 ---- */
+.page { padding: 4px 20px 40px; }
+.page__bar { display: flex; align-items: center; min-height: 40px; }
+.page__hero { margin-bottom: 18px; }
+.page__hero h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+.page__hero p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-3); }
+.page__note { margin: 14px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-3); text-align: center; }
+.page__foot { margin-top: 18px; }
+.iconbtn {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: 999px; color: var(--ink-2);
+  background: transparent; border: 0; cursor: pointer;
+}
+.iconbtn:hover { background: var(--paper-2); color: var(--ink); }
+
+/* ---- 拍照区 ---- */
+.shot {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; min-height: 188px; padding: 26px 20px;
+  background: var(--paper-2);
+  border: 1.5px dashed rgba(23, 20, 16, .18);
+  border-radius: 20px; cursor: pointer;
+  transition: background var(--base) var(--ease), border-color var(--base) var(--ease);
+}
+.shot:hover { background: var(--paper); border-color: var(--amber); }
+.shot__icon { font-size: 30px; line-height: 1; }
+.shot__label { margin-top: 10px; font-size: 14.5px; font-weight: 650; color: var(--ink); }
+.shot__hint { margin-top: 5px; font-size: 11.5px; color: var(--ink-3); text-align: center; }
+.shotwrap { margin: 16px 0 4px; }
+.shotwrap__lead { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.shot__preview { position: relative; }
+.shot__preview img {
+  display: block; width: 100%; border-radius: 20px;
+  border: 1px solid var(--line);
+}
+.shot__retake { margin-top: 10px; }
+
+/* ---- 输入 ---- */
+.ta {
+  display: block; width: 100%; box-sizing: border-box;
+  min-height: 86px; padding: 12px 14px;
+  font: inherit; font-size: 14px; line-height: 1.55; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 16px; resize: none;
+}
+.ta:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(232, 155, 76, .16); }
+.ta--short { min-height: 60px; }
+.field__count {
+  display: block; margin-top: 6px; text-align: right;
+  font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+}
+.locline {
+  margin: 4px 0 16px; font-size: 12px; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 寻惊喜列表 ---- */
+.slist { display: flex; flex-direction: column; gap: 10px; }
+.scard {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 14px; text-align: left; cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 20px; box-shadow: 0 8px 20px var(--shadow);
+  transition: transform var(--fast) var(--ease);
+}
+.scard:active { transform: scale(.985); }
+.scard__emoji {
+  flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center;
+  font-size: 18px; border-radius: 999px; background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+.scard__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.scard__who { font-size: 13px; font-weight: 650; color: var(--ink); }
+.scard__copy { font-size: 11.5px; color: var(--ink-3); }
+.scard__dist { font-size: 11.5px; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.scard__arrow { color: var(--ink-3); display: flex; }
+.slist__hint { margin: 16px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-3); text-align: center; }
+
+/* ---- 作者条 ---- */
+.authorbar {
+  display: flex; align-items: center; gap: 11px;
+  padding: 12px 14px; margin-bottom: 16px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.authorbar__emoji {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  font-size: 18px; border-radius: 999px; background: var(--paper-2);
+}
+.authorbar__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.authorbar__who { font-size: 13px; font-weight: 650; color: var(--ink); }
+.authorbar__when { font-size: 11px; color: var(--ink-3); }
+.authorbar__dist { font-size: 12.5px; font-weight: 700; color: var(--amber-deep); font-variant-numeric: tabular-nums; }
+
+/* ---- 线索 ---- */
+.cluelist { display: flex; flex-direction: column; gap: 9px; margin-bottom: 6px; }
+.clue {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 16px;
+}
+.clue--locked { background: transparent; border-style: dashed; opacity: .62; }
+.clue__mark { flex: 0 0 auto; font-size: 12px; line-height: 1.6; }
+.clue__text { font-size: 13px; line-height: 1.55; color: var(--ink); }
+.clue--locked .clue__text { color: var(--ink-3); }
+
+/* ---- 对比 ---- */
+.cmp { margin-top: 18px; }
+.cmp__row { display: flex; gap: 10px; }
+.cmp__col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cmp__cap { font-size: 10px; font-weight: 650; letter-spacing: .09em; color: var(--ink-3); }
+.cmp__cell {
+  aspect-ratio: 3 / 4; border-radius: 16px; overflow: hidden;
+  background: var(--paper-2); border: 1px solid var(--line);
+  display: grid; place-items: center;
+}
+.cmp__cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cmp__cell--demo { flex-direction: column; gap: 6px; color: var(--ink-3); font-size: 22px; }
+.cmp__cell--demo em { font-size: 10.5px; font-style: normal; }
+.cmp__score { display: flex; align-items: center; gap: 8px; margin: 12px 0 14px; }
+
+/* ---- 结算 ---- */
+.result {
+  padding: 16px 18px; border-radius: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.result--pass { background: rgba(232, 155, 76, .12); border: 1px solid rgba(232, 155, 76, .38); }
+.result--soft { background: var(--paper); border: 1px solid var(--line); }
+.result__big { font-size: 17px; font-weight: 700; line-height: 1.4; color: var(--ink); }
+.result--pass .result__big { color: var(--amber-deep); }
+.result__sub { margin: 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-2); }
+.result__verdict { margin: 10px 0 14px; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); text-align: center; }
+.result__actions { display: flex; gap: 8px; }
+.result__btn { flex: 1; }
+
+/* ---- 我的惊喜 ---- */
+.minelist { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
+.mine {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 12px 14px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 16px;
+}
+.mine__emoji { flex: 0 0 auto; font-size: 17px; line-height: 1.5; }
+.mine__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mine__msg { font-size: 12.5px; line-height: 1.5; color: var(--ink); }
+.mine__state { font-size: 10.5px; color: var(--ink-3); }
+.mine__state--on { color: var(--teal); font-weight: 650; }
+
+/* ---- 演示标注 ---- */
+.demo-tag {
+  display: inline-block; margin: 8px 0 0; padding: 3px 8px;
+  font-size: 10px; font-weight: 650; letter-spacing: .04em;
+  color: var(--amber-deep); background: rgba(232, 155, 76, .14);
+  border-radius: 999px;
+}
+
+/* ---- 暗色舞台上的坎（寻宝对比在亮底，无需特殊处理） ---- */

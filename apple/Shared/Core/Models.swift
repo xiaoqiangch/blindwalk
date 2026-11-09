@@ -351,6 +351,12 @@ public struct Profile: Codable, Sendable {
     public var walkArrivalTimes: [Date]
     public var togetherCount: Int
     public var displayName: String
+    /// 埋下的惊喜总数（作者视角）
+    public var surprisesBuried: Int
+    /// 自己埋下的惊喜被找到次数
+    public var surprisesFound: Int
+    /// 自己找到别人的惊喜次数
+    public var surprisesSeeked: Int
 
     public init(
         xp: Int = 0,
@@ -363,7 +369,10 @@ public struct Profile: Codable, Sendable {
         lastWalkAt: Date? = nil,
         walkArrivalTimes: [Date] = [],
         togetherCount: Int = 0,
-        displayName: String = "阿澈"
+        displayName: String = "阿澈",
+        surprisesBuried: Int = 0,
+        surprisesFound: Int = 0,
+        surprisesSeeked: Int = 0
     ) {
         self.xp = xp
         self.streakDays = streakDays
@@ -376,6 +385,9 @@ public struct Profile: Codable, Sendable {
         self.walkArrivalTimes = walkArrivalTimes
         self.togetherCount = togetherCount
         self.displayName = displayName
+        self.surprisesBuried = surprisesBuried
+        self.surprisesFound = surprisesFound
+        self.surprisesSeeked = surprisesSeeked
     }
 
     public var level: Int { max(1, xp / 800 + 1) }

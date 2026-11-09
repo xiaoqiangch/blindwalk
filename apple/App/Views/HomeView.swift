@@ -35,6 +35,8 @@ struct HomeView: View {
                     statsRow.padding(.top, 20)
                     friendsRow.padding(.top, 22)
                     lastSurpriseSection.padding(.top, 20)
+                    // 惊喜社区入口（埋惊喜 / 寻惊喜）。详情见 docs/surprise-exchange.md
+                    SurpriseHubCard(store: store).padding(.top, 20)
                 }
                 .padding(.horizontal, BWTheme.pagePadding)
                 .padding(.top, 6)

@@ -29,7 +29,10 @@ public enum AchievementEngine {
         .init(id: "streak_7", name: "七日不断", icon: "🔥", detail: "连续 7 天开盒", target: 7),
         .init(id: "together_1", name: "同频共振", icon: "📡", detail: "完成 1 次同频散步", target: 1),
         .init(id: "share_3", name: "分享欲", icon: "📣", detail: "发布 3 条动态", target: 3),
-        .init(id: "km_100", name: "盲走百公里", icon: "🧭", detail: "累计 100 km", target: 100)
+        .init(id: "km_100", name: "盲走百公里", icon: "🧭", detail: "累计 100 km", target: 100),
+        .init(id: "bury_1", name: "埋下一颗", icon: "🌱", detail: "第一次给别人埋下惊喜", target: 1),
+        .init(id: "seek_3", name: "寻光者", icon: "🔎", detail: "找到 3 个别人埋的惊喜", target: 3),
+        .init(id: "found_5", name: "被找到的人", icon: "💌", detail: "你埋的惊喜被找到 5 次", target: 5)
     ]
 
     public static func definition(id: String) -> AchievementDefinition? {
@@ -58,6 +61,12 @@ public enum AchievementEngine {
             raw = profile.posts.filter(\.isMine).count
         case "km_100":
             raw = Int(profile.totalKm)
+        case "bury_1":
+            raw = profile.surprisesBuried
+        case "seek_3":
+            raw = profile.surprisesSeeked
+        case "found_5":
+            raw = profile.surprisesFound
         default:
             raw = 0
         }

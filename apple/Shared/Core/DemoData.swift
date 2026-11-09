@@ -103,4 +103,64 @@ public enum DemoData {
     public static func demoWatchSession(now: Date = Date()) -> QuestSession {
         demoSession(now: now)
     }
+
+    /// 预置的「别人埋的惊喜」：已埋下、等你去找到并复刻。
+    /// - Parameter origin: 生成基准点。真机上应传用户当前位置，
+    ///   这样在杭州/成都打开也能看到「320 米外有一个惊喜」，而不是几千公里。
+    ///   传 nil 时回退到人民广场（模拟器/预览用）。
+    public static func demoSurprises(around origin: GeoPoint? = nil, now: Date = Date()) -> [BuriedSurprise] {
+        let origin = origin ?? GeoPoint(latitude: 31.2304, longitude: 121.4737)
+        let oneDay: TimeInterval = 86_400
+        return [
+            BuriedSurprise(
+                authorName: "小满",
+                authorEmoji: "🐱",
+                photoName: "surprise-seed-1.jpg",
+                message: "这张是我在等一杯咖啡时拍的。柜台后面那盏灯，晚上会有很软的一圈光。",
+                location: GeoMath.offset(from: origin, meters: 320, bearingDegrees: 24),
+                areaLabel: "静安 · 街角",
+                clues: BuriedSurprise.makeClues(from: "", hint: "往灯最暖的那扇窗走。"),
+                createdAt: now.addingTimeInterval(-oneDay * 3),
+                status: .waiting
+            ),
+            BuriedSurprise(
+                authorName: "阿岛",
+                authorEmoji: "🎧",
+                photoName: "surprise-seed-2.jpg",
+                message: "桥洞下的那面墙，早上七点没有人，光会斜着打进来。",
+                location: GeoMath.offset(from: origin, meters: 540, bearingDegrees: 118),
+                areaLabel: "河岸 · 桥洞",
+                clues: BuriedSurprise.makeClues(from: "", hint: "找一块回声很大的地方。"),
+                createdAt: now.addingTimeInterval(-oneDay * 5),
+                status: .waiting
+            ),
+            BuriedSurprise(
+                authorName: "77",
+                authorEmoji: "🌙",
+                photoName: "surprise-seed-3.jpg",
+                message: "二十四小时的洗衣店，凌晨两点最像宇宙飞船。我拍了它转起来的那个瞬间。",
+                location: GeoMath.offset(from: origin, meters: 760, bearingDegrees: 300),
+                areaLabel: "附近 · 街口",
+                clues: BuriedSurprise.makeClues(from: "", hint: "找一块很亮的玻璃，里面在转。"),
+                createdAt: now.addingTimeInterval(-oneDay * 8),
+                status: .waiting
+            ),
+            // 已被别人找到的一条（展示「双方都得到点数」的社区感）
+            BuriedSurprise(
+                authorName: "老陈",
+                authorEmoji: "🍜",
+                photoName: "surprise-seed-4.jpg",
+                message: "第三张塑料凳，腿短一截。老板故意留的。",
+                location: GeoMath.offset(from: origin, meters: 210, bearingDegrees: 200),
+                areaLabel: "老城区 · 街口",
+                clues: BuriedSurprise.makeClues(from: "", hint: "闻，有热汤的味道。"),
+                createdAt: now.addingTimeInterval(-oneDay * 11),
+                status: .found,
+                finderName: "小满",
+                foundAt: now.addingTimeInterval(-oneDay * 9),
+                finderPhotoName: "surprise-found-1.jpg",
+                matchScore: 0.78
+            )
+        ]
+    }
 }

@@ -45,6 +45,8 @@ targets:
         NSLocationAlwaysAndWhenInUseUsageDescription: 盲走在散步过程中需要持续定位，才能在你接近目的地时提醒你。
         UIBackgroundModes:
           - location
+        NSCameraUsageDescription: 盲走需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。
+        NSPhotoLibraryUsageDescription: 盲走需要读取你选的照片，作为埋在某个地方的惊喜。
 
   BlindWalkWatch:
     type: application
