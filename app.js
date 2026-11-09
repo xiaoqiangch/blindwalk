@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v30';
+  var APP_VERSION = 'v31';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2199,9 +2199,6 @@
     if (source === 'osm') {
       return '<span class="srcbadge srcbadge--real">真实地点</span>';
     }
-    if (source === 'geo') {
-      return '<span class="srcbadge srcbadge--real">真实坐标</span>';
-    }
     return '<span class="srcbadge srcbadge--demo">演示地点</span>';
   }
 
@@ -2222,7 +2219,7 @@
     var place = placeOf(session.placeID);
     var badge = sourceBadgeHTML(place);
     if (isRealSource(session.source)) {
-      var realLabel = session.source === 'geo' ? '实时定位 · 真实坐标' : '实时定位 · 真实地点';
+      var realLabel = '实时定位 · 真实地点';
       return '<span class="geo-pill geo-pill--live"><i aria-hidden="true"></i>' + realLabel + '</span>' +
         '<span class="geo-pill geo-pill--gps">GPS</span>' + badge;
     }
@@ -3546,16 +3543,6 @@
               state.realPlaces[enriched.id] = enriched;
               save();
             }
-          }).catch(function () {});
-        }
-      } else if (place.source === 'geo') {
-        showToast('已定位 · 走的是真实的路', '📍', { duration: 2000 });
-        if (window.BW_GEO) {
-          window.BW_GEO.enrichWithAddress(place).then(function (enriched) {
-            if (!enriched) return;
-            state.realPlaces[enriched.id] = enriched;
-            save();
-            if (currentRoute() === '/journey') render();
           }).catch(function () {});
         }
       }
