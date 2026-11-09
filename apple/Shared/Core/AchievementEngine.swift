@@ -20,8 +20,8 @@ public struct AchievementDefinition: Identifiable, Sendable {
 public enum AchievementEngine {
 
     public static let definitions: [AchievementDefinition] = [
-        .init(id: "first_box", name: "第一次拆盒", icon: "🎁", detail: "完成第 1 次盲走", target: 1),
-        .init(id: "walker_10", name: "城市漫游者", icon: "🚶", detail: "完成 10 次盲走", target: 10),
+        .init(id: "first_box", name: "第一次拆盒", icon: "🎁", detail: "完成第 1 次散步", target: 1),
+        .init(id: "walker_10", name: "城市漫游者", icon: "🚶", detail: "完成 10 次散步", target: 10),
         .init(id: "rare_first", name: "稀有体质", icon: "💎", detail: "首次获得稀有卡", target: 1),
         .init(id: "hidden_first", name: "挖到隐藏款", icon: "🗝️", detail: "首次获得隐藏卡", target: 1),
         .init(id: "early_bird", name: "早起的鸟", icon: "🌅", detail: "07:00 前到达", target: 1),
@@ -29,7 +29,7 @@ public enum AchievementEngine {
         .init(id: "streak_7", name: "七日不断", icon: "🔥", detail: "连续 7 天开盒", target: 7),
         .init(id: "together_1", name: "同频共振", icon: "📡", detail: "完成 1 次同频散步", target: 1),
         .init(id: "share_3", name: "分享欲", icon: "📣", detail: "发布 3 条动态", target: 3),
-        .init(id: "km_100", name: "盲走百公里", icon: "🧭", detail: "累计 100 km", target: 100),
+        .init(id: "km_100", name: "散步百公里", icon: "🧭", detail: "累计 100 km", target: 100),
         .init(id: "bury_1", name: "埋下一颗", icon: "🌱", detail: "第一次给别人埋下惊喜", target: 1),
         .init(id: "seek_3", name: "寻光者", icon: "🔎", detail: "找到 3 个别人埋的惊喜", target: 3),
         .init(id: "found_5", name: "被找到的人", icon: "💌", detail: "你埋的惊喜被找到 5 次", target: 5)

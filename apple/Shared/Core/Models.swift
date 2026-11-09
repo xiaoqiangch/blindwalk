@@ -413,7 +413,7 @@ public struct Profile: Codable, Sendable {
 
     public static let levelNames = [
         "出门新手", "街角观察员", "城市漫游者", "惊喜收藏家", "迷雾探险家",
-        "黄昏猎人", "夜路诗人", "盲走大师", "城市传说", "盲盒之神"
+        "黄昏猎人", "夜路诗人", "散步大师", "城市传说", "盲盒之神"
     ]
 
     /// 已收集地点 ID 集合

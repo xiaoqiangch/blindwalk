@@ -190,7 +190,7 @@ struct HomeView: View {
             .overlay(Capsule().stroke(BWTheme.ink.opacity(0.12), lineWidth: 1))
         }
         .buttonStyle(BWPressEffectStyle())
-        .accessibilityLabel("继续这趟盲走")
+        .accessibilityLabel("继续这趟散步")
     }
 
     // MARK: 快捷统计：本周惊喜值 / 收集卡片 / 连续天数

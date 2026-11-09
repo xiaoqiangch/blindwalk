@@ -29,24 +29,24 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blindwalk.app
         TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_CFBundleDisplayName: 盲走
+        INFOPLIST_KEY_CFBundleDisplayName: 衣衣歪歪
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: 盲走需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: 衣衣歪歪需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
         INFOPLIST_KEY_UIBackgroundModes: location
     info:
       path: Info/BlindWalk-Info.plist
       properties:
-        CFBundleDisplayName: 盲走
+        CFBundleDisplayName: 衣衣歪歪
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        NSLocationWhenInUseUsageDescription: 盲走需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
-        NSLocationAlwaysAndWhenInUseUsageDescription: 盲走在散步过程中需要持续定位，才能在你接近目的地时提醒你。
+        NSLocationWhenInUseUsageDescription: 衣衣歪歪需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。
+        NSLocationAlwaysAndWhenInUseUsageDescription: 衣衣歪歪在散步过程中需要持续定位，才能在你接近目的地时提醒你。
         UIBackgroundModes:
           - location
-        NSCameraUsageDescription: 盲走需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。
-        NSPhotoLibraryUsageDescription: 盲走需要读取你选的照片，作为埋在某个地方的惊喜。
+        NSCameraUsageDescription: 衣衣歪歪需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。
+        NSPhotoLibraryUsageDescription: 衣衣歪歪需要读取你选的照片，作为埋在某个地方的惊喜。
 
   BlindWalkWatch:
     type: application
@@ -57,14 +57,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.blindwalk.app.watchkitapp
-        INFOPLIST_KEY_CFBundleDisplayName: 盲走
+        INFOPLIST_KEY_CFBundleDisplayName: 衣衣歪歪
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.blindwalk.app
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
     info:
       path: Info/BlindWalkWatch-Info.plist
       properties:
-        CFBundleDisplayName: 盲走
+        CFBundleDisplayName: 衣衣歪歪
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.blindwalk.app
         WKRunsIndependentlyOfCompanionApp: true

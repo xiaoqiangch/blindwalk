@@ -513,12 +513,12 @@ struct JourneyView: View {
                 Image(systemName: "location.slash")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(BWTheme.ember)
-                Text("开启定位权限才能真实盲走")
+                Text("开启定位权限才能真实散步")
                     .font(BWTheme.title(14))
                     .foregroundStyle(BWTheme.ink)
             }
 
-            Text("系统设置 → 盲走 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
+            Text("系统设置 → 衣衣歪歪 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
                 .font(BWTheme.caption(12))
                 .foregroundStyle(BWTheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)

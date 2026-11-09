@@ -48,7 +48,7 @@ final class WatchSyncService: NSObject {
         case unsupported
         /// 配对里没有 Apple Watch
         case notPaired
-        /// 配对了但手表上没装盲走
+        /// 配对了但手表上没装衣衣歪歪
         case appNotInstalled
         /// 已配对已安装，但 WCSession 还没激活完成
         case activating
@@ -253,7 +253,7 @@ final class WatchSyncService: NSObject {
         switch status {
         case .unsupported: return "此设备不支持手表同步"
         case .notPaired: return "未配对 Apple Watch"
-        case .appNotInstalled: return "手表上还没装盲走"
+        case .appNotInstalled: return "手表上还没装衣衣歪歪"
         case .activating: return "正在连接手表…"
         case .reachable: return "手表已连接"
         case .unreachable: return "手表同步中"
