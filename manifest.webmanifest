@@ -1,7 +1,7 @@
 {
-  "name": "衣衣歪歪",
-  "short_name": "衣衣歪歪",
-  "description": "散步盲盒：不告诉你目的地，到了才揭晓一座城市的惊喜。",
+  "name": "步谜",
+  "short_name": "步谜",
+  "description": "散步盲盒：不告诉你目的地，到了才揭晓。用脚解一个不知道答案的谜。",
   "start_url": "./index.html?demo=1#/home",
   "scope": "./",
   "display": "standalone",
@@ -10,11 +10,35 @@
   "theme_color": "#F5EEE2",
   "lang": "zh-CN",
   "dir": "ltr",
-  "categories": ["lifestyle", "health", "social"],
+  "categories": [
+    "lifestyle",
+    "health",
+    "social"
+  ],
   "icons": [
-    { "src": "icons/app-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/app-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

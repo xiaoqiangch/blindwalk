@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v27';
+  var APP_VERSION = 'v28';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2714,14 +2714,14 @@
   function openAboutModal() {
     var inner = '<div class="modal__top"><span class="micro">关于</span>' +
       '<button type="button" class="modal__close" data-action="close-modal" aria-label="关闭">' + ICON.close + '</button></div>' +
-      '<h3>衣衣歪歪</h3>' +
+      '<h3>步谜 StepRiddle</h3>' +
       '<div class="modal__body" style="margin-top:8px">' +
       '<p>不看见终点，才看得见路。</p>' +
       '<p>打开一个散步盲盒，它只带你走，不告诉你去哪；到了，才揭晓这个地方藏着的小惊喜。</p>' +
       '<p style="color:var(--ink-3);font-size:11px">原型 0.1 · 所有地点为虚构演示数据 · 数据只存在本机</p>' +
       '</div>' +
       '<div class="modal__actions"><button type="button" class="btn btn--primary" data-action="close-modal">好</button></div>';
-    dom.overlayRoot.innerHTML = modalShell(inner, '关于衣衣歪歪');
+    dom.overlayRoot.innerHTML = modalShell(inner, '关于步谜');
   }
 
   function openPrivacyModal() {
