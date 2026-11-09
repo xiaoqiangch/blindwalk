@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v31';
+  var APP_VERSION = 'v32';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1562,7 +1562,8 @@
     }
     return '<section class="locblock" role="alert">' +
       '<p class="locblock__title">没找到真实地点，这次不抽了</p>' +
-      '<p class="locblock__text">' + esc(text) + '。不会用虚构地点糊弄你。</p>' +
+      '<p class="locblock__text">' + esc(text) + '。不会用虚构地点糊弄你。' +
+      '试试：换「60 分钟」把范围放大，或改个区域（河边/老城区）。</p>' +
       detail +
       '<div class="locblock__actions">' +
       '<button type="button" class="btn btn--primary" data-action="search-wider">扩大范围再找</button>' +
@@ -3570,21 +3571,57 @@
       finish(place, meta);
     };
 
-    var searchAttempt = function (patch, scale, triesLeft) {
+    /* 三档搜索：同一批真实数据，只是"挑哪个"逐步放宽（绝不编造）。
+       档位越高：搜索半径更大、允许更近、商业 POI 不再被大幅降权、无照片地标也能用 */
+    var SEARCH_TIERS = [
+      { relax: 0, radiusScale: 1,   hint: '' },
+      { relax: 1, radiusScale: 1.8, hint: '附近点少，扩大范围再找…' },
+      { relax: 2, radiusScale: 3.2, hint: '再放宽一次，把附近能走到的真实地点都算上…' }
+    ];
+
+    /* 判断这个真实地点"够不够格"：小区/驿站/包子铺这类属于最后兜底可用，不该优先抽中 */
+    var isDullPlace = function (place) {
+      try {
+        var worth = window.BW_GEO.__debug && window.BW_GEO.__debug.scoreWalkworthy
+          ? window.BW_GEO.__debug.scoreWalkworthy({ name: place.name })
+          : { ok: true, penalty: 1 };
+        return worth.penalty < 0.5;
+      } catch (e) { return false; }
+    };
+
+    var searchAttempt = function (patch, tier, dullFallback) {
+      var conf = SEARCH_TIERS[tier] || SEARCH_TIERS[SEARCH_TIERS.length - 1];
       return window.BW_GEO.findRealPlace(
         patch,
         ui.mood,
         duration.startMeters,
-        { radiusScale: scale }
+        { radiusScale: conf.radiusScale, relax: conf.relax }
       ).then(function (result) {
-        if (result && result.place && isRealSource(result.place.source)) {
+        var place = result && result.place;
+        var real = place && isRealSource(place.source);
+
+        if (real && !isDullPlace(place)) {
           ui.searchScale = 1;
-          finishReal(result.place, { source: result.place.source, poolSize: result.poolSize, cached: result.cached });
+          finishReal(place, { source: place.source, poolSize: result.poolSize, cached: result.cached });
           return;
         }
-        if (triesLeft > 0) {
-          showToast('这一带没有合适的点，扩大范围再找…', '🔎', { duration: 1800 });
-          return searchAttempt(patch, scale * 2.4, triesLeft - 1);
+        // 够真实但不够格（商业铺子/小区）：先记下，继续往更宽的档位找更好的
+        if (real && !dullFallback) dullFallback = { place: place, meta: result };
+
+        if (tier + 1 < SEARCH_TIERS.length) {
+          if (SEARCH_TIERS[tier + 1].hint && !real) {
+            showToast(SEARCH_TIERS[tier + 1].hint, '🔎', { duration: 1800 });
+          }
+          return searchAttempt(patch, tier + 1, dullFallback);
+        }
+        // 所有档位都试过：有真实但普通的地点就用它（绝不编造），否则明确失败
+        if (dullFallback) {
+          finishReal(dullFallback.place, {
+            source: dullFallback.place.source,
+            poolSize: dullFallback.meta.poolSize,
+            cached: dullFallback.meta.cached
+          });
+          return;
         }
         failSearch((result && result.reason) || 'no-real-place');
       });
@@ -3603,7 +3640,9 @@
       ui.myLocation = ui.myLocation || loc;
       ui.searchFailed = null;
       var patch = { lat: loc.lat, lon: (loc.lon !== undefined ? loc.lon : loc.lng) };
-      searchAttempt(patch, ui.searchScale || 1, 1).catch(function () {
+      var startTier = ui.searchExtraWide ? SEARCH_TIERS.length - 1 : 0;
+      ui.searchExtraWide = false;
+      searchAttempt(patch, startTier).catch(function () {
         failSearch('network');
       });
     };
@@ -3881,7 +3920,7 @@
       }
       case 'search-wider': {
         ui.searchFailed = null;
-        ui.searchScale = (ui.searchScale || 1) * 2.4;
+        ui.searchExtraWide = true;   // 手动点过"扩大范围" → 直接从最宽档开搜
         render();
         bwShakeNow();
         break;

@@ -422,6 +422,7 @@
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
     if (/大学|学院|校区|书院/.test(text)) return 'historic';
+    if (/体育馆|体育场|运动场|球场|游泳馆|健身/.test(text)) return 'venue';
     if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
@@ -694,12 +695,18 @@
     var origin = norm(rawOrigin);
     if (!origin) return Promise.resolve({ place: null, reason: 'no-origin' });
     var scale = (opts && opts.radiusScale) || 1;      // 找不到时放大范围重试
+    var relax = (opts && opts.relax) || 0;            // 0 严格 → 1 放宽 → 2 很宽（只影响"挑哪个"，不影响"是否真实"）
     var radius = Math.max(600, Math.round(startMeters * 1.8 * scale));
     var seed = Math.floor(Date.now() / 1000) % 100000;
 
-    // 真实定位下必须「走得到」：目标不能太近（会一开盒就到达），也不能超出抽盒半径
-    var minDistance = Math.max(110, Math.round(startMeters * 0.35));
-    var maxDistance = Math.round(startMeters * 1.7 * scale);
+    // 真实定位下必须「走得到」：目标不能太近（会一开盒就到达），也不能超出抽盒半径。
+    // relax 越大：允许更近一点（避免"附近全是小区"时抽不到），上限也适度放大。
+    var minFactor = relax >= 2 ? 0.18 : relax >= 1 ? 0.25 : 0.35;
+    var minDistance = Math.max(70, Math.round(startMeters * minFactor));
+    // 硬帽：30 分钟盲盒最多约 1.6km、60 分钟约 3.2km（和首页"预计 xx 分钟 · x.x km 内"一致）
+    // 无论放松到第几档，都不能超过这个上限；超过宁可判定"找不到"，也不让用户走两个小时。
+    var HARD_MAX = Math.round(Math.min(3500, startMeters * 3.4));
+    var maxDistance = Math.min(HARD_MAX, Math.round(startMeters * (1.7 + relax * 0.5) * scale));
 
     // ① 后台策展数据优先：人工审核过的点最可靠
     return loadCuratedPOIs().then(function (curated) {
@@ -712,12 +719,13 @@
           source: 'curated'
         };
       }
-      return autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
+      return autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed, relax);
     });
   }
 
   /** 没有可用的策展点时：先走多数据源（高德/百度/OSM/维基），再退回旧链路 */
-  function autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed) {
+  function autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed, relax) {
+    relax = relax || 0;
     var providers = window.BW_PROVIDERS;
     if (!providers || typeof providers.nearby !== 'function') {
       return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
@@ -727,13 +735,23 @@
       setTimeout(function () { resolve(null); }, 6000);
     });
     return Promise.race([
-      providers.nearby({ lat: origin.lat, lon: origin.lon, radius: radius, limit: 40 }),
+      providers.nearby({
+        lat: origin.lat,
+        lon: origin.lon,
+        radius: Math.round(radius),
+        limit: relax >= 1 ? 60 : 40,
+        // 放宽档位时，额外按"地标关键字"找一次，优先公园/博物馆/广场这类值得走的地方，
+        // 避免只抽到楼下的包子铺/快递柜
+        // 无论哪一档都带一次地标关键字：只有商业 POI 的街区也能找到公园/博物馆这类值得走的地方
+        keywords: '公园|风景名胜|博物馆|展览馆|广场|图书馆|书店|体育馆|寺|教堂|古镇',
+        deadlineMs: 4500   // 快源先回来先用，不等 Overpass
+      }),
       deadline
     ]).then(function (list) {
       if (!list) {
         return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
       }
-      var picked = pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed);
+      var picked = pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed, { relax: relax });
       if (!picked) {
         return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
       }
@@ -749,7 +767,11 @@
   }
 
   /** 商业 POI 黑名单：这些地方不值得"盲走"，哪怕地图上有 */
-  var POI_BAD_WORDS = /快递|丰巢|菜鸟|驿站|停车场|停车库|加油站|充电站|公厕|厕所|垃圾|污水|变电|美容|美发|理发|足浴|按摩|足疗|养生|汗蒸|地产|房产|中介|银行|ATM|自助取款|药房|大药房|门诊|诊所|超市|便利店|菜市场|农贸|五金|建材|汽修|洗车|驾校|营业厅|打印|复印|网吧|棋牌|麻将|KTV|酒吧|夜总会|售楼|写字楼|工业园|仓库|物流|工厂/;
+  /** 第一级：绝对不适合盲走的地方（去了也尴尬）→ 直接排除 */
+  var POI_NEVER_WORDS = /公厕|厕所|垃圾|污水|变电|加油站|停车场|停车库|ATM|自助取款|售楼|工业园|物流|工厂|仓库|暂停开放|已关闭|停止营业|暂停营业|装修中|施工中/;
+
+  /** 第二级：没什么"地点感"的商业 POI → 不排除，只大幅降权（附近实在没别的时仍然可用） */
+  var POI_SOFT_BAD_WORDS = /快递|丰巢|菜鸟|驿站|充电站|小区|公寓|宿舍|苑|号楼|包子|面馆|小吃|快餐|麻辣烫|烧饼|米线|律师事务所|事务所|旅行社|旅游|携程|营业厅|专卖店|旗舰店|培训|教育|诊所|门诊|医院|中介|地产|售楼|大厦|写字楼|美容|美发|理发|足浴|按摩|足疗|养生|汗蒸|地产|房产|中介|银行|药房|大药房|门诊|诊所|超市|便利店|菜市场|农贸|五金|建材|汽修|洗车|驾校|营业厅|打印|复印|网吧|棋牌|麻将|KTV|酒吧|夜总会|写字楼|停车场/;
 
   /** 有「散步/探索」价值的类别（其余类别降权） */
   var POI_GOOD_CATS = {
@@ -757,23 +779,26 @@
     library: 1, viewpoint: 1, river: 1, bridge: 1, cafe: 1, bookstore: 1, market: 1, plaza: 1
   };
 
-  function isWalkworthy(candidate) {
+  /** 返回 { ok, penalty }：ok=false 直接排除；penalty 是降权系数（1 = 不降权） */
+  function scoreWalkworthy(candidate) {
     var name = candidate.name || '';
-    if (!name || name.length < 2) return false;
-    if (POI_BAD_WORDS.test(name)) return false;
-    // 纯数字/编号命名（如「3号楼」「A座」）也不适合
-    if (/^[0-9A-Za-z\-\s]+$/.test(name)) return false;
-    return true;
+    if (!name || name.length < 2) return { ok: false, penalty: 0 };
+    if (POI_NEVER_WORDS.test(name)) return { ok: false, penalty: 0 };
+    // 纯数字/编号命名（如「3号楼」「A座」）——去了也没东西看
+    if (/^[0-9A-Za-z\-\s]+$/.test(name)) return { ok: false, penalty: 0 };
+    var penalty = POI_SOFT_BAD_WORDS.test(name) ? 0.22 : 1;
+    return { ok: true, penalty: penalty };
   }
 
   /** 从多数据源候选里挑一个（距离 + 心情加权 + 可复现随机） */
-  function pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed) {
+  function pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed, opts) {
     if (!list || !list.length) return null;
     var pool = [];
     for (var i = 0; i < list.length; i += 1) {
       var c = list[i];
       if (typeof c.lat !== 'number' || typeof c.lon !== 'number') continue;
-      if (!isWalkworthy(c)) continue;
+      var worth = scoreWalkworthy(c);
+      if (!worth.ok) continue;
       var d = distanceBetween(origin, { lat: c.lat, lon: c.lon });
       if (d < minDistance || d > maxDistance) continue;
       var cat = c.category || 'plaza';
@@ -782,20 +807,35 @@
       if (mood === 'drift' && (cat === 'park' || cat === 'river' || cat === 'temple' || cat === 'historic')) w = 1.5;
       if (mood === 'discover' && (cat === 'art' || cat === 'library' || cat === 'viewpoint' || cat === 'museum')) w = 1.7;
       if (mood === 'lively' && (cat === 'plaza' || cat === 'market' || cat === 'cafe')) w = 1.6;
-      if (!POI_GOOD_CATS[cat]) w *= 0.35;      // 类别本身不适合散步 → 大幅降权
+      // relax 越大，越少挑剔：类别/来源偏好权重逐步拉平
+      var relax = (opts && opts.relax) || 0;
+      var distinctive = { park: 1.7, garden: 1.5, temple: 1.6, historic: 1.6, museum: 1.7,
+        venue: 1.4, viewpoint: 1.5, art: 1.5, library: 1.5, bookstore: 1.4,
+        bridge: 1.2, river: 1.2, market: 1.2, plaza: 1 };
+      var catPenalty = POI_GOOD_CATS[cat] ? (distinctive[cat] || 1) : 0.35;
+      if (relax >= 1) catPenalty = POI_GOOD_CATS[cat] ? 1 : 0.6;
+      if (relax >= 2) catPenalty = POI_GOOD_CATS[cat] ? 1 : 0.85;
+      w *= catPenalty;
+      w *= worth.penalty;                       // 软黑名单（美容/中介/便利店…）降权但不淘汰
       if (c.source === 'wiki' || c.source === 'osm') w *= 1.25;  // 百科/OSM 通常比商业 POI 更有"地点感"
       if (c.photoUrl) w *= 1.15;               // 有图的优先（揭晓体验更好）
       pool.push({ poi: c, weight: w, distance: d });
     }
     if (!pool.length) return null;
+
+    // 先在"较优的一档"里加权随机：避免在只有商业 POI 的街区抽到最差的（如菜鸟驿站）
+    pool.sort(function (a, b) { return b.weight - a.weight; });
+    var keep = Math.max(3, Math.ceil(pool.length * 0.4));
+    var best = pool.slice(0, keep);
+
     var total = 0;
-    for (var j = 0; j < pool.length; j += 1) total += pool[j].weight;
+    for (var j = 0; j < best.length; j += 1) total += best[j].weight;
     var r = ((seed % 1000) / 1000) * total;
-    for (var k = 0; k < pool.length; k += 1) {
-      r -= pool[k].weight;
-      if (r <= 0) return pool[k].poi;
+    for (var k = 0; k < best.length; k += 1) {
+      r -= best[k].weight;
+      if (r <= 0) return best[k].poi;
     }
-    return pool[pool.length - 1].poi;
+    return best[best.length - 1].poi;
   }
 
   /** 把多数据源候选点转成可玩的 Place */
@@ -949,7 +989,6 @@
     var pool = [];
     for (var i = 0; i < candidates.length; i += 1) {
       var c = candidates[i];
-      if (!c.photoUrl) continue;
       var d = distanceBetween(origin, c);
       if (d < minDistance || d > maxDistance) continue;
       if (!CATEGORY_META[c.category]) c.category = 'plaza';
@@ -958,6 +997,7 @@
       if (mood === 'drift' && (c.category === 'park' || c.category === 'river' || c.category === 'temple')) w = 1.6;
       if (mood === 'discover' && (c.category === 'art' || c.category === 'library' || c.category === 'viewpoint')) w = 1.7;
       if (mood === 'lively' && (c.category === 'plaza' || c.category === 'market')) w = 1.6;
+      if (!c.photoUrl) w *= 0.5;   // 没照片也能用，只是揭晓时差一点
       pool.push({ poi: c, weight: w, distance: d });
     }
     if (!pool.length) return null;
@@ -1180,6 +1220,7 @@
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
     if (/大学|学院|校区|书院/.test(text)) return 'historic';
+    if (/体育馆|体育场|运动场|球场|游泳馆|健身/.test(text)) return 'venue';
     if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
@@ -1599,6 +1640,12 @@
     geocodeAddress: geocodeAddress,
     fetchRoute: fetchRoute,
     routeProgress: routeProgress,
+    __debug: {
+      scoreWalkworthy: scoreWalkworthy,
+      pickProvider: pickProvider,
+      makeProviderPlace: makeProviderPlace,
+      scoreWalkworthy: scoreWalkworthy
+    },
     guidanceFor: guidanceFor,
     directionArrow: directionArrow,
     enrichWithAddress: enrichWithAddress,
