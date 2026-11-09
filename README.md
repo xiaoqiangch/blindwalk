@@ -169,7 +169,9 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | 埋惊喜 / 寻惊喜（v0.3） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
 | **真实地理信息（v0.4）** | ✅ Web 用 Overpass 真实 POI + Nominatim 真实街道名；iOS 用 MapKit 真实 POI + 真实地图；目的地仍然保密 |
 | **兴趣点管理后台** | ✅ 公开数据抓取 + 大模型整理/编辑/分析 + 人工审核 + 导出；v2 起 SQLite + 登录 + 安全分级/夜间可达性。`bash scripts/start-admin.sh`，见 [admin/README.md](admin/README.md) |
-| **转向导航（v2.2 新）** | ✅ 旅程页不再画地图，只显示「30 米后左拐」这类带提前量的指令 + 接下来两步；无路由服务时退回方向提示。见 [docs/navigation.md](docs/navigation.md) |
+| **多数据源 POI（v0.9 新）** | ✅ 高德/百度（用户自带 Key，JSONP）+ OpenStreetMap + 中文维基，统一去重排序；无 Key 也能用。见 [providers.md](prototype/web/providers.md) |
+| **个人账号（v0.9 新）** | ✅ 注册/登录/资料同步/恢复/删号；服务端 `account/`（Node+SQLite，零依赖），App 未登录照常离线可用。见 [account/README.md](account/README.md) |
+| **转向导航（v2.2）** | ✅ 旅程页不再画地图，只显示「30 米后左拐」这类带提前量的指令 + 接下来两步；无路由服务时退回方向提示。见 [docs/navigation.md](docs/navigation.md) |
 | **iOS 接入策展 POI（v2.1）** | ✅ 抽盒优先用后台「编辑精选」，揭晓展示实景照片；断网自动退回 MapKit。见 [docs/ios-poi.md](docs/ios-poi.md) |
 | **公开数据兴趣点 + 图片（v0.7）** | ✅ 维基百科地理搜索：真实地标 + 简介 + 实景照片（Wikimedia Commons），无需 API Key |
 | 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
