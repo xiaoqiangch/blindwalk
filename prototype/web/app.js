@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v20';
+  var APP_VERSION = 'v21';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1179,7 +1179,8 @@
       ['网络', navigator.onLine ? '在线' : '离线'],
       ['页面版本', APP_VERSION + ' · ' + APP_BUILT_AT],
       ['Service Worker', state.swVersion || '未注册 / 未知'],
-      ['是否最新版本', state.swVersion && state.swVersion.indexOf(APP_VERSION) >= 0 ? '✅ 是' : '⚠️ 可能不是最新（点下面「强制更新」）'],
+      ['是否最新版本', !state.swVersion ? '未知（离线缓存未启用，通常是最新）'
+        : (state.swVersion.indexOf(APP_VERSION) >= 0 ? '✅ 是' : '⚠️ 旧版本：点下面「强制更新」')],
       ['本机存档 xp', state.profile ? String(state.profile.xp) : '—'],
       ['本机卡片数', state.profile ? String(state.profile.cards.length) : '—']
     ].map(function (row) {
@@ -2079,7 +2080,8 @@
       '</div>';
 
     return '<div class="page">' +
-      '<header class="pagehead"><h1>我的</h1></header>' +
+      '<header class="pagehead"><h1>我的</h1>' +
+      '<span class="verstamp">' + APP_VERSION + '</span></header>' +
       '<section class="levelcard" aria-label="等级">' +
       '<div class="levelcard__top">' +
       '<p class="levelcard__lv">散步 Lv.' + level.level + '<small>· ' + esc(level.name) + '</small></p>' +
