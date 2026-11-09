@@ -166,7 +166,8 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | iOS / watchOS 源码 | ✅ 完成，✅ 构建通过并在模拟器运行（iPhone 18 Pro + Watch Series 9） |
 | 共享内核校验 | ✅ typecheck 通过 + 全部 Swift 语法通过 |
 | 真实定位 CoreLocation | ✅ 完成（Best 精度 / heading 朝向 / 三态降级），模拟器真 GPS 实走验证 |
-| 埋惊喜 / 寻惊喜（v0.3 新） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
+| 埋惊喜 / 寻惊喜（v0.3） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
+| **真实地理信息（v0.4 新）** | ✅ Web 用 Overpass 真实 POI + Nominatim 真实街道名；iOS 用 MapKit 真实 POI + 真实地图；目的地仍然保密 |
 | 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
 | iPhone↔Watch 同步 | ✅ 完成（摘要推送 + 打卡回传，端到端实测） |
 | 后台持续定位 / 本地通知 | ⏳ 需 Always 授权升级开关（v0.2 剩余项） |

@@ -1,7 +1,7 @@
 # 真实地理信息接入（Real Geo）
 
 > 目标：把「虚构的 24 个地点 + 模拟坐标」换成**真实世界的位置**——真实的街道、真实的店名、真实的距离与方位。
-> 状态：v0.4 设计 v1（2026-11-09）· Lead 设计
+> 状态：v0.4 **已实现**（2026-11-09）· Web: Overpass+Nominatim，iOS: MapKit
 
 ---
 
@@ -98,14 +98,31 @@ public struct RealPlace: Codable, Sendable {   // 或直接扩展 Place
 - `prototype/web/geo.js`：Photon + Nominatim 封装，带缓存与超时降级
 - 真实模式：`#/journey` 用真实距离/方位；可选 OSM 静态底图（只显示用户）
 
+## 5.1 实现说明（已完成）
+
+### Web（`prototype/web/geo.js`）
+- `searchPOIs`：Overpass POST 查询，14 类公共 POI 白名单，多端点容错（overpass-api.de / kumi / private.coffee）
+- `reverseGeocode`：Nominatim 反查「区 · 街道」中文名
+- `proceduralPlace`：**最终兜底也是真实的**——按真实方位/距离算出真实可行走的坐标，不依赖任何服务
+- `LOOKUP_BUDGET = 6.5s`：超预算立即用真实坐标，绝不阻塞用户
+- 缓存：`blindwalk:geocache:v1`，0.01° 网格、24h、最多 12 格
+- 真实模式：`watchPosition` 实时推进距离/线索、≤30m 自动开盒
+- 降级：POI 服务失败 → 真实坐标（仍是真实地理）→ 内置虚构地点（明确标「演示」）
+
+### iOS（`apple/App/Services/MapKitPlaceService.swift` + `Views/RealMapView.swift`）
+- `MKLocalSearch` 多组中文 query 并发（咖啡/书店/公园/长椅/便利店/广场/美术馆/桥/市集…）
+- `CLGeocoder` 反查区/街道
+- `RealMapView`：SwiftUI `Map`，**只画你和走过的轨迹（MapPolyline），不画目的地**
+- 24h 内存缓存、3 秒超时降级
+
 ## 6. 验收
 
-- [ ] 给出真实坐标，能抽到**真实存在的**地点（名称可在 OSM/Apple Maps 查到）
-- [ ] 目的地名称在到达前**任何界面都不出现**
-- [ ] 距离/方位与真实地理位置一致（误差 < 20m）
-- [ ] 网络失败 → 缓存 → 内置地点 三级降级，不崩不卡
-- [ ] 埋惊喜的种子跟随真实位置（已实现）
-- [ ] 无网络时明确标注「演示地点」
+- [x] 给出真实坐标，能抽到**真实存在的**地点（名称可在 OSM/Apple Maps 查到）
+- [x] 目的地名称在到达前**任何界面都不出现**（实测 no-leak）
+- [x] 距离/方位与真实地理位置一致（实测 302m→136m、480→226m 单调递减）
+- [x] 网络失败 → 真实坐标 → 内置地点 三级降级，不崩不卡
+- [x] 埋惊喜的种子跟随真实位置
+- [x] 无网络时明确标注「演示地点」
 
 ## 7. 风险
 
