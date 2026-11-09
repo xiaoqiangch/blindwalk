@@ -3336,3 +3336,17 @@ button, .btn {
 .journey__actions .btn:active {
   transform: scale(.985);
 }
+
+/* 版本号小标记（我的页标题旁） */
+.verstamp {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  color: var(--ink3, #A69C8C);
+  background: rgba(166, 156, 140, .12);
+  border: 1px solid rgba(166, 156, 140, .26);
+  vertical-align: middle;
+}
