@@ -1075,11 +1075,13 @@
         ? '<span class="journey__mapcap">真实位置 · 目的地保密中 · 还有 ' + remaining + ' 米</span>'
         : '<span class="journey__mapcap">目的地保密中 · 还有 ' + remaining + ' 米</span>') +
       '</div>' +
+      '<div class="journey__side">' +
       '<div class="journey__distance">' +
       '<div><span class="journey__digits">' + remaining + '</span><span class="journey__unit">米</span></div>' +
       '<div class="journey__bearing"><b aria-hidden="true">' + realBearingSymbol(session, remaining) + '</b><span>' + esc(realWalkCopy(session, walkCopy)) + '</span></div>' +
       '</div>' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
+      '</div>' +
       '<div class="journey__actions">' +
       (arrived
         ? '<button type="button" class="btn btn--primary btn--block" data-action="collect" aria-label="揭晓盲盒">揭晓盲盒</button>'
@@ -2664,6 +2666,14 @@
   }
 
   function boot() {
+    /* 触摸设备标记：折叠屏（iPhone Duo）展开态要靠它走「大屏双列」而不是桌面假外框。
+       pointer:coarse 在部分环境不可靠，用多条件兜底。 */
+    try {
+      var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+      if (coarse || touch) document.documentElement.classList.add('is-touch');
+    } catch (err) { /* ignore */ }
+
     dom.screen = $('#screen');
     dom.main = $('#main');
     dom.tabbar = $('#tabbar');

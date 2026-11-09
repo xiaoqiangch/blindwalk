@@ -731,6 +731,8 @@ svg { display: block; }
   height: 100%;
   min-height: 0;
 }
+.journey__side { display: contents; }
+
 .journey__top {
   flex-shrink: 0;
   display: flex;
@@ -2409,4 +2411,330 @@ body[data-mode="standalone"] .toast-root {
   font-size: 9.5px; font-weight: 650; letter-spacing: .04em;
   color: var(--teal); background: rgba(46, 125, 120, .1);
   border-radius: 999px; vertical-align: middle;
+}
+
+/* ============================================================
+   22. 折叠屏适配（iPhone Duo）
+   - 折叠态 466×678pt：屏幕矮，压缩垂直节奏
+   - 展开态 669×951pt：大屏，改双列布局
+   判定：html.is-touch（由 app.js 检测 maxTouchPoints / pointer:coarse 后加上）
+         —— 不用 CSS 的 pointer:coarse，因为它在部分环境不可靠
+   ============================================================ */
+
+/* ---------- 22.1 触摸设备 + 大屏：全屏、不显示桌面假外框、双列 ---------- */
+@media (min-width: 620px) {
+  html.is-touch,
+  html.is-touch body {
+    height: 100%;
+  }
+  html.is-touch body {
+    background: var(--cream);
+    overflow: hidden;
+  }
+  html.is-touch .stage {
+    padding: 0;
+    gap: 0;
+    height: 100dvh;
+    min-height: 100dvh;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+  html.is-touch .device {
+    width: 100%;
+    height: 100dvh;
+    padding: 0;
+    border-radius: 0;
+    background: var(--cream);
+    box-shadow: none;
+    zoom: 1;
+    flex-shrink: 1;
+  }
+  html.is-touch .screen {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  html.is-touch .grain {
+    border-radius: 0;
+  }
+  html.is-touch .device__island,
+  html.is-touch .home-indicator,
+  html.is-touch .stage__caption {
+    display: none !important;
+  }
+  html.is-touch .statusbar {
+    padding-left: 28px;
+    padding-right: 24px;
+  }
+
+  /* ---------- 首页：双列 ---------- */
+  html.is-touch .home {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    column-gap: 22px;
+    row-gap: 18px;
+    align-content: start;
+    padding: 10px 26px 26px;
+  }
+  html.is-touch .home__top,
+  html.is-touch .home__hero {
+    grid-column: 1 / -1;
+  }
+  html.is-touch .home__hero h2 {
+    font-size: 30px;
+  }
+  html.is-touch .home__hero p {
+    font-size: 15px;
+  }
+  html.is-touch .boxcard {
+    grid-column: 1;
+  }
+  html.is-touch .stats {
+    grid-column: 2;
+    align-self: start;
+  }
+  html.is-touch .friends {
+    grid-column: 2;
+  }
+  html.is-touch .lastcard,
+  html.is-touch .firsthint {
+    grid-column: 1;
+  }
+  html.is-touch .hub {
+    grid-column: 1 / -1;
+  }
+
+  /* ---------- 旅程：左地图 / 右「距离 + 线索」，底部按钮 ---------- */
+  html.is-touch .journey {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "jtop   jtop"
+      "jstat  jstat"
+      "jmap   jside"
+      "jact   jact";
+    column-gap: 24px;
+    row-gap: 10px;
+    padding: 10px 26px 18px;
+  }
+  html.is-touch .journey__top { grid-area: jtop; }
+  html.is-touch .journey__status { grid-area: jstat; padding: 0 0 2px; }
+  html.is-touch .journey__actions { grid-area: jact; padding: 8px 0 0; background: none; }
+
+  html.is-touch .journey__map {
+    grid-area: jmap;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    margin: 0;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--paper);
+  }
+  html.is-touch .journey__map svg {
+    height: 100%;
+    width: 100%;
+  }
+
+  /* 右栏：距离在上、线索在下，中间自动填满 */
+  html.is-touch .journey__side {
+    grid-area: jside;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+  html.is-touch .journey__distance {
+    padding: 0;
+    margin: 0;
+  }
+  html.is-touch .journey__digits {
+    font-size: 68px;
+  }
+  html.is-touch .journey__bearing {
+    margin-top: 4px;
+  }
+  html.is-touch .journey__clues {
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+    flex: 1;
+  }
+  html.is-touch .journey__actions {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    padding: 8px 0 0;
+    background: none;
+  }
+
+  /* ---------- 图鉴：5 列 ---------- */
+  html.is-touch .fcards {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* ---------- 内容容器留白 ---------- */
+  html.is-touch .cards,
+  html.is-touch .social,
+  html.is-touch .profile,
+  html.is-touch .achievements,
+  html.is-touch .page {
+    padding-left: 26px;
+    padding-right: 26px;
+  }
+  html.is-touch .section-head {
+    padding: 0;
+  }
+
+  /* ---------- 抽盒 sheet / 揭晓卡：限宽，保持「一张卡」的观感 ---------- */
+  html.is-touch .sheet {
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  html.is-touch .reveal-card {
+    max-width: 460px;
+  }
+
+  /* ---------- 埋 / 寻：列表两列 ---------- */
+  html.is-touch .slist,
+  html.is-touch .minelist {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+/* ---------- 22.2 折叠态（矮屏 ≤ 720pt，如 466×678）：压缩垂直节奏 ---------- */
+@media (max-height: 720px) {
+  html.is-touch .home {
+    padding-top: 2px;
+  }
+  html.is-touch .home__hero h2 {
+    font-size: 22px;
+  }
+  html.is-touch .home__hero p {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  html.is-touch .boxcard {
+    margin-top: 10px;
+    padding: 14px 16px 12px;
+  }
+  html.is-touch .boxcard__art,
+  html.is-touch .boxcard__art svg {
+    height: 92px;
+  }
+  html.is-touch .stats {
+    margin-top: 12px;
+  }
+  html.is-touch .stat b {
+    font-size: 22px;
+  }
+  html.is-touch .friends {
+    margin-top: 12px;
+  }
+  html.is-touch .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+  html.is-touch .lastcard {
+    margin-top: 12px;
+    padding: 9px 12px;
+  }
+  html.is-touch .hub {
+    margin-top: 12px;
+    padding: 12px 14px;
+  }
+  html.is-touch .hub__copy {
+    margin: 5px 0 9px;
+    font-size: 12px;
+  }
+  html.is-touch .hub__btn {
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+
+  html.is-touch .journey {
+    padding-top: 2px;
+  }
+  html.is-touch .journey__top {
+    min-height: 34px;
+  }
+  html.is-touch .journey__map {
+    max-height: 200px;
+    min-height: 150px;
+  }
+  html.is-touch .journey__digits {
+    font-size: 52px;
+  }
+  html.is-touch .journey__unit {
+    font-size: 14px;
+  }
+  html.is-touch .journey__bearing b {
+    font-size: 22px;
+  }
+  html.is-touch .journey__clues {
+    margin-top: 8px;
+  }
+  html.is-touch .clue {
+    padding: 9px 12px;
+  }
+  html.is-touch .clue__text {
+    font-size: 12px;
+  }
+  html.is-touch .journey__actions {
+    padding-top: 8px;
+    gap: 6px;
+  }
+  html.is-touch .journey__actions .btn {
+    height: 42px;
+    font-size: 14px;
+  }
+
+  html.is-touch .fcards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  html.is-touch .reveal-card {
+    padding: 18px 18px 16px;
+  }
+  html.is-touch .reveal-card__name {
+    font-size: 22px;
+  }
+  html.is-touch .reveal-card__why {
+    font-size: 12.5px;
+  }
+  html.is-touch .taskcard {
+    padding: 10px 12px;
+  }
+
+  html.is-touch .sheet {
+    padding: 16px 18px 20px;
+  }
+  html.is-touch .segmented button {
+    padding: 9px 4px;
+  }
+  html.is-touch .segmented b {
+    font-size: 13px;
+  }
+  html.is-touch .mood {
+    padding: 8px 12px;
+  }
+  html.is-touch .mood__emoji {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
+
+  html.is-touch .shot {
+    min-height: 130px;
+    padding: 16px;
+  }
+  html.is-touch .shot__icon {
+    font-size: 24px;
+  }
+  html.is-touch .ta {
+    min-height: 62px;
+  }
 }
