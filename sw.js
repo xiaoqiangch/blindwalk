@@ -5,7 +5,7 @@
  *   - 其他同源请求：网络优先，失败回落缓存
  *   - 跨域请求一律不碰
  */
-const VERSION = "blindwalk-v17-realfix";
+const VERSION = "blindwalk-v18-categories";
 const SHELL = [
   "./",
   "./index.html",
