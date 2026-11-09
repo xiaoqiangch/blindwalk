@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v24';
+  var APP_VERSION = 'v25';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1705,21 +1705,58 @@
   function pathViewHTML() {
     return '<section class="pathview" data-pathview aria-label="需要走的路径">' +
       '<svg class="pathview__svg" viewBox="0 0 320 196" preserveAspectRatio="xMidYMid meet" role="img" aria-label="前方路径示意图">' +
-      '<defs>' +
-      '<linearGradient id="pathFade" gradientUnits="userSpaceOnUse" x1="0" y1="172" x2="0" y2="14">' +
-      '<stop offset="0%" stop-color="#E89B4C" stop-opacity="1"/>' +
-      '<stop offset="55%" stop-color="#E89B4C" stop-opacity=".8"/>' +
-      '<stop offset="100%" stop-color="#E89B4C" stop-opacity="0"/>' +
-      '</linearGradient>' +
-      '</defs>' +
+
       '<g data-path-grid></g>' +
-      '<path data-path-line d="" fill="none" stroke="url(#pathFade)" stroke-width="9" stroke-linecap="round"/>' +
+      '<g data-path-line></g>' +
+      '<g data-path-behind></g>' +
       '<g data-path-chevrons></g>' +
       '<g data-path-arrow></g>' +
-      '<text data-path-north x="300" y="20" text-anchor="middle" font-size="10" fill="#A69C8C">北</text>' +
+      '<g data-path-compass transform="translate(292,164)">' +
+      '<circle r="14" fill="#FFFBF3" stroke="#E4D9C6" stroke-width="1"/>' +
+      '<g data-compass-needle>' +
+      '<path d="M 0 -9 L 4 0 L 0 -2 L -4 0 Z" fill="#D25C3A"/>' +
+      '<path d="M 0 9 L 4 0 L 0 2 L -4 0 Z" fill="#C9C0B2"/>' +
+      '</g>' +
+      '<text x="0" y="-18" text-anchor="middle" font-size="9" fill="#A69C8C">北</text>' +
+      '</g>' +
       '</svg>' +
-      '<p class="pathview__cap" data-path-cap>箭头是你 · 只显示前方路径</p>' +
+      '<p class="pathview__cap" data-path-cap>迷雾模式 · 只看见前后一段</p>' +
       '</section>';
+  }
+
+  /* 路径迷雾视图用的工具：累计距离表 + 按「沿路径里程」取点 */
+  var routeCum = null;
+
+  function buildRouteCum(route) {
+    var pts = route.points || [];
+    var cum = [0];
+    for (var i = 0; i < pts.length - 1; i += 1) {
+      var d = window.BW_GEO.distanceOf
+        ? window.BW_GEO.distanceOf({ lat: pts[i][1], lon: pts[i][0] }, { lat: pts[i + 1][1], lon: pts[i + 1][0] })
+        : 0;
+      cum.push(cum[cum.length - 1] + d);
+    }
+    routeCum = { pts: pts, cum: cum };
+    return routeCum;
+  }
+
+  function pointAtAlong(route, cumData, sMeters) {
+    if (!cumData) return null;
+    var pts = cumData.pts;
+    var cum = cumData.cum;
+    if (sMeters <= 0) return { lat: pts[0][1], lon: pts[0][0] };
+    for (var i = 0; i < cum.length - 1; i += 1) {
+      if (sMeters <= cum[i + 1]) {
+        var seg = cum[i + 1] - cum[i];
+        var t = seg > 0 ? (sMeters - cum[i]) / seg : 0;
+        return {
+          lat: pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t,
+          lon: pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t
+        };
+      }
+    }
+    var last = pts.length - 1;
+    return { lat: pts[last][1], lon: pts[last][0] };
   }
 
   /** 重画路径视图（由 patchNav 节流调用） */
@@ -1732,7 +1769,7 @@
     var chevrons = svg.querySelector('[data-path-chevrons]');
     var arrowG = svg.querySelector('[data-path-arrow]');
     var cap = host.querySelector('[data-path-cap]');
-    var north = svg.querySelector('[data-path-north]');
+
 
     if (!session || !isRealSession(session) || !state.route || !state.route.points || state.route.points.length < 2) {
       host.classList.add('pathview--empty');
@@ -1766,26 +1803,32 @@
     var kx = Math.cos(progress.snappedLat * Math.PI / 180) * 111320;
     var ky = 110540;
     var CX = 160;
-    var CY = 172;
-    var AHEAD = Math.min(230, Math.max(90, routeRemaining - 25));   // 永远不画到终点
-    var BEHIND = 45;
+    var CY = 168;
+    // 迷雾窗口：前后各一段；前方永远短于「剩余里程」，保证不露终点
+    var AHEAD = Math.min(260, Math.max(120, routeRemaining - 25));
+    var BEHIND = Math.min(140, Math.max(60, progress.walked - 5));
+    var FOG = 46;               // 两端渐隐的过渡长度（米）
 
-    // 先把窗口内的路径点转成「沿路径 / 横向」局部坐标
+    if (!routeCum) buildRouteCum(state.route);
+
+    // 沿路径按 6 米插值，得到迷雾窗口内的点（含前后）
     var local = [];
-    for (var i = 0; i < pts.length; i += 1) {
-      var e = (pts[i][0] - progress.snappedLon) * kx;
-      var n = (pts[i][1] - progress.snappedLat) * ky;
-      var along = e * sinB + n * cosB;
-      var lateral = e * cosB - n * sinB;
-      if (along < -BEHIND || along > AHEAD) {
-        if (local.length) break;
-        continue;
-      }
-      local.push({ along: along, lateral: lateral });
+    var startS = Math.max(0, progress.walked - BEHIND);
+    var endS = Math.min(state.route.distanceMeters, progress.walked + AHEAD);
+    for (var sPos = startS; sPos <= endS + 0.001; sPos += 3) {
+      var at = pointAtAlong(state.route, routeCum, sPos);
+      if (!at) continue;
+      var e = (at.lon - progress.snappedLon) * kx;
+      var n = (at.lat - progress.snappedLat) * ky;
+      local.push({
+        s: sPos,
+        along: e * sinB + n * cosB,
+        lateral: e * cosB - n * sinB
+      });
     }
-    if (!local.length) return;
+    if (local.length < 2) return;
 
-    // 自适应缩放：竖向前方 148px，横向不超出画布（留 26px 边距）
+    // 自适应缩放：竖向前方 148px，横向不超出画布
     var scaleY = 148 / AHEAD;
     var minLat = Infinity;
     var maxLat = -Infinity;
@@ -1796,53 +1839,58 @@
     var halfSpan = Math.max(12, Math.max(Math.abs(minLat), Math.abs(maxLat)) + 8);
     var scaleX = Math.min(scaleY, 118 / halfSpan);
     var midLat = (minLat + maxLat) / 2;
-    var cX = CX - midLat * scaleX;
-    // 夹紧：箭头与路径都要留在画布内
-    cX = Math.max(46, Math.min(274, cX));
+    var cX = Math.max(46, Math.min(274, CX - midLat * scaleX));
 
     function toScreenLocal(along, lateral) {
       return { x: cX + lateral * scaleX, y: CY - along * scaleY };
     }
 
-    var d = '';
-    for (var r2 = 0; r2 < local.length; r2 += 1) {
-      var sp = toScreenLocal(local[r2].along, local[r2].lateral);
-      d += (r2 === 0 ? 'M ' : ' L ') + sp.x.toFixed(1) + ' ' + sp.y.toFixed(1);
+    // 逐段绘制：两端透明度渐隐，未走过的后半段更淡（探索感）
+    var behindG = svg.querySelector('[data-path-behind]');
+    var aheadParts = '';
+    var behindParts = '';
+    for (var r2 = 0; r2 < local.length - 1; r2 += 1) {
+      var a = local[r2];
+      var b2 = local[r2 + 1];
+      var pa = toScreenLocal(a.along, a.lateral);
+      var pb = toScreenLocal(b2.along, b2.lateral);
+      // 距窗口两端的距离 → 透明度
+      var da = Math.min(a.s - startS, endS - a.s);
+      var db = Math.min(b2.s - startS, endS - b2.s);
+      var op = Math.min(1, Math.max(0, Math.min(da, db) / FOG));
+      if (op <= 0.02) continue;
+      var isBehind = (a.s < progress.walked);
+      var ddx = pb.x - pa.x;
+      var ddy = pb.y - pa.y;
+      var dlen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+      var ux = ddx / dlen;
+      var uy = ddy / dlen;
+      var ext = 0.9;   // 两端各延一点，避免 butt 端点留下细缝
+      var seg = '<line x1="' + (pa.x - ux * ext).toFixed(1) + '" y1="' + (pa.y - uy * ext).toFixed(1) +
+        '" x2="' + (pb.x + ux * ext).toFixed(1) + '" y2="' + (pb.y + uy * ext).toFixed(1) +
+        '" stroke="' + (isBehind ? '#C9A98A' : '#E89B4C') + '" stroke-width="' + (isBehind ? 7 : 9) +
+        '" stroke-linecap="butt" stroke-opacity="' + (op * (isBehind ? 0.55 : 1)).toFixed(2) + '"/>';
+      if (isBehind) behindParts += seg;
+      else aheadParts += seg;
     }
-    line.setAttribute('d', d);
-
-    // 同步给「行进箭头 / 你的箭头」用的比例
+    line.innerHTML = aheadParts;
+    if (behindG) behindG.innerHTML = behindParts;
     var PX_PER_M = scaleY;
     var CX_USE = cX;
 
-    // 每 50 米一个行进箭头（在线上）
+    // 前方每 55 米一个行进箭头
     var chev = '';
-    for (var m = 45; m <= AHEAD; m += 55) {
-      var idx = progress.index;
-      var acc = progress.walked + m;
-      // 找到累计距离对应的点
-      var walkedAcc = 0;
-      for (var k = 0; k < pts.length - 1; k += 1) {
-        var seg = window.BW_GEO.distanceOf
-          ? window.BW_GEO.distanceOf({ lat: pts[k][1], lon: pts[k][0] }, { lat: pts[k + 1][1], lon: pts[k + 1][0] })
-          : 0;
-        if (acc <= walkedAcc + seg) {
-          var tt = seg > 0 ? (acc - walkedAcc) / seg : 0;
-          var lat = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * tt;
-          var lon = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * tt;
-          var e2 = (lon - progress.snappedLon) * kx;
-      var n2 = (lat - progress.snappedLat) * ky;
-      var along2 = e2 * sinB + n2 * cosB;
-      var lateral2 = e2 * cosB - n2 * sinB;
-      var sp = toScreenLocal(along2, lateral2);
-          chev += '<path d="M ' + (sp.x - 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
-            ' L ' + sp.x.toFixed(1) + ' ' + (sp.y - 4).toFixed(1) +
-            ' L ' + (sp.x + 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
-            '" fill="none" stroke="rgba(23,20,16,.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>';
-          break;
-        }
-        walkedAcc += seg;
-      }
+    for (var mm = 40; mm <= AHEAD - 10; mm += 55) {
+      var at2 = pointAtAlong(state.route, routeCum, progress.walked + mm);
+      if (!at2) continue;
+      var e3 = (at2.lon - progress.snappedLon) * kx;
+      var n3 = (at2.lat - progress.snappedLat) * ky;
+      var sp = toScreenLocal(e3 * sinB + n3 * cosB, e3 * cosB - n3 * sinB);
+      var op2 = Math.min(1, Math.max(0, (AHEAD - mm) / FOG));
+      chev += '<path d="M ' + (sp.x - 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
+        ' L ' + sp.x.toFixed(1) + ' ' + (sp.y - 4).toFixed(1) +
+        ' L ' + (sp.x + 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
+        '" fill="none" stroke="rgba(23,20,16,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
     }
     chevrons.innerHTML = chev;
 
@@ -1866,17 +1914,13 @@
       '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#171410"/>' +
       '</g>';
 
-    // 北向标记（heading-up 时北在转动）
-    if (north) {
-      var nx = CX + Math.sin(-rad) * 112;
-      var ny = CY - Math.cos(-rad) * 112;
-      north.setAttribute('x', Math.max(14, Math.min(306, nx)));
-      north.setAttribute('y', Math.max(14, Math.min(186, ny)));
-    }
+    // 指北针：画布上方是行进方向，所以北方向 = -bearing
+    var needle = svg.querySelector('[data-compass-needle]');
+    if (needle) needle.setAttribute('transform', 'rotate(' + (-b).toFixed(1) + ')');
     if (cap) {
       cap.textContent = deviated
         ? '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米'
-        : '箭头是你 · 只显示前方路径';
+        : '迷雾模式 · 只看见前后一段';
     }
   }
 
