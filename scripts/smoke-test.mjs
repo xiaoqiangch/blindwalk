@@ -132,7 +132,8 @@ async function main() {
     }
     check("摇盒后进入旅程", entered, await hash());
     const journeyText = await text();
-    check("旅程显示剩余距离", /还有\s*\d+\s*米/.test(journeyText), journeyText.slice(0, 80));
+    // 导航卡里「还剩 N 米」是唯一距离数字（v2 起改成 navcard）
+    check("旅程显示剩余距离", /还剩\s*\d+\s*米/.test(journeyText), journeyText.slice(0, 80));
     check("旅程不泄露目的地", !journeyText.includes("旧码头边的石阶"));
 
     let arrived = false;
