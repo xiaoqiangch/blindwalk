@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v23';
+  var APP_VERSION = 'v24';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1580,6 +1580,7 @@
       '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
       '</div>' +
       '<div class="journey__status">' + realStatusHTML() + '</div>' +
+      pathViewHTML() +
       navCardHTML(session) +
       '<div class="journey__side">' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
@@ -1693,6 +1694,192 @@
     return result;
   }
 
+
+  /* ============================================================
+     路径视图（不露终点）
+     - 只画「当前位置往前 220 米」这一段，末端渐隐，绝不画终点
+     - 朝向：以路径前进方向为上（heading-up）
+     - 箭头：「你」的位置，随行走沿路径移动
+     - 距离终点 < 60 米时整段淡出，只留「快到了」
+     ============================================================ */
+  function pathViewHTML() {
+    return '<section class="pathview" data-pathview aria-label="需要走的路径">' +
+      '<svg class="pathview__svg" viewBox="0 0 320 196" preserveAspectRatio="xMidYMid meet" role="img" aria-label="前方路径示意图">' +
+      '<defs>' +
+      '<linearGradient id="pathFade" gradientUnits="userSpaceOnUse" x1="0" y1="172" x2="0" y2="14">' +
+      '<stop offset="0%" stop-color="#E89B4C" stop-opacity="1"/>' +
+      '<stop offset="55%" stop-color="#E89B4C" stop-opacity=".8"/>' +
+      '<stop offset="100%" stop-color="#E89B4C" stop-opacity="0"/>' +
+      '</linearGradient>' +
+      '</defs>' +
+      '<g data-path-grid></g>' +
+      '<path data-path-line d="" fill="none" stroke="url(#pathFade)" stroke-width="9" stroke-linecap="round"/>' +
+      '<g data-path-chevrons></g>' +
+      '<g data-path-arrow></g>' +
+      '<text data-path-north x="300" y="20" text-anchor="middle" font-size="10" fill="#A69C8C">北</text>' +
+      '</svg>' +
+      '<p class="pathview__cap" data-path-cap>箭头是你 · 只显示前方路径</p>' +
+      '</section>';
+  }
+
+  /** 重画路径视图（由 patchNav 节流调用） */
+  function drawPathView(session) {
+    var host = document.querySelector('[data-pathview]');
+    if (!host) return;
+    var svg = host.querySelector('.pathview__svg');
+    if (!svg) return;
+    var line = svg.querySelector('[data-path-line]');
+    var chevrons = svg.querySelector('[data-path-chevrons]');
+    var arrowG = svg.querySelector('[data-path-arrow]');
+    var cap = host.querySelector('[data-path-cap]');
+    var north = svg.querySelector('[data-path-north]');
+
+    if (!session || !isRealSession(session) || !state.route || !state.route.points || state.route.points.length < 2) {
+      host.classList.add('pathview--empty');
+      line.setAttribute('d', '');
+      chevrons.innerHTML = '';
+      arrowG.innerHTML = '';
+      if (cap) cap.textContent = '正在规划路径…';
+      return;
+    }
+    host.classList.remove('pathview--empty');
+
+    var here = ui.lastFix || ui.myLocation;
+    var progress = window.BW_GEO.routeProgress(state.route, here);
+    if (!progress) return;
+
+    var routeRemaining = Math.max(0, state.route.distanceMeters - progress.walked);
+    // 保密：接近终点就整段淡出，不允许看见终点
+    if (routeRemaining < 60) {
+      line.setAttribute('d', '');
+      chevrons.innerHTML = '';
+      arrowG.innerHTML = '';
+      if (cap) cap.textContent = '就在附近 · 抬头看看周围';
+      return;
+    }
+
+    var pts = state.route.points;
+    var b = progress.bearing || 0;
+    var rad = b * Math.PI / 180;
+    var sinB = Math.sin(rad);
+    var cosB = Math.cos(rad);
+    var kx = Math.cos(progress.snappedLat * Math.PI / 180) * 111320;
+    var ky = 110540;
+    var CX = 160;
+    var CY = 172;
+    var AHEAD = Math.min(230, Math.max(90, routeRemaining - 25));   // 永远不画到终点
+    var BEHIND = 45;
+
+    // 先把窗口内的路径点转成「沿路径 / 横向」局部坐标
+    var local = [];
+    for (var i = 0; i < pts.length; i += 1) {
+      var e = (pts[i][0] - progress.snappedLon) * kx;
+      var n = (pts[i][1] - progress.snappedLat) * ky;
+      var along = e * sinB + n * cosB;
+      var lateral = e * cosB - n * sinB;
+      if (along < -BEHIND || along > AHEAD) {
+        if (local.length) break;
+        continue;
+      }
+      local.push({ along: along, lateral: lateral });
+    }
+    if (!local.length) return;
+
+    // 自适应缩放：竖向前方 148px，横向不超出画布（留 26px 边距）
+    var scaleY = 148 / AHEAD;
+    var minLat = Infinity;
+    var maxLat = -Infinity;
+    for (var q = 0; q < local.length; q += 1) {
+      if (local[q].lateral < minLat) minLat = local[q].lateral;
+      if (local[q].lateral > maxLat) maxLat = local[q].lateral;
+    }
+    var halfSpan = Math.max(12, Math.max(Math.abs(minLat), Math.abs(maxLat)) + 8);
+    var scaleX = Math.min(scaleY, 118 / halfSpan);
+    var midLat = (minLat + maxLat) / 2;
+    var cX = CX - midLat * scaleX;
+    // 夹紧：箭头与路径都要留在画布内
+    cX = Math.max(46, Math.min(274, cX));
+
+    function toScreenLocal(along, lateral) {
+      return { x: cX + lateral * scaleX, y: CY - along * scaleY };
+    }
+
+    var d = '';
+    for (var r2 = 0; r2 < local.length; r2 += 1) {
+      var sp = toScreenLocal(local[r2].along, local[r2].lateral);
+      d += (r2 === 0 ? 'M ' : ' L ') + sp.x.toFixed(1) + ' ' + sp.y.toFixed(1);
+    }
+    line.setAttribute('d', d);
+
+    // 同步给「行进箭头 / 你的箭头」用的比例
+    var PX_PER_M = scaleY;
+    var CX_USE = cX;
+
+    // 每 50 米一个行进箭头（在线上）
+    var chev = '';
+    for (var m = 45; m <= AHEAD; m += 55) {
+      var idx = progress.index;
+      var acc = progress.walked + m;
+      // 找到累计距离对应的点
+      var walkedAcc = 0;
+      for (var k = 0; k < pts.length - 1; k += 1) {
+        var seg = window.BW_GEO.distanceOf
+          ? window.BW_GEO.distanceOf({ lat: pts[k][1], lon: pts[k][0] }, { lat: pts[k + 1][1], lon: pts[k + 1][0] })
+          : 0;
+        if (acc <= walkedAcc + seg) {
+          var tt = seg > 0 ? (acc - walkedAcc) / seg : 0;
+          var lat = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * tt;
+          var lon = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * tt;
+          var e2 = (lon - progress.snappedLon) * kx;
+      var n2 = (lat - progress.snappedLat) * ky;
+      var along2 = e2 * sinB + n2 * cosB;
+      var lateral2 = e2 * cosB - n2 * sinB;
+      var sp = toScreenLocal(along2, lateral2);
+          chev += '<path d="M ' + (sp.x - 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
+            ' L ' + sp.x.toFixed(1) + ' ' + (sp.y - 4).toFixed(1) +
+            ' L ' + (sp.x + 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
+            '" fill="none" stroke="rgba(23,20,16,.55)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>';
+          break;
+        }
+        walkedAcc += seg;
+      }
+    }
+    chevrons.innerHTML = chev;
+
+    // 你的箭头（偏离路径时画虚线连回路径）
+    var userLat = here ? here.lat : progress.snappedLat;
+    var userLon = here ? (here.lon !== undefined ? here.lon : here.lng) : progress.snappedLon;
+    var ue = (userLon - progress.snappedLon) * kx;
+    var un = (userLat - progress.snappedLat) * ky;
+    var uLateral = ue * cosB - un * sinB;
+    var ax = cX + uLateral * scaleX;
+    var ay = CY;
+    var deviated = Math.abs(uLateral) > 18;
+    var pathHeadX = cX;
+    var pathHeadY = CY;
+    arrowG.innerHTML =
+      (deviated ? '<line x1="' + pathHeadX + '" y1="' + pathHeadY + '" x2="' + ax.toFixed(1) + '" y2="' + ay +
+        '" stroke="#D25C3A" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>' : '') +
+      '<g transform="translate(' + ax.toFixed(1) + ',' + ay + ')">' +
+      '<circle r="17" fill="#E89B4C" opacity=".22"/>' +
+      '<circle r="12" fill="#FFFBF3" stroke="#E89B4C" stroke-width="2.5"/>' +
+      '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#171410"/>' +
+      '</g>';
+
+    // 北向标记（heading-up 时北在转动）
+    if (north) {
+      var nx = CX + Math.sin(-rad) * 112;
+      var ny = CY - Math.cos(-rad) * 112;
+      north.setAttribute('x', Math.max(14, Math.min(306, nx)));
+      north.setAttribute('y', Math.max(14, Math.min(186, ny)));
+    }
+    if (cap) {
+      cap.textContent = deviated
+        ? '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米'
+        : '箭头是你 · 只显示前方路径';
+    }
+  }
+
   /** 导航卡（整页唯一的距离数字与箭头都在这里） */
   function navCardHTML(session) {
     var nav = computeNav(session);
@@ -1767,6 +1954,9 @@
     }
     // 强调态
     card.classList.toggle('navcard--now', /^现在/.test(nav.main));
+
+    // 路径视图（只画前方窗口，终点不显示）
+    drawPathView(session);
 
     // 「接下来」列表：走一段后距离会变，必须跟着刷，否则显示的是旧数字
     var list = computeUpcoming(session);
@@ -3161,6 +3351,9 @@
     dom.main.innerHTML = journeyHTML();
     if (!preserveScroll) dom.main.scrollTop = 0;
     startJourneyTimer();
+    // 页面重建后立刻重绘导航与路径（路线是异步到的，不能等下一次 GPS 读数）
+    ui.navPatchAt = 0;
+    if (state.session) patchNav(state.session);
   }
 
   function startJourneyTimer() {

@@ -559,206 +559,6 @@
   };
 
   /** Valhalla 的 shape 是 polyline6 编码，解码成 [lon, lat] 数组 */
-  function decodePolyline6(encoded) {
-    if (!encoded || typeof encoded !== 'string') return [];
-    var index = 0;
-    var lat = 0;
-    var lon = 0;
-    var coords = [];
-    var len = encoded.length;
-    while (index < len) {
-      var shift = 0;
-      var result = 0;
-      var byte = 0;
-      do {
-        byte = encoded.charCodeAt(index) - 63;
-        index += 1;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20 && index < len);
-      lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-      shift = 0;
-      result = 0;
-      byte = 0;
-      do {
-        byte = encoded.charCodeAt(index) - 63;
-        index += 1;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20 && index < len);
-      lon += (result & 1) ? ~(result >> 1) : (result >> 1);
-      coords.push([lon / 1e6, lat / 1e6]);
-    }
-    return coords;
-  }
-
-  /**
-   * 把当前位置投影到路线上，得到「沿路线已经走了多少米 / 偏离路线多少米」。
-   * 有了它，转向提示才能按真实里程触发，而不是用直线距离猜。
-   */
-  function routeProgress(route, hereRaw) {
-    var here = norm(hereRaw);
-    if (!route || !route.points || route.points.length < 2 || !here) return null;
-    var pts = route.points;
-    var best = { distance: Infinity, walked: 0, offRoute: 0 };
-    var walked = 0;
-    for (var i = 0; i < pts.length - 1; i += 1) {
-      var ax = pts[i][0];
-      var ay = pts[i][1];
-      var bx = pts[i + 1][0];
-      var by = pts[i + 1][1];
-      var segMeters = distanceBetween({ lat: ay, lon: ax }, { lat: by, lon: bx });
-      // 以米为单位的平面近似（在本城市尺度足够）
-      var kx = Math.cos(here.lat * Math.PI / 180) * 111320;
-      var ky = 110540;
-      var px = here.lon * kx;
-      var py = here.lat * ky;
-      var axm = ax * kx;
-      var aym = ay * ky;
-      var bxm = bx * kx;
-      var bym = by * ky;
-      var vx = bxm - axm;
-      var vy = bym - aym;
-      var segLen2 = vx * vx + vy * vy;
-      var t = 0;
-      if (segLen2 > 0) t = ((px - axm) * vx + (py - aym) * vy) / segLen2;
-      t = Math.max(0, Math.min(1, t));
-      var cx = axm + vx * t;
-      var cy = aym + vy * t;
-      var dist = Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
-      if (dist < best.distance) {
-        best.distance = dist;
-        best.walked = walked + segMeters * t;
-        best.offRoute = dist;
-      }
-      walked += segMeters;
-    }
-    return { walked: best.walked, offRoute: best.offRoute, total: walked };
-  }
-
-  /**
-   * 取一条步行路线。
-   * @returns Promise<{distanceMeters, maneuvers: Array<{direction,label,cumulative,lat,lon,distance}>} | null>
-   */
-  function fetchRoute(fromRaw, toRaw) {
-    var from = norm(fromRaw);
-    var to = norm(toRaw);
-    if (!from || !to) return Promise.resolve(null);
-    var key = from.lat.toFixed(3) + ',' + from.lon.toFixed(3) + '->' + to.lat.toFixed(4) + ',' + to.lon.toFixed(4);
-    var cached = routeCache[key];
-    if (cached && Date.now() - cached.t < 10 * 60 * 1000) return Promise.resolve(cached.route);
-
-    var body = {
-      locations: [{ lat: from.lat, lon: from.lon }, { lat: to.lat, lon: to.lon }],
-      costing: 'pedestrian',
-      units: 'kilometers',
-      shape_format: 'geojson'
-    };
-    return fetchJSON(ROUTE_ENDPOINT, ROUTE_TIMEOUT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(function (data) {
-      var leg = data && data.trip && data.trip.legs && data.trip.legs[0];
-      if (!leg || !Array.isArray(leg.maneuvers) || !leg.maneuvers.length) return null;
-      var points = decodePolyline6(leg.shape);
-      var cumulative = 0;
-      var maneuvers = [];
-      for (var i = 0; i < leg.maneuvers.length; i += 1) {
-        var m = leg.maneuvers[i];
-        var meters = Math.max(0, Math.round((m.length || 0) * 1000));
-        var loc = (m.begin_shape_index !== undefined && points[m.begin_shape_index] !== undefined)
-          ? points[m.begin_shape_index]
-          : null;
-        var direction = MANEUVER_DIRECTION[m.type] || 'straight';
-        maneuvers.push({
-          direction: direction,
-          label: DIRECTION_LABEL[direction] || '直行',
-          distance: meters,                 // 这一段有多长
-          cumulative: cumulative,           // 从起点算起，到这个转向点的距离
-          lat: loc ? loc[1] : null,
-          lon: loc ? loc[0] : null
-        });
-        cumulative += meters;
-      }
-      var route = {
-        distanceMeters: Math.round((leg.summary && leg.summary.length ? leg.summary.length : cumulative / 1000) * 1000),
-        maneuvers: maneuvers,
-        points: points
-      };
-      routeCache[key] = { t: Date.now(), route: route };
-      return route;
-    }).catch(function () { return null; });
-  }
-
-  /**
-   * 根据「已走距离」算出当前该给什么指令。
-   * @returns {{ kind, main, sub, turnInMeters, direction, emphasis } | null}
-   */
-  function guidanceFor(route, walkedMeters) {
-    if (!route || !route.maneuvers || !route.maneuvers.length) return null;
-    var ms = route.maneuvers;
-    var walked = Math.max(0, walkedMeters);
-    var i = 0;
-    while (i + 1 < ms.length && walked >= ms[i + 1].cumulative - 4) i += 1;
-    var current = ms[i];
-    var next = ms[i + 1] || null;
-    if (!next) {
-      return { kind: 'arrive', main: '就在前面', sub: '再走几步就到了', turnInMeters: 0, direction: 'arrive', emphasis: true };
-    }
-    var turnIn = Math.max(0, Math.round(next.cumulative - walked));
-    // 到达提示
-    if (next.direction === 'arrive') {
-      return {
-        kind: 'arrive',
-        main: turnIn <= 25 ? '就在前面' : turnIn + ' 米就到了',
-        sub: turnIn <= 25 ? '抬头看看周围' : '沿着这条路一直走',
-        turnInMeters: turnIn,
-        direction: 'arrive',
-        emphasis: turnIn <= 25
-      };
-    }
-
-    var label = next.label;
-    var straightish = (next.direction === 'straight' || next.direction === 'slight-left' || next.direction === 'slight-right');
-    var main;
-    var sub;
-    if (straightish) {
-      main = turnIn > 120 ? '继续直行' : '继续直行 ' + turnIn + ' 米';
-      sub = '保持在同一条路上';
-    } else if (turnIn <= 12) {
-      main = '现在' + label;
-      sub = '拐过去继续走';
-    } else if (turnIn <= 45) {
-      main = turnIn + ' 米后' + label;      // 提前量：45 米内就提示
-      sub = '注意路口';
-    } else {
-      main = '继续直行';
-      sub = turnIn + ' 米后' + label;
-    }
-    return {
-      kind: straightish ? 'straight' : 'turn',
-      main: main,
-      sub: sub,
-      turnInMeters: turnIn,
-      direction: next.direction,
-      emphasis: turnIn <= 25 && !straightish
-    };
-  }
-
-  /** 把方向转成箭头 */
-  function directionArrow(direction) {
-    switch (direction) {
-      case 'left': case 'sharp-left': return '↰';
-      case 'slight-left': return '↖';
-      case 'right': case 'sharp-right': return '↱';
-      case 'slight-right': return '↗';
-      case 'uturn': return '⟲';
-      case 'roundabout': return '↻';
-      case 'arrive': return '◉';
-      default: return '↑';
-    }
-  }
 
   function distanceBetween(a, b) {
     var R = 6371000;
@@ -1536,7 +1336,7 @@
     var here = norm(hereRaw);
     if (!route || !route.points || route.points.length < 2 || !here) return null;
     var pts = route.points;
-    var best = { distance: Infinity, walked: 0, offRoute: 0 };
+    var best = { distance: Infinity, walked: 0, offRoute: 0, index: 0, t: 0, lat: here.lat, lon: here.lon, bearing: 0 };
     var walked = 0;
     for (var i = 0; i < pts.length - 1; i += 1) {
       var ax = pts[i][0];
@@ -1566,10 +1366,31 @@
         best.distance = dist;
         best.walked = walked + segMeters * t;
         best.offRoute = dist;
+        best.index = i;
+        best.t = t;
+        // 吸附到路径上的点 + 这一段的行进朝向（用于画「你」的箭头）
+        best.lat = (ay + (by - ay) * t);
+        best.lon = (ax + (bx - ax) * t);
+        // 这一段的行进朝向（0=正北，顺时针）
+        var lat1r = ay * Math.PI / 180;
+        var lat2r = by * Math.PI / 180;
+        var dLonr = (bx - ax) * Math.PI / 180;
+        var yy = Math.sin(dLonr) * Math.cos(lat2r);
+        var xx = Math.cos(lat1r) * Math.sin(lat2r) - Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLonr);
+        best.bearing = (Math.atan2(yy, xx) * 180 / Math.PI + 360) % 360;
       }
       walked += segMeters;
     }
-    return { walked: best.walked, offRoute: best.offRoute, total: walked };
+    return {
+      walked: best.walked,
+      offRoute: best.offRoute,
+      total: walked,
+      index: best.index,
+      t: best.t,
+      snappedLat: best.lat,
+      snappedLon: best.lon,
+      bearing: best.bearing
+    };
   }
 
   /**
