@@ -781,6 +781,24 @@
     });
   }
 
+  /** 商业 POI 黑名单：这些地方不值得"盲走"，哪怕地图上有 */
+  var POI_BAD_WORDS = /快递|丰巢|菜鸟|驿站|停车场|停车库|加油站|充电站|公厕|厕所|垃圾|污水|变电|美容|美发|理发|足浴|按摩|足疗|养生|汗蒸|地产|房产|中介|银行|ATM|自助取款|药房|大药房|门诊|诊所|超市|便利店|菜市场|农贸|五金|建材|汽修|洗车|驾校|营业厅|打印|复印|网吧|棋牌|麻将|KTV|酒吧|夜总会|售楼|写字楼|工业园|仓库|物流|工厂/;
+
+  /** 有「散步/探索」价值的类别（其余类别降权） */
+  var POI_GOOD_CATS = {
+    park: 1, garden: 1, temple: 1, historic: 1, museum: 1, art: 1,
+    library: 1, viewpoint: 1, river: 1, bridge: 1, cafe: 1, bookstore: 1, market: 1, plaza: 1
+  };
+
+  function isWalkworthy(candidate) {
+    var name = candidate.name || '';
+    if (!name || name.length < 2) return false;
+    if (POI_BAD_WORDS.test(name)) return false;
+    // 纯数字/编号命名（如「3号楼」「A座」）也不适合
+    if (/^[0-9A-Za-z\-\s]+$/.test(name)) return false;
+    return true;
+  }
+
   /** 从多数据源候选里挑一个（距离 + 心情加权 + 可复现随机） */
   function pickProvider(list, mood, startMeters, origin, minDistance, maxDistance, seed) {
     if (!list || !list.length) return null;
@@ -788,6 +806,7 @@
     for (var i = 0; i < list.length; i += 1) {
       var c = list[i];
       if (typeof c.lat !== 'number' || typeof c.lon !== 'number') continue;
+      if (!isWalkworthy(c)) continue;
       var d = distanceBetween(origin, { lat: c.lat, lon: c.lon });
       if (d < minDistance || d > maxDistance) continue;
       var cat = c.category || 'plaza';
@@ -796,7 +815,9 @@
       if (mood === 'drift' && (cat === 'park' || cat === 'river' || cat === 'temple' || cat === 'historic')) w = 1.5;
       if (mood === 'discover' && (cat === 'art' || cat === 'library' || cat === 'viewpoint' || cat === 'museum')) w = 1.7;
       if (mood === 'lively' && (cat === 'plaza' || cat === 'market' || cat === 'cafe')) w = 1.6;
-      if (c.photoUrl) w *= 1.15;   // 有图的优先（揭晓体验更好）
+      if (!POI_GOOD_CATS[cat]) w *= 0.35;      // 类别本身不适合散步 → 大幅降权
+      if (c.source === 'wiki' || c.source === 'osm') w *= 1.25;  // 百科/OSM 通常比商业 POI 更有"地点感"
+      if (c.photoUrl) w *= 1.15;               // 有图的优先（揭晓体验更好）
       pool.push({ poi: c, weight: w, distance: d });
     }
     if (!pool.length) return null;
