@@ -3173,3 +3173,144 @@ body[data-mode="standalone"] .toast-root {
   html.is-touch .upcoming { margin: 10px 16px 0; padding: 10px 12px 8px; }
   html.is-touch .upcoming__row { font-size: 12.5px; padding: 4px 0; }
 }
+
+/* ============================================================
+   30. 定位受阻面板（不许静默用虚构地点）
+   ============================================================ */
+
+.locblock {
+  margin: 0 0 14px;
+  padding: 16px 16px 14px;
+  background: rgba(210, 92, 58, .06);
+  border: 1px solid rgba(210, 92, 58, .28);
+  border-radius: 16px;
+}
+
+.locblock__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.locblock__text {
+  margin: 6px 0 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink2);
+}
+
+.locblock__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.locblock__actions .btn {
+  flex: 1;
+  height: 42px;
+  font-size: 13.5px;
+}
+
+.locblock__demo {
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--ink3, #A69C8C);
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* 揭晓卡：演示地点标记（与「真实地点/编辑精选」同结构） */
+.revealcard__demo {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  color: #8B7E6B;
+  background: rgba(166, 156, 140, .14);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* ============================================================
+   31. 揭晓照片兜底（加载失败不显示破图）
+   ============================================================ */
+
+.reveal-card__photofallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 168px;
+  background: var(--cream2, #EFE6D6);
+  color: var(--ink2);
+}
+
+.reveal-card__photofallback[hidden] { display: none; }
+
+.reveal-card__photofallback span { font-size: 30px; line-height: 1; }
+
+.reveal-card__photofallback p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink3, #A69C8C);
+}
+
+.reveal-card__photofallback button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 155, 76, .45);
+  background: rgba(232, 155, 76, .12);
+  color: #B4700F;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.reveal-card__figure.is-broken .reveal-card__credit { display: none; }
+
+/* 图片加载中的底色（避免白块闪一下） */
+.reveal-card__photo {
+  background: var(--cream2, #EFE6D6);
+}
+
+/* 揭晓照片：加载中占位（避免空白让人以为坏了） */
+.reveal-card__photoloading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 168px;
+  background: var(--cream2, #EFE6D6);
+}
+
+.reveal-card__photoloading[hidden] { display: none; }
+
+.reveal-card__photoloading p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink3, #A69C8C);
+}
+
+.reveal-card__spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(23, 20, 16, .12);
+  border-top-color: var(--amber);
+  animation: bwspin .8s linear infinite;
+}
+
+@keyframes bwspin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card__spinner { animation: none; border-top-color: rgba(23, 20, 16, .3); }
+}
