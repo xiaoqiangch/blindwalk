@@ -14,6 +14,7 @@
 
 import {
   Achievement,
+  Area,
   BuriedSurprise,
   FeedPost,
   GeoPoint,
@@ -25,7 +26,9 @@ import {
   QuestEvent,
   QuestPhase,
   QuestSession,
+  PlaceCard as PlaceCardType,
   Rarity,
+  ReactionKey,
   SurpriseFindResult,
   WalkDuration,
 } from './types';
@@ -37,9 +40,25 @@ export interface AppSnapshot {
   session?: QuestSession;
   /** 当前旅程对应的地点（到达前 UI 不得展示 name） */
   currentPlace?: Place;
+  /**
+   * 地点库：内置 24 个 + 本次抽到过的真实地点。
+   * 图鉴/首页「上一次的惊喜」用它把 PlaceCard.placeID 还原成完整地点。
+   */
+  places: Place[];
+  /**
+   * 揭晓卡编号（如 "0247"）。到达后才有值；到达前为 undefined。
+   * UI 在 Reveal 页用它渲染 `No.0247`。
+   */
+  revealSerial?: string;
+  /** 当前地点对应的卡片（收录后才有值，用于「去图鉴看看」跳转） */
+  currentCard?: PlaceCardType;
+  /** 同频码：好友输入同一个码，各自开盒、结束后交换线索（演示值即可） */
+  togetherCode: string;
   /** 抽盒设置 */
   selectedMood: Mood;
   selectedDuration: WalkDuration;
+  /** 抽盒区域（可选） */
+  selectedArea?: Area;
   /** 最近一次确认位置（抽盒起点 / 真实定位用） */
   lastKnownOrigin?: GeoPoint;
   /** 附近可探索的惊喜（已按距离排序） */
@@ -76,6 +95,8 @@ export interface BlindWalkStoreApi {
   setMood(mood: Mood): void;
   /** 选择时长 */
   setDuration(duration: WalkDuration): void;
+  /** 选择区域：附近 / 河边 / 老城区；不传 = 不限 */
+  setArea(area?: Area): void;
   /**
    * 抽一个盲盒并开始旅程。
    * @param origin 用户真实坐标；不传则用 lastKnownOrigin；都没有则用演示坐标（demoMode = true）
@@ -109,6 +130,8 @@ export interface BlindWalkStoreApi {
    * @param seekerHash 寻到者照片的 64 位 dHash
    */
   compareSurprise(surpriseId: string, seekerHash: string): SurpriseCompareResult | undefined;
+  /** 圈子：给某条动态加/取消一个反应（乐观 UI 由 UI 层自己做） */
+  reactToPost(postID: string, reaction: ReactionKey): void;
   /** 结算一次「寻到」：发放双向探索值、标记已找到 */
   completeSurpriseFind(surpriseId: string, similarity: number): SurpriseFindResult | undefined;
 

@@ -88,6 +88,17 @@
 | iOS Duo 模拟器渲染 | ⚠️ headless 无法唤醒外屏（需 GUI 展开），待真机复核 |
 | 公网 | ✅ 已部署 blindwalk-v5-duo |
 
+### 2026-11-09 09:55 · v0.6 鸿蒙移植（HarmonyOS NEXT）
+
+| 项 | 结果 |
+|---|---|
+| 工程骨架（DevEco 标准结构 / AppScope / module.json5 / 权限 / 图标） | ✅ |
+| 逻辑层（geo / engine / session / dHash / 成就 / store / 持久化） | ✅ 39/39 单元测试通过 |
+| 独立复核（Lead 自写脚本，不依赖队友测试） | ✅ 15 项全过 |
+| ArkUI 界面 7 页 + 8 组件（4206 行） | ✅ 静态检查通过，待 DevEco 首编 |
+| 修掉的保密漏洞 | ✅ 到达前 `why`/`task` 会泄露地点特征，已清空并补测试 |
+| 本地可跑校验 | `bash scripts/check-harmony.sh` |
+
 ## 5. 风险与对策
 
 | 风险 | 影响 | 对策 |
@@ -96,6 +107,7 @@
 | Web 原型无真实定位 | 体验依赖「模拟步行」 | 演示模式显式标注「演示」；真实定位为 v0.2 |
 | 设计文档与实现偏差 | 三端不一致 | 契约唯一来源 design-system.md；Lead 终审截图与文案 |
 | 地点数据为虚构 | 不能直接上线 | ✅ v0.4 已接真实 POI（OSM / MapKit） |
+| 本机无 DevEco Studio / hvigor | 鸿蒙 UI 未经真实编译 | 逻辑层用 tsc+Node 校验；ArkTS 侧写静态检查脚本；5 处 API 签名标 `待 DevEco 验证`，首编按错误清单机械调整 |
 | 折叠屏模拟器无法 headless 驱动 | iOS 宽屏布局未视觉复核 | 已实现并构建通过；需在 Xcode/DeviceHub 手动展开 Duo 复核；Web 侧已验证等价布局 |
 
 ## 6. 变更记录

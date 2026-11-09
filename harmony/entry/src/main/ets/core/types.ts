@@ -158,6 +158,9 @@ export interface Achievement {
   unlockedAt?: number;
 }
 
+/** 圈子反应的三个键（对应 Web 原型的 eyes / heart / next） */
+export type ReactionKey = 'eyes' | 'heart' | 'next';
+
 export interface FeedPost {
   id: string;
   authorName: string;
@@ -167,8 +170,10 @@ export interface FeedPost {
   rarity: Rarity;
   caption: string;
   createdAt: number;
-  /** 反应计数：羡慕 / 一起 / 下次带我 */
+  /** 反应计数：eyes=羡慕 / heart=一起 / next=下次带我 */
   reactions: Record<string, number>;
+  /** 我是否已点过某个反应 */
+  reacted?: Record<string, boolean>;
   isMine: boolean;
 }
 

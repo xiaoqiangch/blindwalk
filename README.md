@@ -169,7 +169,7 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | 埋惊喜 / 寻惊喜（v0.3） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
 | **真实地理信息（v0.4 新）** | ✅ Web 用 Overpass 真实 POI + Nominatim 真实街道名；iOS 用 MapKit 真实 POI + 真实地图；目的地仍然保密 |
 | 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
-| **鸿蒙移植（HarmonyOS NEXT）** | 🚧 v0.6 进行中：ArkTS/ArkUI 工程 + 逻辑层（含 Node 测试）+ 7 个主界面，见 [harmony/docs/HARMONY.md](harmony/docs/HARMONY.md) |
+| **鸿蒙移植（HarmonyOS NEXT）** | ✅ v0.6 代码完成：ArkTS/ArkUI 工程 + 逻辑层 39 项测试全绿 + 7 个主界面，待 DevEco 首编，见 [harmony/docs/HARMONY.md](harmony/docs/HARMONY.md) |
 | **折叠屏适配（iPhone Duo）** | ✅ Web 已全量验证（466×678 / 669×951）；iOS 已实现待 GUI 复核，见 [foldable.md](docs/foldable.md) |
 | iPhone↔Watch 同步 | ✅ 完成（摘要推送 + 打卡回传，端到端实测） |
 | 后台持续定位 / 本地通知 | ⏳ 需 Always 授权升级开关（v0.2 剩余项） |

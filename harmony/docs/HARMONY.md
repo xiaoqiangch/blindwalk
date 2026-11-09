@@ -50,8 +50,8 @@ entry/src/main/ets/
 | DevEco 标准工程结构（AppScope / entry / hvigorfile / build-profile / oh-package / module.json5） | ✅ |
 | 应用图标、启动页背景、权限声明（INTERNET / LOCATION / APPROXIMATELY_LOCATION） | ✅ |
 | 数据契约 + UI 调用契约（`core/types.ts`、`core/contract.ts`） | ✅ 类型检查 0 error |
-| 逻辑层移植（地理 / 抽盒 / 会话 / dHash / 成就 / 演示数据 / store / 持久化） | ✅ 见 §4 |
-| ArkUI 界面（7 个主界面） | ✅ 代码完成，静态检查通过，**待 DevEco 首编验证** |
+| 逻辑层移植（地理 / 抽盒 / 会话 / dHash / 成就 / 演示数据 / store / 持久化） | ✅ **39 项单元测试全绿**，见 §4 |
+| ArkUI 界面（7 个主界面 + 8 个共享组件，共 4206 行） | ✅ 代码完成，静态检查 20 个 .ets 全通过，**待 DevEco 首编验证** |
 | 真实定位（`@ohos.geoLocationManager`） | ✅ 已接，权限拒绝会降级到演示模式 |
 | 真实地图 | ⏳ 本轮用 ArkUI Canvas 手绘抽象街区（和 Web 版同源），不引入需 AGC 配置的 Map Kit |
 | 埋惊喜 / 寻惊喜界面 | ⏳ 逻辑层已备好；界面本轮只放首页入口卡片 |
@@ -90,6 +90,42 @@ File → Project Structure → Signing Configs → 勾选 Automatically generate
 ---
 
 ## 4. 逻辑层校验（本机可跑，真实结果）
+
+最近一次运行（2026-11-09 09:5x）：
+
+```
+1. tsc -p tsconfig.test.json --noEmit   → 0 error
+2. npm test                             → 39/39 通过
+3. ArkTS 静态检查（20 个 .ets）           → 0 error
+    ✅ import 路径  ✅ ArkTS 严格模式  ✅ ForEach key
+    ✅ @Entry 注册  ✅ 资源引用       ✅ 保密规则  ✅ 工程契约
+```
+
+Lead 还做了一轮**不依赖队友测试的独立复核**（自己写脚本 import 编译产物）：
+
+| 复核项 | 结果 |
+|---|---|
+| 北京→上海距离 ≈ 1067 km（Haversine） | ✅ 1067 km |
+| 正北偏移 100m 后距离 ≈ 100m、方位角 ≈ 0° | ✅ 100.00m / 0.00° |
+| 线索阈值：300m 不解锁第 2 条；199m 解锁第 2 条；50m 解锁第 3 条 | ✅ |
+| 20m 触发 `arrived` | ✅ |
+| 15 分钟档 300 次抽盒：hidden = 0 | ✅ |
+| 60 分钟档 300 次抽盒：出现 hidden | ✅ |
+| 快照必填字段齐全（含 places=24 / togetherCode） | ✅ |
+| 真实坐标会话 → 走到目的地自动到达 | ✅ |
+| dHash 1 位差 → 相似度 0.96875、完全相同 → 1.0 | ✅ |
+| 到达前快照不含真实地点名 | ✅（修了下面这个漏洞） |
+
+### 4.1 独立复核时发现并修掉的保密漏洞
+
+原实现 `maskPlaceForWalking()` 只清 `name` 和 `address`，但 `why` 会描述地点特征：
+```jsonc
+// 到达前仍能被看到：
+"why": "花店开在菜场后门，门口永远湿漉漉的。\n老板会把卖剩的花扎成一把…",
+"name": ""   // 名字遮了，why 却把人带到花店
+```
+已改为 `why` / `task` 一并清空，`hints` 再过一遍 `scrubHints()`，并补了对应测试。
+**这条规则现在有测试守着**，后续改动不会退化。
 
 ```bash
 bash scripts/check-harmony.sh
@@ -137,7 +173,21 @@ bash scripts/check-harmony.sh
 
 ---
 
-## 7. 立即可测的替代路径（今晚就能用）
+## 7. 待 DevEco 首编验证的点
+
+代码里已标 `⚠️ 待 DevEco 验证` 的共 5 处（都是 API 签名层面，写法取了官方文档最保守的形式）：
+
+| 文件 | 待验证内容 |
+|---|---|
+| `entryability/EntryAbility.ets` | `windowStage.loadContent` 回调签名、`setWindowBackgroundColor` |
+| `components/Location.ets` | `geoLocationManager.getCurrentLocation` / `on('locationChange')` 的 API 12 写法 |
+| `components/PreferencesKV.ets` | `@kit.ArkData` 的 `preferences.getSync / putSync / deleteSync` 签名 |
+| `components/AbstractMap.ets` | `CanvasRenderingContext2D` 的字体与 `lineDash` 写法 |
+| `components/Async.ets` | `@kit.BasicServicesKit` 的 pasteboard 导入方式 |
+
+首次编译报错大概率集中在这 5 处，改起来都是机械调整。其余（组件树、装饰器、状态管理）是按 ArkTS 规范写的。
+
+## 8. 立即可测的替代路径（今晚就能用）
 
 鸿蒙浏览器（华为浏览器）内核是 Chromium，**现有 PWA 可以直接在鸿蒙手机上跑**：
 
@@ -149,7 +199,7 @@ bash scripts/check-harmony.sh
 
 ---
 
-## 8. 路线图
+## 9. 路线图
 
 | 版本 | 内容 |
 |---|---|
@@ -161,7 +211,7 @@ bash scripts/check-harmony.sh
 
 ---
 
-## 9. 目录速查
+## 10. 目录速查
 
 ```
 harmony/
