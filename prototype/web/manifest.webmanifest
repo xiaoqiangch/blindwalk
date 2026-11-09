@@ -2,7 +2,7 @@
   "name": "步谜",
   "short_name": "步谜",
   "description": "散步盲盒：不告诉你目的地，到了才揭晓。用脚解一个不知道答案的谜。",
-  "start_url": "./index.html?demo=1#/home",
+  "start_url": "./index.html#/home",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
