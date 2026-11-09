@@ -35,6 +35,25 @@ struct BlindWalkApp: App {
                 store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
                 _ = store.startQuest()
             }
+            // 真实 POI 自检：用内置的一条真实 POI 直接建旅程（不走 MapKit，离线可复现）
+            if preview == "realquest" {
+                let origin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
+                store.lastKnownOrigin = origin
+                _ = store.startQuest(origin: origin)
+                let poi = POICandidate(
+                    id: "apple-demo-1",
+                    name: "南京东路的一家咖啡窗口",
+                    coordinate: GeoMath.offset(from: origin, meters: 320, bearingDegrees: 45),
+                    address: "黄浦区 · 南京东路",
+                    category: .cafe,
+                    source: "apple"
+                )
+                let realPlace = RealPlaceFactory.scrub(RealPlaceFactory.makePlace(
+                    from: poi, origin: origin, mood: .drift, hour: 9, startMeters: 480
+                ))
+                store.session?.target = realPlace.coordinate
+                store.currentPlace = realPlace
+            }
             return store
         }
         let persistence = UserDefaultsProfileStore()
@@ -83,7 +102,7 @@ struct RootView: View {
         default: tab = .home
         }
         _selectedTab = State(initialValue: tab)
-        _isJourneyPresented = State(initialValue: ["journey", "reveal", "live"].contains(preview))
+        _isJourneyPresented = State(initialValue: ["journey", "reveal", "live", "realquest"].contains(preview))
     }
 
     var body: some View {

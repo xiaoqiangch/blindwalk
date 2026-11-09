@@ -12,6 +12,7 @@ struct BoxSetupSheet: View {
     @State private var shakeAngle: Double = 0
     @State private var isShaking = false
     @State private var startFailed = false
+    @State private var isLookingUp = false
 
     var body: some View {
         ZStack {
@@ -258,13 +259,58 @@ struct BoxSetupSheet: View {
         }
     }
 
+    /// 抽盒：优先用 MapKit 查到的真实 POI；查不到/超时就退回内置地点（标注演示）
     private func startQuest() {
-        let place = store.startQuest()
-        guard place != nil else {
-            startFailed = true
+        let origin = store.lastKnownOrigin
+        guard let origin else {
+            // 还没有定位：走内置地点（演示模式）
+            let place = store.startQuest()
+            guard place != nil else { startFailed = true; return }
+            BWHaptics.medium()
+            onStart()
             return
         }
-        BWHaptics.medium()
-        onStart()
+
+        isLookingUp = true
+        Task { @MainActor in
+            let candidates = await MapKitPlaceService.shared.nearbyPlaces(
+                around: origin,
+                radiusMeters: store.selectedDuration.radiusMeters,
+                moods: [store.selectedMood]
+            )
+            isLookingUp = false
+
+            let picked = RealPlaceFactory.pick(
+                from: candidates,
+                origin: origin,
+                mood: store.selectedMood,
+                startMeters: store.selectedDuration.startMeters,
+                seed: UInt64(Date().timeIntervalSince1970)
+            )
+
+            guard let place = store.startQuest(origin: origin) else {
+                startFailed = true
+                return
+            }
+            _ = place
+
+            if let picked {
+                let hour = Calendar.current.component(.hour, from: Date())
+                let realPlace = RealPlaceFactory.scrub(RealPlaceFactory.makePlace(
+                    from: picked,
+                    origin: origin,
+                    mood: store.selectedMood,
+                    hour: hour,
+                    startMeters: store.selectedDuration.startMeters
+                ))
+                // 覆盖成真实 POI：目的地坐标 + 展示用真实地点
+                store.session?.target = realPlace.coordinate
+                store.currentPlace = realPlace
+                // 首次定位点合理性：直接以真实坐标为起点重算总距离
+            }
+
+            BWHaptics.medium()
+            onStart()
+        }
     }
 }

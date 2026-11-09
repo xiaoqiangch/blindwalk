@@ -38,6 +38,8 @@ struct JourneyView: View {
     @State private var authorization: LocationAuthorization = .notDetermined
     /// 最近一次有效定位读数
     @State private var lastReading: LocationReading?
+    /// 已走轨迹（真实地图上画出来；只画走过的，不画终点）
+    @State private var walkedTrail: [GeoPoint] = []
     /// 手机朝向（真机才有）
     @State private var headingDegrees: Double?
     /// 用户主动选择「用演示模式继续」
@@ -276,26 +278,42 @@ struct JourneyView: View {
 
     private func mapSection(session: QuestSession) -> some View {
         ZStack(alignment: .topLeading) {
-            JourneyMapView(
-                progress: session.progress,
-                remainingMeters: session.remainingMeters
-            )
-
-            HStack(spacing: 5) {
-                Image(systemName: "eye.slash")
-                    .font(.system(size: 9, weight: .semibold))
-                Text("目的地保密中 · 还有 \(session.remainingMeters) 米")
-                    .font(.system(size: 11, weight: .medium))
-                    .italic()
+            // 真实地点 + 有真实坐标 → 真实地图；否则退回抽象手绘地图
+            if session.target != nil, store.currentPlace?.source != "catalog" {
+                // 真实地图内部已经画了「目的地保密中」胶囊，外层不再重复
+                RealMapView(
+                    userLocation: store.lastKnownOrigin,
+                    trail: walkedTrail,
+                    remainingMeters: session.remainingMeters,
+                    height: nil
+                )
+            } else {
+                JourneyMapView(
+                    progress: session.progress,
+                    remainingMeters: session.remainingMeters
+                )
+                mapCaption(session: session)
             }
-            .foregroundStyle(BWTheme.ink2)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(BWTheme.cream.opacity(0.88))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
-            .padding(12)
         }
+    }
+
+    /// 抽象地图上的「目的地保密中」胶囊（真实地图自带，不重复画）
+    private func mapCaption(session: QuestSession) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "eye.slash")
+                .font(.system(size: 9, weight: .semibold))
+            Text("目的地保密中 · 还有 \(session.remainingMeters) 米")
+                .font(.system(size: 11, weight: .medium))
+                .italic()
+        }
+        .foregroundStyle(BWTheme.ink2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(BWTheme.cream.opacity(0.88))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: 距离
@@ -808,6 +826,20 @@ struct JourneyView: View {
         // 记下最近定位点，下一次抽盒时 startQuest 可以直接用它当起点
         if let origin = reading.origin {
             store.lastKnownOrigin = origin
+            // 轨迹：只在移动超过 8 米时记录，避免 GPS 抖动画出毛线团
+            if let last = walkedTrail.last {
+                if GeoMath.distance(from: last, to: origin) >= 8 {
+                    walkedTrail.append(origin)
+                }
+            } else {
+                walkedTrail.append(origin)
+            }
+        }
+
+        // 会话已经有真实目的地（真实 POI / 真实坐标）→ 把这个坐标交给定位服务，
+        // 否则 service 不知道 target，距离永远停在初始值。
+        if service.target == nil, let existing = store.session?.target {
+            service.target = existing
         }
 
         // 会话还没有真实目的地 → 用当前位置 + 剩余距离 + 固定方向补一个
@@ -839,7 +871,9 @@ struct JourneyView: View {
         // 抽盒时用的起点可能是上一次缓存的、已经过期的位置（在家抽的盒、人已经走到别处），
         // 只在这个时间窗内、且算出来跟「总路程」差得离谱时，才按当前位置重建目的地。
         // 中途恢复的旧旅程不动它——那时 remaining 本来就该小于 total。
-        if !didValidateFirstFix {
+        // 真实 POI / 真实坐标的旅程：目的地是真实存在的，不能按「漂移」重建
+        let isRealPlaceQuest = store.currentPlace.map { $0.source != "catalog" } ?? false
+        if !isRealPlaceQuest, !didValidateFirstFix {
             didValidateFirstFix = true
             if let session = store.session,
                Date().timeIntervalSince(session.startedAt) < 180 {
@@ -885,7 +919,9 @@ struct JourneyView: View {
             locationMode = .demo
             return
         }
-        guard liveService != nil, canAdoptTarget || store.session?.target != nil else {
+        // 已经有真实目的地（真实 POI / 真实坐标）：即使还没收到定位读数，也属于 tracking
+        let hasRealTarget = store.session?.target != nil && store.currentPlace?.source != "catalog"
+        guard liveService != nil || hasRealTarget, canAdoptTarget || hasRealTarget else {
             locationMode = .demo
             return
         }

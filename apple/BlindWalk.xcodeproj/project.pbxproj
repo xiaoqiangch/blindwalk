@@ -21,6 +21,7 @@
 		35471DD9BB27D9D8199E124F /* WatchStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */; };
 		414B34AF4CE288CA207ED3AA /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA40E0C2A43409A4E481D14E /* Persistence.swift */; };
 		425A93736B96BE49F53748DF /* Surprise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9253D71503B5F918050C51F4 /* Surprise.swift */; };
+		482F1D222B1FBC0A7960977F /* MapKitPlaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */; };
 		4BF57F97C11C20CA6889EBB8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBA8CF4BC1C0A062E8A18418 /* Theme.swift */; };
 		622A6CE08A4595690C4F6A17 /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */; };
 		65367C04799084881DD01F8B /* WatchRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */; };
@@ -53,14 +54,17 @@
 		D14E5970216DCFC601D88D3F /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		D482C8E10719BC15E7C2CC6A /* BWUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */; };
 		D5025E8173D9743FC3854DE7 /* BlindWalkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 62D026A54430D6071C532D3F /* BlindWalkWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DB1FC20885913E7BB8C84A58 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DCE5FA997B304D62130D27 /* BWComponents.swift */; };
 		E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */; };
 		E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */; };
+		EAA1B03724EB6CC685C561E6 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
 		FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */; };
 		FF6E51B46C4D7F475BFAF112 /* Geo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC584FA7E099332F73FFF6 /* Geo.swift */; };
 		FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */; };
+		FFDBCADFB25177EB4E85FBD9 /* RealMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90861B528F81DAE111BF4C7B /* RealMapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +92,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealPlace.swift; sourceTree = "<group>"; };
 		0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRevealView.swift; sourceTree = "<group>"; };
 		07421175E805830B544FE273 /* WatchStatusChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStatusChip.swift; sourceTree = "<group>"; };
 		07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkWatchApp.swift; sourceTree = "<group>"; };
@@ -106,9 +111,11 @@
 		546E206FAC40B7771C273A42 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWUtilities.swift; sourceTree = "<group>"; };
 		62D026A54430D6071C532D3F /* BlindWalkWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlindWalkWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKitPlaceService.swift; sourceTree = "<group>"; };
 		689294560BE4BF6181B1453D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		79E14316DB285700ADB0BCE9 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkStore.swift; sourceTree = "<group>"; };
+		90861B528F81DAE111BF4C7B /* RealMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealMapView.swift; sourceTree = "<group>"; };
 		9253D71503B5F918050C51F4 /* Surprise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surprise.swift; sourceTree = "<group>"; };
 		95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
 		9DA5D682DDD8E3C01A93D097 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -169,6 +176,7 @@
 				EA40E0C2A43409A4E481D14E /* Persistence.swift */,
 				5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */,
 				AA513A9498B51AFE53978783 /* QuestSession.swift */,
+				0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */,
 				D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */,
 				9253D71503B5F918050C51F4 /* Surprise.swift */,
 				B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */,
@@ -218,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				79E14316DB285700ADB0BCE9 /* LocationService.swift */,
+				6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */,
 				95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */,
 				E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */,
 			);
@@ -235,6 +244,7 @@
 				E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */,
 				AFE1A9F06329E16054D9DE63 /* JourneyView.swift */,
 				9DA5D682DDD8E3C01A93D097 /* ProfileView.swift */,
+				90861B528F81DAE111BF4C7B /* RealMapView.swift */,
 				A05814C4F86D14A5BC867AA3 /* RevealView.swift */,
 				1848811E5667A8E2B18E2E38 /* SeekSurpriseView.swift */,
 				D8B5340A7CFC80269A2CE14B /* SocialView.swift */,
@@ -345,6 +355,7 @@
 				414B34AF4CE288CA207ED3AA /* Persistence.swift in Sources */,
 				6CF0F147BB80CF22136F9237 /* PlaceCatalog.swift in Sources */,
 				0BFDE57FA86DD528503B8457 /* QuestSession.swift in Sources */,
+				DB1FC20885913E7BB8C84A58 /* RealPlace.swift in Sources */,
 				7F74E17A691172CB45C49507 /* SocialFeed.swift in Sources */,
 				89AAF8051CB82D6BD719F36B /* Surprise.swift in Sources */,
 				899D80DAD5C54859810269A8 /* Theme.swift in Sources */,
@@ -378,12 +389,15 @@
 				FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */,
 				C61F053670A332BE0C7CFFC5 /* JourneyView.swift in Sources */,
 				9501666D3FE38F8994806EA3 /* LocationService.swift in Sources */,
+				482F1D222B1FBC0A7960977F /* MapKitPlaceService.swift in Sources */,
 				1159B26E2CFE0B1EFC38F296 /* Models.swift in Sources */,
 				A91EA277D8E111D51C0951A5 /* Persistence.swift in Sources */,
 				E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */,
 				25A60ADFA39A5051A7425486 /* PlaceCatalog.swift in Sources */,
 				9D9494B1FC5D0668FC151D47 /* ProfileView.swift in Sources */,
 				1CF184EA2DDCB3BE42E170CE /* QuestSession.swift in Sources */,
+				FFDBCADFB25177EB4E85FBD9 /* RealMapView.swift in Sources */,
+				EAA1B03724EB6CC685C561E6 /* RealPlace.swift in Sources */,
 				98C9CEC460107F273DAC5346 /* RevealView.swift in Sources */,
 				B8DA9B33C2E644FD6A5C318F /* SeekSurpriseView.swift in Sources */,
 				1EF7B8ADDA08401FFDED0A1B /* SocialFeed.swift in Sources */,
