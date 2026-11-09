@@ -3424,7 +3424,7 @@ button, .btn {
 .pathview__cap {
   position: absolute;
   left: 12px;
-  bottom: 9px;
+  top: 10px;
   margin: 0;
   padding: 3px 9px;
   border-radius: 999px;
@@ -3483,3 +3483,28 @@ button, .btn {
 @media (max-height: 720px) {
   html.is-touch .pathview__svg { min-height: 160px; height: 160px; }
 }
+
+/* 迷雾感：路径卡片上下两端加雾层（配合线段逐段渐隐） */
+.pathview::before,
+.pathview::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 46px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pathview::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--paper) 0%, rgba(255, 251, 243, .55) 46%, rgba(255, 251, 243, 0) 100%);
+}
+
+.pathview::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--paper) 0%, rgba(255, 251, 243, .5) 42%, rgba(255, 251, 243, 0) 100%);
+}
+
+.pathview__svg { position: relative; z-index: 0; }
+.pathview__cap { z-index: 2; }
