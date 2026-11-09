@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "exportedAt": 1794194319395,
-  "count": 3,
+  "exportedAt": 1794195724364,
+  "count": 13,
   "pois": [
     {
       "id": "poi-191b1b",
@@ -76,9 +76,269 @@
         "就在前面。抬手机，慢慢看。"
       ],
       "safety": {
+        "day": 4,
+        "night": 3,
+        "nightVerdict": "caution"
+      }
+    },
+    {
+      "id": "poi-589514",
+      "name": "上海大世界",
+      "lat": 31.23027778,
+      "lon": 121.47444444,
+      "category": "plaza",
+      "emoji": "⛲️",
+      "rarity": "common",
+      "area": "near",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Shanghai_luna_park.jpg/960px-Shanghai_luna_park.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "上海大世界，又名大世界遊樂中心、大世界遊樂場，簡稱大世界，是位於上海的一個大型機動遊樂場，由黃楚九於1917年創立，1928年重建，設施至今如是。有稱「不到大世界，枉來大上海」。1989年当选为上海市文物保护单位。 上海大世界地址位於西藏南",
+      "why": "「广场」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "观察 30 秒，找出走得最慢的那个人。",
+      "hints": [
+        "人会变多。",
+        "找一块空着的石头或台阶。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
         "day": 3,
         "night": 3,
         "nightVerdict": "caution"
+      }
+    },
+    {
+      "id": "poi-c44f75",
+      "name": "天蟾逸夫舞台",
+      "lat": 31.23376,
+      "lon": 121.47301,
+      "category": "venue",
+      "emoji": "🎻",
+      "rarity": "epic",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Tianchan_Wutai_%28Tianchan_Yifu_Wutai%29.JPG/960px-Tianchan_Wutai_%28Tianchan_Yifu_Wutai%29.JPG?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "天蟾逸夫舞台，是中国上海的一座著名戏剧舞台，位于福州路701号（云南路口），现属上海京剧院，以上演京剧为主，因改建时受到香港企业家邵逸夫资助而得名。",
+      "why": "「演出场所」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "找一张你愿意看的演出海报，拍下来。",
+      "hints": [
+        "傍晚会亮起一串灯。",
+        "找一处门口贴着演出海报的地方。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 3,
+        "night": 4,
+        "nightVerdict": "ok"
+      }
+    },
+    {
+      "id": "poi-b192ed",
+      "name": "国际饭店",
+      "lat": 31.23366667,
+      "lon": 121.47158333,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Park_Hotel_Shanghai%2C_Dec_2017_%281%29.jpg/960px-Park_Hotel_Shanghai%2C_Dec_2017_%281%29.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "国际饭店（英語：Park Hotel）位于中华人民共和国上海市黄浦区人民广场附近南京西路北侧与黄河路西侧的转角处，建成于1934年，是上海的一座著名老饭店，為上海滩於1930年代至1940年代的地标之一，也是上海城市平面坐标系的原点所在地。",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 3,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-f25c2d",
+      "name": "南京赛珍珠故居",
+      "lat": 32.05722778,
+      "lon": 118.77306389,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Pearl_s_buck_house_nju_front.jpg/960px-Pearl_s_buck_house_nju_front.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "南京赛珍珠故居位于江苏省南京市鼓楼区南京大学北园内，是美国作家赛珍珠（Pearl S. Buck）在南京的故居，为两层砖混结构的洋楼。",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-f1cbd3",
+      "name": "南京师范大学",
+      "lat": 32.05600278,
+      "lon": 118.76451944,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "epic",
+      "area": "river",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/%E5%8D%97%E4%BA%AC%E5%B8%88%E8%8C%83%E5%A4%A7%E5%AD%A6.JPG/960px-%E5%8D%97%E4%BA%AC%E5%B8%88%E8%8C%83%E5%A4%A7%E5%AD%A6.JPG?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "南京师范大学，简称南师或南京师大，坐落于中华人民共和国江苏省南京市，是一所以师范为特色的綜合性大學，如今是中华人民共和国国家“211工程”重点建设大学，由江苏省人民政府和中华人民共和国教育部共建。 学校主源可追溯到1902年創建的三江師範學",
+      "why": "「河岸」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "数一数河面上有几艘船。",
+      "hints": [
+        "空气会变凉，风会变大。",
+        "往低处走，会听到水声。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-89fe52",
+      "name": "南京鼓楼",
+      "lat": 32.06069444,
+      "lon": 118.77688889,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Nanjing_Drum_Tower.jpg/960px-Nanjing_Drum_Tower.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "南京鼓楼是位于中国南京城中心的一座明清建筑，建于1382年（明洪武十五年），位于北极阁以西的鼓楼岗上，占地9100平方米。在古代是进行击鼓报时、迎王、送妃、接诏等重大仪仗庆典的场所。 鼓楼分上、下两层。下层为砖石台座，是洪武遗物，拱形、无梁",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-813d81",
+      "name": "崇實大學",
+      "lat": 32.05611111,
+      "lon": 118.775,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/64/SoongsilMainEnt070708.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "崇实大学（韩语：숭실대학교，英语：Soongsil University， SSU），是一所位於韩国首爾的基督教私立大学。 这里是韩国的最初综合性大学。",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-650b8a",
+      "name": "紫峰大厦",
+      "lat": 32.06247222,
+      "lon": 118.77805556,
+      "category": "viewpoint",
+      "emoji": "🔭",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/61/Zifeng_Tower_from_City_Wall_%28cropped%29.jpg/960px-Zifeng_Tower_from_City_Wall_%28cropped%29.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "紫峰大厦（英語：Zifeng Tower；也叫绿地中心·紫峰大厦（Greenland Center Zifeng Tower）或绿地广场·紫峰大厦（Greenland Square-Zifeng Tower）；曾用官方名称南京绿地金融中心（",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-919779",
+      "name": "国民政府外交部旧址",
+      "lat": 32.06660306,
+      "lon": 118.77341306,
+      "category": "historic",
+      "emoji": "🏮",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/201308_Standing_Committee_of_Jiangsu_People%27s_Congress_Building.jpg/960px-201308_Standing_Committee_of_Jiangsu_People%27s_Congress_Building.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "国民政府外交部旧址是國民政府外交部的旧址，位于中國江苏省南京市鼓楼区中山北路32号。现使用者为江苏省人大常委会。",
+      "why": "「老房子」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "摸一摸门框或墙砖，找一处最旧的地方。",
+      "hints": [
+        "会有一点旧木头和雨的味道。",
+        "找一栋比周围都老的两层小楼。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 1,
+        "nightVerdict": "avoid"
+      }
+    },
+    {
+      "id": "poi-81b393",
+      "name": "先锋书店",
+      "lat": 32.05285556,
+      "lon": 118.76830833,
+      "category": "bookstore",
+      "emoji": "📚",
+      "rarity": "rare",
+      "area": "oldtown",
+      "address": null,
+      "photoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Facade_of_Libraire_Avant-Garde%28Wutai_Mountain_branch%29.jpg/960px-Facade_of_Libraire_Avant-Garde%28Wutai_Mountain_branch%29.jpg?utm_source=zh.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+      "photoCredit": "Wikimedia Commons",
+      "summary": "南京先锋书店（法語：LIBRAIRIE AVANT-GARDE），是一家位于江苏省南京市的连锁书店。",
+      "why": "「书店」适合不赶时间地待一会儿。\n到了才知道是哪里，这个地点只为你亮一次。",
+      "task": "找一本封面是蓝色的书，翻开第 7 页读三行。",
+      "hints": [
+        "前面会安静下来。",
+        "找一扇窗很大、里面堆着纸的地方。",
+        "就在前面。抬手机，慢慢看。"
+      ],
+      "safety": {
+        "day": 2,
+        "night": 2,
+        "nightVerdict": "avoid"
       }
     }
   ]

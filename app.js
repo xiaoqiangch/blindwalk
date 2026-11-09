@@ -1114,6 +1114,12 @@
       ['是否真实定位', isRealSession(session) ? '是' : '否'],
       ['定位权限', ui.geoPermission || '未请求 / 未知'],
       ['最近定位精度', ui.lastFix && typeof ui.lastFix.accuracy === 'number' ? Math.round(ui.lastFix.accuracy) + ' 米' : '还没有定位读数'],
+      ['当前坐标', ui.lastFix
+        ? ui.lastFix.lat.toFixed(5) + ', ' + ui.lastFix.lon.toFixed(5)
+        : (ui.myLocation ? ui.myLocation.lat.toFixed(5) + ', ' + ui.myLocation.lon.toFixed(5) : '还没有定位读数')],
+      ['最近一次抽到', state.session && placeOf(state.session.placeID)
+        ? (placeOf(state.session.placeID).name + '（' + (placeOf(state.session.placeID).source || 'catalog') + '）')
+        : '—'],
       ['策划数据条数', state.curatedCount === undefined ? '加载中' : String(state.curatedCount)],
       ['窗口尺寸', window.innerWidth + ' × ' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x'],
       ['触摸设备', document.documentElement.classList.contains('is-touch') ? '是' : '否（桌面）'],
