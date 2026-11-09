@@ -32,6 +32,8 @@
 | task-4 | 真实定位 CoreLocation + 旅程页 | gps-dev | ✅ 完成 | 三态降级；模拟器真 GPS 实测 480→49m 自动开盒 |
 | task-5 | iOS→watchOS 实时同步 | sync-dev | ✅ 完成 | 端到端实测：推送→手表 UI 变化→打卡回传 |
 | task-6 | iOS 原生 UI 打磨 | polish-dev | ✅ 完成 | 10 文件重写，对齐 Web 原型；构建 + 截图逐屏自检 |
+| task-7 | iOS 埋惊喜/寻惊喜 | surprise-dev | ✅ 完成 | 4 新文件，dHash 实拍对比，先拍后看的代码级保证 |
+| task-8 | Web PWA 埋惊喜/寻惊喜 | pwa-dev（失败）/ Lead 接手 | ✅ 完成 | dHash + 拍照压缩 + 三阶线索 + 对比结算，全流程实测 |
 | — | 共享内核 + 工程配置 | Lead | ✅ 完成 | Core typecheck 通过、project.yml 就绪 |
 | — | 校验/截图/展示图 | Lead | ✅ 完成 | check-swift + CDP 截图 + smoke test + showcase.png |
 | — | 迁移到 ~/Projects | Lead | ✅ 完成 | 主目录 = /Users/chenxiaoqiang/Projects/BlindWalk，工作区留软链 |
@@ -60,6 +62,11 @@
 | 2026-11-08 23:0x | Lead：新增 Geo.swift（真实地理计算）+ QuestSession/Store 的地理字段与 startQuest(origin:)；准备真机安装脚本 |
 | 2026-11-09 06:3x | v0.2 集成完成：真实定位 + 手表双向同步 + 原生 UI 打磨三路合入；构建 SUCCEEDED |
 | 2026-11-09 06:3x | Lead 集成修复：冷启动手表首帧（start(store:)）、Reveal 关闭按钮、Journey 整页滚动+高度预算（线索被遮挡）、线索文案索引错位、本周惊喜值按自然日计算（不再随时间漂移 305→325） |
+| 2026-11-09 06:5x | v0.3 启动：新增 Shared/Core/Surprise.swift（BuriedSurprise / PhotoMatcher dHash / SurpriseRepository），Store 增加 burySurprise / completeSurpriseFind，3 个新成就 |
+| 2026-11-09 07:0x | 公网部署：GitHub Pages（xiaoqiangch/blindwalk），https://xiaoqiangch.github.io/blindwalk/ ；PWA 可装主屏 + Service Worker 离线 |
+| 2026-11-09 07:2x | surprise-dev 交付 iOS 4 文件（dHash 自检、先拍后看、重拍防刷分、底栏遮挡修复）；pwa-dev 中途失败，Lead 接手实现 Web 版 |
+| 2026-11-09 08:0x | Web 全流程实测：埋（照片压缩 + dHash）→ 列表（3 条）→ 三阶线索 → 先拍后看（无原图泄露）→ 81% 匹配 → +80 结算 → 旧 8 路由无回归 |
+| 2026-11-09 08:1x | 数据层加固：惊喜独立持久化（杀 App 不丢）；演示种子随真实定位重定位（异地也能看到 320m 外的惊喜） |
 
 ## 4. 关键验证记录
 

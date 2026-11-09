@@ -32,7 +32,15 @@ cd prototype/web && python3 -m http.server 8788
 # 浏览器访问 http://127.0.0.1:8788/index.html
 ```
 
-### 在 iPhone 上安装（PWA，真机体验的即时方案）
+### 在 iPhone 上安装（PWA，明天就能真机测试）
+
+**直接扫码或打开：https://xiaoqiangch.github.io/blindwalk/**
+
+![扫码打开](screenshots/public-qr.png)
+
+Safari 打开 → 分享 → 添加到主屏幕 → 从主屏启动（全屏、有图标、可离线）。
+
+下面这套局域网方案留作离线备份：
 
 原生版要等 Xcode 登录 Apple ID；在此之前可把 Web 原型装到 iPhone 主屏，接近原生体验：
 
@@ -158,6 +166,8 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | iOS / watchOS 源码 | ✅ 完成，✅ 构建通过并在模拟器运行（iPhone 18 Pro + Watch Series 9） |
 | 共享内核校验 | ✅ typecheck 通过 + 全部 Swift 语法通过 |
 | 真实定位 CoreLocation | ✅ 完成（Best 精度 / heading 朝向 / 三态降级），模拟器真 GPS 实走验证 |
+| 埋惊喜 / 寻惊喜（v0.3 新） | ✅ 完成：拍照埋点、三阶线索、**先拍后看**、dHash 复刻匹配、双向点数、3 个新成就 |
+| 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
 | iPhone↔Watch 同步 | ✅ 完成（摘要推送 + 打卡回传，端到端实测） |
 | 后台持续定位 / 本地通知 | ⏳ 需 Always 授权升级开关（v0.2 剩余项） |
 | 真机安装 | ⏳ 需 Xcode 登录 Apple ID（用户侧一次性操作） |
