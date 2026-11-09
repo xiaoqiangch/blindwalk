@@ -1,0 +1,9 @@
+{
+  "color": [
+    { "name": "start_window_background", "value": "#F5EEE2" },
+    { "name": "bw_cream", "value": "#F5EEE2" },
+    { "name": "bw_paper", "value": "#FFFBF3" },
+    { "name": "bw_ink", "value": "#171410" },
+    { "name": "bw_amber", "value": "#E89B4C" }
+  ]
+}

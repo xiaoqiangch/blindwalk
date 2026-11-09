@@ -1,0 +1,15 @@
+# DevEco / hvigor 构建产物
+build/
+.hvigor/
+.idea/
+oh_modules/
+node_modules/
+*.hap
+*.har
+*.hsp
+local.properties
+.test-build/
+
+# 截图与临时文件
+*.log
+.DS_Store

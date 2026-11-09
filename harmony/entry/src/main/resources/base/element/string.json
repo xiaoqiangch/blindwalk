@@ -1,0 +1,8 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "盲走：散步盲盒" },
+    { "name": "EntryAbility_desc", "value": "盲走主入口" },
+    { "name": "EntryAbility_label", "value": "盲走" },
+    { "name": "reason_location", "value": "用于计算你与目的地的真实距离与方位，地点在到达前保持保密" }
+  ]
+}
