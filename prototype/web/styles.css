@@ -3397,3 +3397,89 @@ button, .btn {
   letter-spacing: .06em;
   color: var(--ink3, #A69C8C);
 }
+
+/* ============================================================
+   34. 路径视图（前方窗口，终点不显示）
+   ============================================================ */
+
+.pathview {
+  position: relative;
+  margin: 10px 20px 0;
+  border-radius: var(--radius-card);
+  background:
+    radial-gradient(120% 80% at 50% 0%, #FBF6EC 0%, var(--paper) 55%),
+    var(--paper);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.pathview__svg {
+  display: block;
+  width: 100%;
+  height: 196px;
+}
+
+.pathview--empty .pathview__svg { opacity: .45; }
+
+.pathview__cap {
+  position: absolute;
+  left: 12px;
+  bottom: 9px;
+  margin: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 251, 243, .82);
+  border: 1px solid rgba(228, 217, 198, .9);
+  font-size: 10.5px;
+  color: var(--ink3, #A69C8C);
+  letter-spacing: .02em;
+}
+
+/* 网格底纹（示意街道感，不映射真实道路） */
+.pathview [data-path-grid] rect {
+  fill: none;
+}
+
+@media (max-height: 720px) {
+  html.is-touch .pathview { margin: 8px 16px 0; }
+  html.is-touch .pathview__svg { height: 160px; }
+}
+
+/* ============================================================
+   35. 旅程页滚动与路径卡尺寸修正
+   - 路径卡/导航卡不被 flex 压缩
+   - 整页可滚动，操作条吸底
+   ============================================================ */
+
+.journey {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0;
+}
+
+.journey__top,
+.journey__status,
+.pathview,
+.navcard,
+.journey__side {
+  flex-shrink: 0;
+}
+
+.pathview__svg {
+  flex: none;
+  min-height: 196px;
+}
+
+.journey__actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 10px;
+  padding-top: 10px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to bottom, rgba(245, 238, 226, 0) 0%, var(--cream) 30%, var(--cream) 100%);
+  z-index: 5;
+}
+
+@media (max-height: 720px) {
+  html.is-touch .pathview__svg { min-height: 160px; height: 160px; }
+}
