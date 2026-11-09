@@ -123,29 +123,51 @@ struct JourneyView: View {
                     .padding(.bottom, 10)
 
                 // 整页可滚动：地图 + 距离 + 线索一起滚，按钮固定在底部。
-                // 之前把地图固定在外层、只有下半段可滚，导致一屏塞不下时线索被按钮盖住。
+                // 宽屏（折叠屏展开态）改为左右分栏：左地图 / 右「距离 + 线索」。
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // 抽象地图区：占屏高约 45%（design-system §5.3），小屏收到 38%
-                        mapSection(session: session)
-                            .frame(height: mapHeight(for: geo.size.height))
+                    if BWTheme.isWide(geo.size.width) {
+                        HStack(alignment: .top, spacing: 22) {
+                            mapSection(session: session)
+                                .frame(height: max(260, mapHeight(for: geo.size.height)))
 
-                        VStack(alignment: .leading, spacing: 16) {
-                            if authorization.isBlocked && !choseDemo {
-                                permissionBanner
+                            VStack(alignment: .leading, spacing: 16) {
+                                if authorization.isBlocked && !choseDemo {
+                                    permissionBanner
+                                }
+                                distanceSection(session: session)
+                                clueSection(session: session, place: place)
                             }
-
-                            distanceSection(session: session)
-
-                            clueSection(session: session, place: place)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(.horizontal, BWTheme.pagePadding)
-                        .padding(.top, 12)
+                        .padding(.top, 6)
                         .padding(.bottom, 16)
+                        .frame(maxWidth: BWTheme.contentMaxWidth, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 抽象地图区：占屏高约 45%（design-system §5.3），小屏收到 38%
+                            mapSection(session: session)
+                                .frame(height: mapHeight(for: geo.size.height))
+
+                            VStack(alignment: .leading, spacing: 16) {
+                                if authorization.isBlocked && !choseDemo {
+                                    permissionBanner
+                                }
+
+                                distanceSection(session: session)
+
+                                clueSection(session: session, place: place)
+                            }
+                            .padding(.horizontal, BWTheme.pagePadding)
+                            .padding(.top, 12)
+                            .padding(.bottom, 16)
+                        }
                     }
                 }
 
                 actionBar
+                    .frame(maxWidth: BWTheme.contentMaxWidth)
                     .padding(.horizontal, BWTheme.pagePadding)
                     .padding(.top, 8)
                     .padding(.bottom, 10)

@@ -31,10 +31,9 @@ struct CardsView: View {
         }
     }
 
+    /// 自适应列数：常规 iPhone 3 列；折叠屏展开态自动变 5 列（见 docs/foldable.md）
     private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
+        GridItem(.adaptive(minimum: 96, maximum: 132), spacing: 10)
     ]
 
     var body: some View {

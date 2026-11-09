@@ -27,6 +27,18 @@ public enum BWTheme {
     // 阴影
     public static func cardShadow(_ color: Color = BWTheme.ink.opacity(0.10)) -> Color { color }
 
+    // MARK: 折叠屏 / 宽屏断点
+    // iPhone Duo 展开态 669×951pt、折叠态 466×678pt（见 docs/foldable.md）
+    /// 宽屏阈值：Duo 展开（669）走双列；任何 iPhone 常规宽度（402/440）都走单列
+    public static let wideBreakpoint: CGFloat = 600
+    /// 内容最大宽度：宽屏时居中，避免一行文字被拉到 669pt 那么长
+    public static let contentMaxWidth: CGFloat = 620
+    /// 矮屏阈值：Duo 折叠态 678pt 高，需要压缩纵向节奏
+    public static let shortHeightBreakpoint: CGFloat = 720
+
+    public static func isWide(_ width: CGFloat) -> Bool { width >= wideBreakpoint }
+    public static func isShort(_ height: CGFloat) -> Bool { height < shortHeightBreakpoint }
+
     // 字体
     public static func display(_ size: CGFloat = 40) -> Font {
         .system(size: size, weight: .bold, design: .rounded)

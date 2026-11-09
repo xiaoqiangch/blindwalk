@@ -6,6 +6,9 @@ struct HomeView: View {
 
     let store: BlindWalkStore
     var onOpenSetup: () -> Void
+
+    /// 折叠屏展开态 / iPad 走宽屏双列；常规 iPhone 是 .compact
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     var onOpenJourney: () -> Void
     var onOpenCards: () -> Void
 
@@ -28,19 +31,42 @@ struct HomeView: View {
             BWPaperBackground()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    topBar
-                    hero
-                    blindBoxCard
-                    statsRow.padding(.top, 20)
-                    friendsRow.padding(.top, 22)
-                    lastSurpriseSection.padding(.top, 20)
-                    // 惊喜社区入口（埋惊喜 / 寻惊喜）。详情见 docs/surprise-exchange.md
-                    SurpriseHubCard(store: store).padding(.top, 20)
-                }
-                .padding(.horizontal, BWTheme.pagePadding)
-                .padding(.top, 6)
-                .padding(.bottom, 26)
+                    Group {
+                        if isWideLayout {
+                            // 展开态：左「盲盒主卡」右「统计 + 好友 + 上一次 + 惊喜社区」
+                            VStack(alignment: .leading, spacing: 0) {
+                                topBar
+                                hero
+                                HStack(alignment: .top, spacing: 22) {
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        blindBoxCard
+                                        lastSurpriseSection.padding(.top, 18)
+                                    }
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        statsRow
+                                        friendsRow.padding(.top, 22)
+                                        SurpriseHubCard(store: store).padding(.top, 22)
+                                    }
+                                }
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 0) {
+                                topBar
+                                hero
+                                blindBoxCard
+                                statsRow.padding(.top, 20)
+                                friendsRow.padding(.top, 22)
+                                lastSurpriseSection.padding(.top, 20)
+                                // 惊喜社区入口（埋惊喜 / 寻惊喜）。详情见 docs/surprise-exchange.md
+                                SurpriseHubCard(store: store).padding(.top, 20)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.top, 6)
+                    .padding(.bottom, 26)
+                    .frame(maxWidth: isWideLayout ? BWTheme.contentMaxWidth : .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -53,6 +79,9 @@ struct HomeView: View {
             }
         }
     }
+
+    /// 宽屏（折叠屏展开态 / iPad）：双列 + 内容居中限宽
+    private var isWideLayout: Bool { horizontalSizeClass == .regular }
 
     // MARK: 顶栏：问候 + 连续天数
 
