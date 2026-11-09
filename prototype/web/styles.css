@@ -2738,3 +2738,67 @@ body[data-mode="standalone"] .toast-root {
     min-height: 62px;
   }
 }
+
+/* ============================================================
+   23. 兴趣点实景照片（来源：Wikimedia Commons / 维基百科）
+   仅用于「到达后揭晓」与图鉴，绝不在旅程中展示（保密规则）
+   ============================================================ */
+
+.reveal-card__figure {
+  margin: 0 0 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--cream);
+  border: 1px solid var(--line);
+}
+
+.reveal-card__photo {
+  display: block;
+  width: 100%;
+  height: 168px;
+  object-fit: cover;
+  background: var(--cream2, #EFE6D6);
+}
+
+.reveal-card__credit {
+  margin: 0;
+  padding: 6px 10px 7px;
+  font-size: 10.5px;
+  letter-spacing: .02em;
+  color: var(--ink3, #A69C8C);
+  text-align: right;
+  background: var(--paper);
+}
+
+/* 图鉴卡：把实景图铺在卡片底部做底纹，文字仍然可读 */
+.fcard {
+  position: relative;
+  overflow: hidden;
+}
+
+.fcard__photo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 52%;
+  background-size: cover;
+  background-position: center;
+  opacity: .28;
+  filter: saturate(.9);
+  pointer-events: none;
+}
+
+.fcard__photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, var(--paper) 6%, transparent 70%);
+}
+
+.fcard__emoji,
+.fcard__name,
+.fcard__date {
+  position: relative;
+  z-index: 1;
+}

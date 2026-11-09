@@ -37,7 +37,11 @@
     geoWatch: null,
     lastHeading: null,
     geoAsked: false,
-    geoErrorShown: false
+    geoErrorShown: false,
+    geoErrorCount: 0,
+    lastFix: null,
+    geoPoll: null,
+    geoSaveAt: 0
   };
   var timers = { journey: null, reveal: [] };
 
@@ -499,58 +503,141 @@
     return events;
   }
 
+  /* 真实定位：把「到目标的真实距离」作为剩余里程的唯一依据。
+     旧实现用 advanceSession(prev - d) + Math.abs()，当 d > prev 时会反向外推，
+     连续回调把剩余里程推到 0 —— 用户没动也会自动到达。这里彻底改掉。 */
+  function applyRealDistance(distanceMeters, accuracy) {
+    var session = state.session;
+    if (!session || session.phase !== 'walking') return [];
+    var d = Math.round(distanceMeters);
+
+    // 首次定位（或目标距离与总里程差得离谱）→ 用真实距离重置基线，
+    // 保证进度条从 0 开始，且不会因为「抽盒时用的旧位置」而瞬间到达。
+    if (!session.geoBaselineSet) {
+      session.totalMeters = Math.max(d, D.ARRIVE_THRESHOLD + 10);
+      session.geoBaselineSet = true;
+    }
+
+    var prev = session.remainingMeters;
+    var next = Math.round(clamp(d, 0, session.totalMeters));
+    session.remainingMeters = next;
+
+    var events = [];
+    while (session.unlockedHintCount < 3) {
+      var threshold = D.HINT_THRESHOLDS[session.unlockedHintCount];
+      if (next <= threshold) {
+        session.unlockedHintCount += 1;
+        events.push({ type: 'hint', index: session.unlockedHintCount - 1 });
+      } else break;
+    }
+
+    // 到达判定：必须「精度够 + 连续两次读数都在圈内」，避免一次漂移就开盒
+    var accurate = (typeof accuracy !== 'number') || (accuracy >= 0 && accuracy <= 80);
+    if (next <= D.ARRIVE_THRESHOLD && accurate) {
+      session.arriveHits = (session.arriveHits || 0) + 1;
+      if (session.arriveHits >= 2) {
+        session.phase = 'arrived';
+        events.push({ type: 'arrived' });
+      }
+    } else {
+      session.arriveHits = 0;
+    }
+    session.lastFixAccuracy = typeof accuracy === 'number' ? accuracy : null;
+    // 节流持久化：进度必须落盘，否则刷新/切后台回来会丢失里程
+    if (!ui.geoSaveAt || Date.now() - ui.geoSaveAt > 3000) {
+      ui.geoSaveAt = Date.now();
+      save();
+    }
+    return events;
+  }
+
+  /** 把一次定位读数应用到会话（watch 回调 / 初始读数共用） */
+  function applyFixToSession(pos) {
+    window.__bwStat = window.__bwStat || { starts: 0, fixes: 0, early: '', src: '', hasTarget: false };
+    window.__bwStat.fixes += 1;
+    var session = state.session;
+    if (!session || session.phase !== 'walking' || !session.coordinate) return;
+    var here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+    ui.myLocation = here;
+    ui.lastFix = { lat: here.lat, lon: here.lon, accuracy: pos.coords.accuracy };
+    ui.geoErrorCount = 0;
+    startGeoRecheck();
+    var target = session.coordinate;
+    var d = window.BW_GEO && window.BW_GEO.distanceOf
+      ? window.BW_GEO.distanceOf(here, target)
+      : null;
+    if (d === null || d === undefined) return;
+    var heading = pos.coords.heading;
+    ui.lastHeading = (heading === null || isNaN(heading)) ? null : heading;
+    var prev = session.remainingMeters;
+    var events = applyRealDistance(d, pos.coords.accuracy);
+    if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
+    for (var i = 0; i < events.length; i += 1) {
+      if (events[i].type === 'hint') {
+        ui.newHint = events[i].index;
+        showToast('解锁新线索', '🔓');
+      }
+      if (events[i].type === 'arrived') {
+        stopRealTracking();
+        beginArrival();
+        return;
+      }
+    }
+    if (session.phase !== 'walking') stopRealTracking();
+  }
+
   /* 真实定位模式：用 watchPosition 持续更新剩余距离与方位 */
   function startRealTracking() {
-    if (!window.BW_GEO || !state.session || !isRealSession(state.session)) return;
+    window.__bwStat = window.__bwStat || { starts: 0, fixes: 0, early: '', src: '', hasTarget: false };
+    window.__bwStat.starts += 1;
+    window.__bwStat.src = state.session ? state.session.source : 'no-session';
+    window.__bwStat.hasTarget = !!(state.session && state.session.coordinate);
+    if (!window.BW_GEO || !state.session || !isRealSession(state.session)) { window.__bwStat.early = 'gate'; return; }
     var target = state.session.coordinate;
-    if (!target) return;
-    if (!navigator.geolocation) return;
+    if (!target) { window.__bwStat.early = 'no-target'; return; }
+    if (!navigator.geolocation) { window.__bwStat.early = 'no-geo'; return; }
 
     stopRealTracking();
-    ui.geoWatch = navigator.geolocation.watchPosition(function (pos) {
-      var here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      ui.myLocation = here;
-      var session = state.session;
-      if (!session || session.phase !== 'walking') return;
-      var d = window.BW_GEO.distance ? window.BW_GEO.distance(here, target) : null;
-      if (d === null) {
-        // 用 geo.js 内部同一套 Haversine
-        var R = 6371000;
-        var lat1 = here.lat * Math.PI / 180, lat2 = target.lat * Math.PI / 180;
-        var dLat = (target.lat - here.lat) * Math.PI / 180;
-        var dLon = (target.lon - here.lon) * Math.PI / 180;
-        var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        d = 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
-      }
-      var prev = session.remainingMeters;
-      var events = advanceSession(prev - d);
-      var heading = pos.coords.heading;
-      ui.lastHeading = (heading === null || isNaN(heading)) ? null : heading;
-      if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
-      if (events.length) events.forEach(function (e) {
-        if (e.type === 'hint') {
-          ui.newHint = e.index;
-          showToast('解锁新线索', '🔓');
-        }
-        if (e.type === 'arrived') {
-          // 真实 GPS 走进到达圈：自动开盒（和模拟模式同一套逻辑）
-          stopRealTracking();
-          beginArrival();
-        }
+
+    // 先主动取一次当前位置：watchPosition 在部分浏览器（含部分鸿蒙 WebView）
+    // 不会立刻推初始值，用户会一直看到抽盒时的旧距离，直到 GPS 变化才更新。
+    if (navigator.geolocation.getCurrentPosition) {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        applyFixToSession(pos);
+      }, function () { /* 失败就等 watch */ }, {
+        enableHighAccuracy: true, maximumAge: 3000, timeout: 12000
       });
-      if (session.phase !== 'walking') stopRealTracking();
+    }
+
+    ui.geoWatch = navigator.geolocation.watchPosition(function (pos) {
+      applyFixToSession(pos);
     }, function (err) {
-      // 定位失败不等于地点是假的：只停止跟踪并提示，不把 session.source 降级，
-      // 否则「真实地点」会被误标成演示模式。
+      // 只有「权限被拒」才真正放弃；其余（POSITION_UNAVAILABLE / TIMEOUT）多为瞬时错误，
+      // 直接停掉会让用户以为 App 没反应，所以改成退避重试。
+      var denied = !!(err && err.code === 1);
+      ui.geoErrorCount = (ui.geoErrorCount || 0) + 1;
       stopRealTracking();
-      if (!ui.geoErrorShown) {
-        ui.geoErrorShown = true;
-        var msg = err && err.code === 1 ? '定位权限被拒，距离不再自动更新' : '定位信号中断，距离暂停更新';
-        showToast(msg, '📴', { duration: 2400 });
+      if (denied) {
+        if (!ui.geoErrorShown) {
+          ui.geoErrorShown = true;
+          showToast('定位权限被拒，距离不再自动更新', '📴', { duration: 2600 });
+        }
+        if (currentRoute() === '/journey') render();
+        return;
       }
-      if (currentRoute() === '/journey') render();
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+      if (ui.geoErrorCount <= 6) {
+        if (!ui.geoErrorShown) {
+          ui.geoErrorShown = true;
+          showToast('定位信号不稳，正在重试…', '📡', { duration: 2000 });
+        }
+        var delay = Math.min(8000, 800 * Math.pow(2, ui.geoErrorCount - 1));
+        window.setTimeout(function () {
+          if (state.session && state.session.phase === 'walking') startRealTracking();
+        }, delay);
+      } else if (currentRoute() === '/journey') {
+        render();
+      }
+    }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 });
   }
 
   function stopRealTracking() {
@@ -558,6 +645,32 @@
       try { navigator.geolocation.clearWatch(ui.geoWatch); } catch (e) { /* ignore */ }
       ui.geoWatch = null;
     }
+    if (ui.geoPoll !== null && ui.geoPoll !== undefined) {
+      try { window.clearInterval(ui.geoPoll); } catch (e) { /* ignore */ }
+      ui.geoPoll = null;
+    }
+  }
+
+  /** 周期复核最近一次定位：有些浏览器 watchPosition 只给一次读数，
+     静止时 GPS 也不上报；靠这个保证「走到 30m 内」一定能被识别为到达。 */
+  function startGeoRecheck() {
+    if (ui.geoPoll !== null && ui.geoPoll !== undefined) return;
+    ui.geoPoll = window.setInterval(function () {
+      var fix = ui.lastFix;
+      var session = state.session;
+      if (!fix || !session || session.phase !== 'walking' || !session.coordinate) return;
+      var d = window.BW_GEO && window.BW_GEO.distanceOf
+        ? window.BW_GEO.distanceOf(fix, session.coordinate)
+        : null;
+      if (d === null || d === undefined) return;
+      var prev = session.remainingMeters;
+      var events = applyRealDistance(d, fix.accuracy);
+      if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
+      for (var i = 0; i < events.length; i += 1) {
+        if (events[i].type === 'hint') { ui.newHint = events[i].index; showToast('解锁新线索', '🔓'); }
+        if (events[i].type === 'arrived') { stopRealTracking(); beginArrival(); }
+      }
+    }, 2000);
   }
 
   function onWalk() {
@@ -1093,16 +1206,21 @@
       '</div>';
   }
 
+  /** 真实来源：OSM POI / 维基百科地标 / 仅真实坐标，都算「真的在城市里走」 */
+  function isRealSource(source) {
+    return source === 'osm' || source === 'geo' || source === 'wikipedia';
+  }
+
   function isRealSession(session) {
-    return session && (session.source === 'osm' || session.source === 'geo');
+    return !!session && isRealSource(session.source);
   }
 
   /* 真实定位状态条 */
   function realStatusHTML() {
     var session = state.session;
     if (!session) return '';
-    if (session.source === 'osm' || session.source === 'geo') {
-      var realLabel = session.source === 'osm' ? '实时定位 · 真实地点' : '实时定位 · 真实坐标';
+    if (isRealSource(session.source)) {
+      var realLabel = session.source === 'geo' ? '实时定位 · 真实坐标' : '实时定位 · 真实地点';
       return '<span class="geo-pill geo-pill--live"><i aria-hidden="true"></i>' + realLabel + '</span>' +
         '<span class="geo-pill geo-pill--gps">GPS</span>';
     }
@@ -1153,12 +1271,18 @@
       '<span class="serial">No.' + esc(reveal.serial) + '</span>' +
       ratingBadge(place.rarity) +
       '</div>' +
+      (place.photoUrl
+        ? '<figure class="reveal-card__figure">' +
+            '<img class="reveal-card__photo" src="' + esc(place.photoUrl) + '" alt="' + esc(place.name) + ' 的实景照片" loading="lazy" referrerpolicy="no-referrer">' +
+            '<figcaption class="reveal-card__credit">图片 · ' + esc(place.photoCredit || 'Wikimedia Commons') + '</figcaption>' +
+          '</figure>'
+        : '') +
       '<div class="reveal-card__hero">' +
       '<span class="reveal-card__emoji" aria-hidden="true">' + place.categoryEmoji + '</span>' +
       '<h2 class="reveal-card__name">' + esc(place.name) + '</h2>' +
       '<p class="reveal-card__area">' + esc(placeAreaWord(place)) + ' · ' + esc(place.category) +
       (place.address ? ' · ' + esc(place.address) : '') +
-      (place.source === 'osm' || place.source === 'geo' ? ' · 真实地点' : '') + '</p>' +
+      (isRealSource(place.source) ? ' · 真实地点' : '') + '</p>' +
       '</div>' +
       '<div class="rule"></div>' +
       '<p class="reveal-card__label">为什么是这里：</p>' +
@@ -1275,6 +1399,7 @@
       }
       return '<button type="button" class="fcard" data-action="open-card" data-id="' + esc(place.id) + '"' +
         ' aria-label="' + esc(place.name + '，' + D.RARITY[place.rarity].label) + '">' +
+        (place.photoUrl ? '<span class="fcard__photo" style="background-image:url(\'' + esc(place.photoUrl) + '\')" aria-hidden="true"></span>' : '') +
         '<span class="fcard__emoji" aria-hidden="true">' + place.categoryEmoji + '</span>' +
         '<span class="fcard__name">' + esc(place.name) + '</span>' +
         '<span class="fcard__date">' + formatShortDate(card.collectedAt) + '</span>' +
@@ -2316,7 +2441,9 @@
       ui.shaking = false;
       if (currentRoute() === '/setup') navigate('/journey');
       else render();
-      if (place.source === 'osm') {
+      if (place.source === 'wikipedia') {
+        showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地标', '📍', { duration: 1800 });
+      } else if (place.source === 'osm') {
         showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地点', '📍', { duration: 1800 });
         // 后台补真实街道名
         if (window.BW_GEO) {
