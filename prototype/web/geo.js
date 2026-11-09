@@ -393,7 +393,7 @@
       '&ggslimit=20' +
       '&prop=pageimages%7Ccoordinates%7Cextracts' +
       '&piprop=thumbnail&pithumbsize=800' +
-      '&exintro=1&explaintext=1&exchars=160';
+      '&exintro=1&explaintext=1&exchars=120';
 
     return fetchJSON(url, WIKI_BUDGET).then(function (data) {
       var pages = (data && data.query && data.query.pages) || {};
@@ -446,7 +446,7 @@
     if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
-    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂/.test(text)) return 'historic';
+    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
     if (/咖啡/.test(text)) return 'cafe';
@@ -830,7 +830,7 @@
       '&ggslimit=20' +
       '&prop=pageimages%7Ccoordinates%7Cextracts' +
       '&piprop=thumbnail&pithumbsize=800' +
-      '&exintro=1&explaintext=1&exchars=160';
+      '&exintro=1&explaintext=1&exchars=120';
 
     return fetchJSON(url, WIKI_BUDGET).then(function (data) {
       var pages = (data && data.query && data.query.pages) || {};
@@ -883,7 +883,7 @@
     if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
-    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂/.test(text)) return 'historic';
+    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
     if (/咖啡/.test(text)) return 'cafe';
