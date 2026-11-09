@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v18';
+  var APP_VERSION = 'v20';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2905,6 +2905,13 @@
     dom.main.innerHTML = html;
     dom.main.scrollTop = 0;
 
+    if (state.updatePending && route === '/home' && !window.__bwReloading) {
+      state.updatePending = false;
+      window.__bwReloading = true;
+      location.reload();
+      return;
+    }
+
     if (route === '/journey') {
       startJourneyTimer();
       startRealTracking();
@@ -3548,6 +3555,14 @@
     if (navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener('controllerchange', function () {
         if (window.__bwReloading) return;
+        // 走路/揭晓途中的刷新会打断体验：只在「没有进行中的盲盒」时自动重载，
+        // 否则挂起，回到首页再刷。
+        var busy = state.session && state.session.phase === 'walking';
+        if (busy || /^#\/(journey|reveal)/.test(location.hash)) {
+          state.updatePending = true;
+          showToast('有新版本，回到首页后自动更新', '🔄', { duration: 2600 });
+          return;
+        }
         window.__bwReloading = true;
         location.reload();
       });
