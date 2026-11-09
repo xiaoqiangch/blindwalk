@@ -11,6 +11,8 @@ struct ProfileView: View {
 
     @State private var toast: BWToast?
     @State private var showClearConfirm = false
+    @State private var showAccount = false
+    @State private var account = AccountService.shared
     /// 仅用于截图/演示：`SIMCTL_CHILD_BW_PREVIEW=achievements` 直达成就页
     @State private var showAchievements = false
 
@@ -47,12 +49,19 @@ struct ProfileView: View {
         .navigationDestination(isPresented: $showAchievements) {
             AchievementsView(store: store)
         }
+        .sheet(isPresented: $showAccount) {
+            AccountView(store: store)
+        }
         .onAppear {
             let environment = ProcessInfo.processInfo.environment
-            if environment["BW_PREVIEW"] == "profile",
-               environment["BW_PREVIEW_SUBPAGE"] == "achievements" {
-                showAchievements = true
+            if environment["BW_PREVIEW"] == "profile" {
+                if environment["BW_PREVIEW_SUBPAGE"] == "achievements" {
+                    showAchievements = true
+                } else if environment["BW_PREVIEW_SUBPAGE"] == "account" {
+                    showAccount = true
+                }
             }
+            Task { await account.refresh() }
         }
     }
 
@@ -78,7 +87,7 @@ struct ProfileView: View {
                         .font(.system(size: 25, weight: .bold))
                         .foregroundStyle(BWTheme.ink)
                     Text("· \(store.profile.levelName)")
-                        .font(.system(size: 11.5, weight: .semibold))
+                        .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(BWTheme.ink2)
                 }
                 .lineLimit(1)
@@ -113,12 +122,12 @@ struct ProfileView: View {
 
                 HStack {
                     Text("\(store.profile.xp - store.profile.levelFloorXP) / 800")
-                        .font(.system(size: 9.5))
+                        .font(.system(size: 11.5))
                         .monospacedDigit()
                         .foregroundStyle(BWTheme.ink.opacity(0.48))
                     Spacer(minLength: 0)
                     Text("距离下一级 \(max(0, 800 - (store.profile.xp - store.profile.levelFloorXP)))")
-                        .font(.system(size: 9.5))
+                        .font(.system(size: 11.5))
                         .monospacedDigit()
                         .foregroundStyle(BWTheme.ink.opacity(0.48))
                 }
@@ -164,12 +173,12 @@ struct ProfileView: View {
                     .foregroundStyle(BWTheme.ink)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 8))
+                        .font(.system(size: 10.5))
                         .foregroundStyle(BWTheme.ink.opacity(0.45))
                 }
             }
             Text(title)
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .foregroundStyle(BWTheme.ink.opacity(0.48))
         }
         .frame(maxWidth: .infinity)
@@ -241,7 +250,7 @@ struct ProfileView: View {
                 .opacity(achievement.isUnlocked ? 1 : 0.45)
 
             Text(achievement.name)
-                .font(.system(size: 8.5))
+                .font(.system(size: 10.5))
                 .foregroundStyle(BWTheme.ink3)
                 .lineLimit(1)
                 .frame(width: 62)
@@ -259,7 +268,7 @@ struct ProfileView: View {
             VStack(spacing: 0) {
                 settingRow {
                     Text("音效")
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
                     Spacer(minLength: 0)
                     Toggle("", isOn: Binding(
@@ -276,7 +285,7 @@ struct ProfileView: View {
 
                 settingRow {
                     Text("触感")
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
                     Spacer(minLength: 0)
                     Toggle("", isOn: Binding(
@@ -298,8 +307,24 @@ struct ProfileView: View {
                     showToast("位置只在本地判断距离，不上传任何坐标。", icon: "lock.shield")
                 } label: {
                     Text("隐私与安全")
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
+                }
+
+                BWHairline()
+
+                settingLink {
+                    showAccount = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("账号")
+                            .font(.system(size: 14.5))
+                            .foregroundStyle(BWTheme.ink)
+                        Spacer(minLength: 0)
+                        Text(account.user?.username ?? "未登录")
+                            .font(BWType.caption(11))
+                            .foregroundStyle(BWTheme.ink3)
+                    }
                 }
 
                 BWHairline()
@@ -309,7 +334,7 @@ struct ProfileView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Text("定位方式")
-                            .font(.system(size: 13.5))
+                            .font(.system(size: 14.5))
                             .foregroundStyle(BWTheme.ink)
                         Spacer(minLength: 0)
                         Text("模拟步行")
@@ -324,7 +349,7 @@ struct ProfileView: View {
                     showClearConfirm = true
                 } label: {
                     Text("清除演示数据")
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ember)
                 }
 
@@ -334,7 +359,7 @@ struct ProfileView: View {
                     showToast("步谜 0.1 · 不看见终点，才看得见路。", icon: "info.circle")
                 } label: {
                     Text("关于")
-                        .font(.system(size: 13.5))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
                 }
             }
@@ -364,7 +389,7 @@ struct ProfileView: View {
                 label()
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(BWTheme.ink3)
             }
             .padding(.horizontal, 16)
@@ -378,7 +403,7 @@ struct ProfileView: View {
 
     private var versionFooter: some View {
         Text("步谜 0.1 · 原型")
-            .font(.system(size: 10.5))
+            .font(.system(size: 12.5))
             .tracking(0.5)
             .foregroundStyle(BWTheme.ink3)
             .frame(maxWidth: .infinity)

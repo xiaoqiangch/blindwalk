@@ -14,9 +14,19 @@
 import { common } from '@kit.AbilityKit';
 import { getStore, initStore } from '../core/store';
 import { PreferencesKV } from '../components/PreferencesKV';
+import { HarmonyHttpClient, readBundledMapKeys } from '../components/HttpClient';
+import { BwAccountPanel } from '../components/AccountPanel';
+import { BwDataSourcePanel } from '../components/DataSourcePanel';
+import { DataSourceStatus } from '../core/contract';
 import { BWColor, BWFont, BWSize } from '../theme/Theme';
 import { BwBoxArt } from '../components/BoxArt';
 import { AchievementsPanel } from '../components/AchievementsPanel';
+import { KeyValueStore, RoutePolyline } from '../core/contract';
+import { QuestFlowDeps, planRoute } from '../core/flow';
+import { applySyncedPayload, buildSyncPayload } from '../components/StoreBridge';
+import { readAccountConfig } from '../core/account';
+import { MAPKEYS_CACHE_KEY, loadMapKeys, mapKeysSourceText } from '../core/mapkeys';
+import { bwToast } from '../components/Async';
 import { HomeView } from '../views/HomeView';
 import { CardsView } from '../views/CardsView';
 import { SocialView } from '../views/SocialView';
@@ -35,6 +45,8 @@ const OVERLAY_SETUP: string = 'setup';
 const OVERLAY_JOURNEY: string = 'journey';
 const OVERLAY_REVEAL: string = 'reveal';
 const OVERLAY_ACHIEVEMENTS: string = 'achievements';
+const OVERLAY_ACCOUNT: string = 'account';
+const OVERLAY_DATASOURCE: string = 'datasource';
 
 @Entry
 @Component
@@ -49,18 +61,44 @@ struct Index {
 
   private tabsController: TabsController = new TabsController();
 
+  /** 平台能力（注入给 core/ 的纯逻辑，UI 层只在这里创建一次） */
+  private http: HarmonyHttpClient = new HarmonyHttpClient();
+  private kv: KeyValueStore | undefined = undefined;
+  /** 后台地址（key 下发 / 账号服务可配） */
+  private adminBase: string = 'http://127.0.0.1:8802';
+  /** 抽盒完成后异步规划路线（迷雾路径视图用） */
+  private routePending: boolean = false;
+  /** 包内 mapkeys.json 文本（启动时读一次；没有就是空串） */
+  private bundledKeys: string | undefined = undefined;
+  /** 账号状态文案（ProfileView 入口右侧小字；登录/退出后刷新） */
+  @State private accountLabel: string = '未登录';
+  /** 策展地点条数（数据源面板展示） */
+  @State private curatedCount: number = 0;
+
   aboutToAppear(): void {
     this.bootstrap();
+  }
+
+  /** 读包内 mapkeys.json（部署时注入；读不到是正常情况） */
+  private async loadBundledKeys(): Promise<void> {
+    try {
+      const text: string | undefined = await readBundledMapKeys();
+      this.bundledKeys = text;
+    } catch (err) {
+      this.bundledKeys = undefined;
+    }
   }
 
   /** 初始化持久化 + store（失败也要能进演示态） */
   private async bootstrap(): Promise<void> {
     this.initError = '';
     this.ready = false;
+    await this.loadBundledKeys();
     try {
       const context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
       const kv: PreferencesKV = new PreferencesKV(context);
       await kv.init();
+      this.kv = kv;
       await initStore(kv);
     } catch (err) {
       // 持久化不可用时继续：store 会用内存态兜底（不会崩）
@@ -76,6 +114,7 @@ struct Index {
 
   /** 任何 store 状态变化后调用：让四个 Tab 页重读 snapshot */
   private refresh(): void {
+    this.refreshAccountLabel();
     this.revision = this.revision + 1;
   }
 
@@ -90,6 +129,90 @@ struct Index {
 
   private setupStarted(): void {
     this.overlay = OVERLAY_JOURNEY;
+    this.refresh();
+    this.planRouteInBackground();
+  }
+
+  /**
+   * 抽盒成功后异步规划步行路线（迷雾路径视图用）。
+   * 失败不影响旅程：UI 会退回「只显示直线距离 + 方向」。
+   */
+  private async planRouteInBackground(): Promise<void> {
+    if (this.routePending) return;
+    if (this.kv === undefined) return;
+    const deps: QuestFlowDeps = {
+      http: this.http,
+      kv: this.kv,
+      readBundledKeys: (): string | undefined => this.bundledKeys,
+      adminBase: this.adminBase,
+      now: (): number => Date.now()
+    };
+    let snapshot = getStore().snapshot();
+    const from = snapshot.lastKnownOrigin;
+    const session = snapshot.session;
+    if (session === undefined || session.target === undefined || from === undefined) return;
+    this.routePending = true;
+    try {
+      const route: RoutePolyline | undefined = await planRoute(deps, from, session.target);
+      if (route !== undefined) {
+        getStore().setRoute(route);
+        this.refresh();
+      }
+    } catch (err) {
+      // 路线失败：不阻塞、不弹错，UI 自动降级
+    } finally {
+      this.routePending = false;
+    }
+  }
+
+  /** 刷新账号状态文案（ProfileView 的入口右侧小字） */
+  private refreshAccountLabel(): void {
+    if (this.kv === undefined) {
+      this.accountLabel = '未登录';
+      return;
+    }
+    try {
+      const config = readAccountConfig(this.kv);
+      this.accountLabel = config.user === undefined ? '未登录' : config.user.username;
+    } catch (err) {
+      this.accountLabel = '未登录';
+    }
+  }
+
+  /** 当前数据源状态（没搜索过时给空态） */
+  private dataSourceStatus(): DataSourceStatus {
+    try {
+      return getStore().dataSourceStatus();
+    } catch (err) {
+      const empty: DataSourceStatus = {
+        keySource: 'none', amapReady: false, baiduReady: false,
+        amapMask: '', baiduMask: '', reports: [], checkedAt: 0, curatedCount: 0
+      };
+      return empty;
+    }
+  }
+
+  /** 重新加载地图 Key（清缓存后重跑一次下发流程） */
+  private async reloadKeys(): Promise<void> {
+    if (this.kv === undefined) return;
+    try {
+      this.kv.delete(MAPKEYS_CACHE_KEY);
+    } catch (err) {
+      // 忽略
+    }
+    this.bundledKeys = await readBundledMapKeys();
+    const keys = await loadMapKeys(
+      this.http, this.kv,
+      (): string | undefined => this.bundledKeys,
+      this.adminBase, Date.now()
+    );
+    bwToast(mapKeysSourceText(keys.source));
+    this.refresh();
+  }
+
+  /** 打开账号面板（我的 → 设置 → 账号） */
+  private openAccount(): void {
+    this.overlay = OVERLAY_ACCOUNT;
     this.refresh();
   }
 
@@ -196,8 +319,16 @@ struct Index {
           revision: this.revision,
           winWidth: this.winWidth,
           winHeight: this.winHeight,
+          accountLabel: this.accountLabel,
           onOpenAchievements: () => {
             this.openAchievements();
+          },
+          onOpenAccount: () => {
+            this.openAccount();
+          },
+          onOpenDataSource: () => {
+            this.overlay = OVERLAY_DATASOURCE;
+            this.refresh();
           },
           onChanged: () => {
             this.refresh();
@@ -287,11 +418,49 @@ struct Index {
         SetupSheet({
           winWidth: this.winWidth,
           winHeight: this.winHeight,
+          http: this.http,
+          kv: this.kv,
+          readBundledKeys: (): string | undefined => this.bundledKeys,
+          adminBase: this.adminBase,
           onClose: () => {
             this.closeSetup();
           },
           onStarted: () => {
             this.setupStarted();
+          },
+          onChanged: () => {
+            this.refresh();
+          }
+        })
+      }
+
+      if (this.ready && this.overlay === OVERLAY_DATASOURCE) {
+        BwDataSourcePanel({
+          status: this.dataSourceStatus(),
+          curatedCount: this.curatedCount,
+          onBack: () => {
+            this.overlay = OVERLAY_NONE;
+            this.refresh();
+          },
+          onReload: () => {
+            this.reloadKeys();
+          }
+        })
+      }
+
+      if (this.ready && this.overlay === OVERLAY_ACCOUNT) {
+        BwAccountPanel({
+          revision: this.revision,
+          kv: this.kv,
+          http: this.http,
+          buildPayload: (): Record<string, unknown> => buildSyncPayload(),
+          applyPayload: (payload: Record<string, unknown>): void => {
+            applySyncedPayload(payload);
+            this.refresh();
+          },
+          onBack: () => {
+            this.overlay = OVERLAY_NONE;
+            this.refresh();
           },
           onChanged: () => {
             this.refresh();

@@ -186,17 +186,20 @@ export struct HomeView {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .layoutWeight(1)
 
+      // parity.md §7：演示模式必须显式标注「演示模式 · 内置地点」
       if (this.snapshot.demoMode) {
-        Row({ space: 3 }) {
-          Text('●')
-            .fontSize(7)
-            .fontColor(BWColor.amberDeep)
-          Text('演示')
+        Row({ space: 5 }) {
+          Circle()
+            .width(5)
+            .height(5)
+            .fill(BWColor.amberDeep)
+          Text('演示模式 · 内置地点')
             .fontSize(BWFont.microSm)
             .fontWeight(FontWeight.Medium)
             .fontColor(BWColor.amberDeep)
+            .maxLines(1)
         }
-        .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+        .padding({ left: 9, right: 9, top: 4, bottom: 4 })
         .backgroundColor(BWColor.amberSoft)
         .borderRadius(BWSize.chipRadius)
       }

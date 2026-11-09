@@ -24,7 +24,8 @@ import {
   ReactionKey,
   WalkDuration
 } from '../core/types';
-import { getStore } from '../core/store';
+import { getStore, getStoreInstance } from '../core/store';
+import { Profile } from '../core/types';
 
 /** 空快照：仅用于 @State 初始值，页面 aboutToAppear 会立刻换成真实快照 */
 export function emptySnapshot(): AppSnapshot {
@@ -269,6 +270,76 @@ export function explorableSurpriseCount(snapshot: AppSnapshot): number {
 
 export function mySurpriseCount(snapshot: AppSnapshot): number {
   return snapshot.mySurprises.length;
+}
+
+/**
+ * 组装「同步到账号」的整包数据。
+ *
+ * 结构对齐 Web 版 syncPayload：
+ *   { app, version, savedAt, profile, surprises, settings }
+ * 其中 profile 是契约 Profile + extras（里程/到达时间/动态/真实地点），
+ * 这样「从账号恢复」才能真正把本机状态还原回去。
+ */
+export function buildSyncPayload(): Record<string, unknown> {
+  const snapshot: AppSnapshot = getStore().snapshot();
+  const extras: Record<string, unknown> = {};
+  try {
+    const instance = getStoreInstance();
+    const raw = instance.rawExtras();
+    extras['totalKm'] = raw.totalKm;
+    extras['boxesOpened'] = raw.boxesOpened;
+    extras['walkArrivalTimes'] = raw.walkArrivalTimes;
+    extras['togetherCount'] = raw.togetherCount;
+    extras['realPlaces'] = raw.realPlaces;
+    extras['feed'] = raw.feed;
+    extras['consolationPaid'] = raw.consolationPaid;
+  } catch (err) {
+    // 拿不到 extras 也能同步（只同步契约字段）
+  }
+
+  // 云端信封的**顶层就是 Profile 字段**（与本地存档同构），
+  // 这样 core/persistence.profileFromJson 能直接解回来，不必两套结构。
+  const envelope: Record<string, unknown> = profileToJson(snapshot.profile);
+  envelope['extras'] = extras;
+  envelope['surprises'] = snapshot.explorableSurprises.concat(snapshot.mySurprises);
+  envelope['settings'] = {};
+
+  const payload: Record<string, unknown> = {
+    app: 'blindwalk',
+    version: 1,
+    savedAt: Date.now(),
+    profile: envelope
+  };
+  return payload;
+}
+
+/** 契约 Profile → 可序列化 JSON（字段名与 persistence.decodeProfile 一致） */
+function profileToJson(profile: Profile): Record<string, unknown> {
+  const json: Record<string, unknown> = {
+    version: 1,
+    name: profile.name,
+    avatarEmoji: profile.avatarEmoji,
+    xp: profile.xp,
+    streakDays: profile.streakDays,
+    weeklySurprise: profile.weeklySurprise,
+    weeklyWindowStart: profile.weeklyWindowStart,
+    cards: profile.cards,
+    achievements: profile.achievements
+  };
+  return json;
+}
+
+/**
+ * 「从账号恢复」：把云端整包写回本机。
+ * 只接受结构正确的数据，缺字段一律忽略（不覆盖本机已有内容）。
+ */
+export function applySyncedPayload(payload: Record<string, unknown>): boolean {
+  try {
+    const instance = getStoreInstance();
+    return instance.applyRemotePayload(payload);
+  } catch (err) {
+    return false;
+  }
 }
 
 export function myFoundSurpriseCount(snapshot: AppSnapshot): number {

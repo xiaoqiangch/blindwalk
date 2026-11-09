@@ -124,7 +124,7 @@ struct BWSectionHeader: View {
                     HStack(spacing: 2) {
                         Text(trailingTitle).font(BWType.caption(10.5))
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .semibold))
+                            .font(.system(size: 10.5, weight: .semibold))
                     }
                     .foregroundStyle(BWTheme.ink3)
                 }
@@ -168,7 +168,7 @@ struct BWPrimaryButton: View {
                     .font(BWType.cta())
                 if let caption {
                     Text(caption)
-                        .font(.system(size: 8.5, weight: .bold))
+                        .font(.system(size: 10.5, weight: .bold))
                         .tracking(0.4)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
@@ -199,7 +199,7 @@ struct BWSecondaryButton: View {
             HStack(spacing: 7) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                 }
                 Text(title).font(BWType.cta(14))
             }
@@ -241,7 +241,7 @@ struct BWPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(selected ? BWTheme.cream : BWTheme.ink2)
                 .lineLimit(1)
                 .padding(.horizontal, 16)
@@ -264,7 +264,7 @@ struct BWRarityBadge: View {
 
     var body: some View {
         Text(rarity.label)
-            .font(.system(size: 10.5, weight: .bold))
+            .font(.system(size: 12.5, weight: .bold))
             .tracking(0.2)
             .foregroundStyle(BWTheme.rarityColor(rarity))
             .padding(.horizontal, 9)
@@ -557,15 +557,15 @@ struct BWToastView: View {
         HStack(spacing: 9) {
             if toast.icon.count <= 2, toast.icon.unicodeScalars.contains(where: { $0.properties.isEmoji }) {
                 Text(toast.icon)
-                    .font(.system(size: 13))
+                    .font(.system(size: 14))
             } else {
                 Image(systemName: toast.icon)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(toast.isAmber ? BWTheme.ink : BWTheme.amber)
             }
 
             Text(toast.text)
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(toast.isAmber ? BWTheme.ink : BWTheme.cream)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)

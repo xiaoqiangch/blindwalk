@@ -8,7 +8,7 @@
  * ⚠️ 待 DevEco 验证：CanvasRenderingContext2D 的字体/lineDash 写法。
  */
 
-import { BWColor, BWSize } from '../theme/Theme';
+import { BWColor, BWFont, BWSize } from '../theme/Theme';
 
 interface MapDot {
   x: number;
@@ -221,7 +221,7 @@ export struct BwAbstractMap {
           .strokeWidth(1.5)
 
         Text('?')
-          .fontSize(15)
+          .fontSize(BWFont.titleSm)
           .fontWeight(FontWeight.Bold)
           .fontColor(BWColor.amberDeep)
       }
@@ -243,7 +243,7 @@ export struct BwAbstractMap {
             .strokeWidth(1.6)
 
           Text('你')
-            .fontSize(10)
+            .fontSize(BWFont.microSm)
             .fontWeight(FontWeight.Bold)
             .fontColor(BWColor.amberDeep)
         }

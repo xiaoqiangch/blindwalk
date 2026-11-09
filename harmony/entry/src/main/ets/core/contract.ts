@@ -12,6 +12,7 @@
  * 每次操作后 UI 重新读 snapshot，不做双向绑定。
  */
 
+import { SourceReport } from './http';
 import {
   Achievement,
   Area,
@@ -32,6 +33,18 @@ import {
   SurpriseFindResult,
   WalkDuration,
 } from './types';
+
+/**
+ * 步行路线折线（真实模式用于「迷雾路径」视图）。
+ * points 是 [lon, lat] 数组（与 GeoJSON / Valhalla shape 一致）；
+ * 只在内存里，不持久化（重启后重新规划）。
+ */
+export interface RoutePolyline {
+  points: number[][];
+  distanceMeters: number;
+  /** 抓取时间戳（超过 10 分钟重新规划） */
+  fetchedAt: number;
+}
 
 /** UI 读取的只读快照。UI 不得修改其中字段（改状态只能走 store 方法）。 */
 export interface AppSnapshot {
@@ -71,6 +84,29 @@ export interface AppSnapshot {
   leaderboard: LeaderboardEntry[];
   /** 是否演示模式（真实定位不可用时为 true，UI 要显式标注「演示」） */
   demoMode: boolean;
+  /** 步行路线（真实模式有值；迷雾路径视图用） */
+  route?: RoutePolyline;
+  /** 数据源状态（失败面板 / 设置页展示） */
+  dataSource?: DataSourceStatus;
+}
+
+/** 数据源状态（parity.md §1：Key 由后台下发，用户看不到输入框） */
+export interface DataSourceStatus {
+  /** bundled / pages / admin / none */
+  keySource: string;
+  /** 高德是否已配置 */
+  amapReady: boolean;
+  /** 百度是否已配置 */
+  baiduReady: boolean;
+  /** 高德 / 百度 Key 的掩码（只显示前 4 + 后 4） */
+  amapMask: string;
+  baiduMask: string;
+  /** 上次搜索各源结果（失败面板逐条显示） */
+  reports: SourceReport[];
+  /** 上次搜索时间 */
+  checkedAt: number;
+  /** 后台策展地点的条数（pois.json；0 = 没有策展数据） */
+  curatedCount: number;
 }
 
 /** 抽盒结果 */
@@ -98,11 +134,31 @@ export interface BlindWalkStoreApi {
   /** 选择区域：附近 / 河边 / 老城区；不传 = 不限 */
   setArea(area?: Area): void;
   /**
-   * 抽一个盲盒并开始旅程。
+   * 抽一个盲盒并开始旅程（**演示模式专用**：从内置地点库抽）。
+   * 真实模式请用 `startQuestWithPlace(place, origin)`，绝不走这里。
    * @param origin 用户真实坐标；不传则用 lastKnownOrigin；都没有则用演示坐标（demoMode = true）
    * @returns 抽到的地点与会话；失败（如地点库为空）返回 undefined
    */
   startQuest(origin?: GeoPoint): DrawResult | undefined;
+  /**
+   * 用**已经找到的真实地点**开始旅程（真实模式唯一入口）。
+   *
+   * 为什么单独一个方法：parity.md §2 要求「找不到真实地点就明确失败，绝不虚构兜底」。
+   * 若沿用 `startQuest` 从内置地点库抽，就必然会在失败时悄悄给一个虚构地点，
+   * 所以真实模式必须由搜索层（core/search.ts）把地点交进来。
+   *
+   * @param place 真实地点（source ∈ curated/amap/baidu/osm/wiki，必须有 coordinate）
+   * @param origin 用户当前位置（算真实距离用）
+   */
+  startQuestWithPlace(place: Place, origin: GeoPoint): DrawResult | undefined;
+  /** 当前旅程的步行路线（迷雾路径视图用；没有规划到路线时为 undefined） */
+  setRoute(route?: RoutePolyline): void;
+  /** 读取当前路线（UI 绘制用） */
+  currentRoute(): RoutePolyline | undefined;
+  /** 记录本次搜索的数据源状态（设置页 / 失败面板展示） */
+  setDataSourceStatus(status: DataSourceStatus): void;
+  /** 当前数据源状态 */
+  dataSourceStatus(): DataSourceStatus;
 
   // ---------- 旅程 ----------
   /** 用剩余距离推进旅程（演示模式 / 模拟步行） */

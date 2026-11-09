@@ -246,6 +246,30 @@
 | 验证 | iOS `BUILD SUCCEEDED` + 产物 `CFBundleDisplayName=步谜`；鸿蒙检查通过；冒烟测试通过 |
 | 公网 | `blindwalk-v28-bumi` |
 
+### 2026-11-09 23:40 · 三端功能对齐（Web v33 / iOS / HarmonyOS）
+
+| 功能 | Web | iOS | HarmonyOS |
+|---|---|---|---|
+| 真实 POI 多源（高德/百度/OSM/维基） | ✅ | ✅ | ✅ |
+| Key 后台下发（不写死、不让用户填） | ✅ | ✅（构建时注入，**不进 git**） | ✅ |
+| 三档放宽 + 质量门槛 + 距离硬帽 | ✅ | ✅ | ✅ |
+| 真实模式失败面板（不编造） | ✅ | ✅ | ✅ |
+| 迷雾路径视图 | ✅ | ✅（Canvas） | ✅（Canvas） |
+| 账号登录/同步/恢复 | ✅ | ✅ | ✅ |
+| 字号对齐 | ✅ | ✅ | ✅ |
+| 名称「步谜」 | ✅ | ✅ | ✅ |
+
+**跨端联调发现的真实 Bug（三端都修了）**：
+1. 高德 `keywords=公园|博物馆|…` 整串传 → `status=1` 但 `count=0` 的**静默空结果**。改为逐词查询（限 2–3 个，间隔 120ms 控 QPS）
+2. 原生 HTTP 客户端缺 `User-Agent` → 维基/Overpass 返回 403/406（浏览器自动带 UA，原生不带）
+3. 类别判定顺序：名称优先，维基只信标题（避免简介提到"公园"就被判成公园）
+4. 去重时跨 POI 借类别（餐厅借走隔壁寺庙的 temple）→ 只在同名时互补
+5. 鸿蒙 rawfile 逐字节 `fromCharCode` → UTF-8 中文乱码，改用 `util.TextDecoder`
+
+**测试**：Web 冒烟 ✅ · providers 14/14 · admin 75/75 · account 19/19 · Harmony 100/100（原 39）· ArkTS 25 文件 0 error · iOS BUILD SUCCEEDED
+
+**Key 安全**：iOS 的 `mapkeys.json` 由 `scripts/inject-ios-mapkeys.sh` 从后台 DB 生成，已 gitignore；后台 DB 也不进仓库。主仓无任何真实 Key。
+
 ## 5. 风险与对策
 
 | 风险 | 影响 | 对策 |

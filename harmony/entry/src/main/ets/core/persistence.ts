@@ -511,6 +511,42 @@ function decodeSurprise(value: unknown): BuriedSurprise | undefined {
   return surprise;
 }
 
+/**
+ * 从「账号同步的整包」里解析 profile + extras（纯函数，不走 KeyValueStore）。
+ * 账号服务存的是 Web 版 syncPayload 结构；鸿蒙这边把 extras 也一起存了，
+ * 所以从云端恢复的能力与本地存档完全一致。
+ */
+export function profileFromJson(text: string): LoadedProfile | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    const root: Record<string, unknown> | undefined = toRecord(parsed);
+    if (root === undefined) return undefined;
+    const loaded: LoadedProfile = {
+      profile: decodeProfile(root),
+      extras: decodeExtras(root)
+    };
+    return loaded;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+/** 从 JSON 数组解析埋惊喜（账号恢复用） */
+export function surprisesFromJson(text: string): BuriedSurprise[] | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!Array.isArray(parsed)) return undefined;
+    const result: BuriedSurprise[] = [];
+    for (let i = 0; i < parsed.length; i += 1) {
+      const surprise: BuriedSurprise | undefined = decodeSurprise(parsed[i]);
+      if (surprise !== undefined) result.push(surprise);
+    }
+    return result;
+  } catch (error) {
+    return undefined;
+  }
+}
+
 /** 读取埋惊喜；没有存档或损坏返回 [] */
 export function loadSurprises(kv: KeyValueStore): BuriedSurprise[] {
   const text: string | undefined = kv.getString(SURPRISES_KEY);

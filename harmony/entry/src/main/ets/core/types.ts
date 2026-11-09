@@ -98,7 +98,18 @@ export interface Place {
   coordinate?: GeoPoint;
   /** 真实地址（到达后展示） */
   address?: string;
-  /** 数据来源：catalog = 内置虚构 / osm = OpenStreetMap / apple = 系统地图 / geo = 仅真实坐标 */
+  /** 实景照片 URL（策展/维基来源有；**到达前不得展示**） */
+  photoUrl?: string;
+  /** 照片署名（Wikimedia Commons / 高德地图 …） */
+  photoCredit?: string;
+  /** 一句简介（策展/维基来源有） */
+  summary?: string;
+  /**
+   * 数据来源：
+   * - catalog = 内置虚构地点（只用于**显式演示模式**）
+   * - curated = 后台人工策展
+   * - amap / baidu / osm / wiki = 真实多数据源
+   */
   source: string;
 }
 

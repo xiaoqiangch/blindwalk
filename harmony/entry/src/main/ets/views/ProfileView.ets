@@ -33,6 +33,14 @@ export struct ProfileView {
 
   onOpenAchievements: () => void = () => {
   };
+  /** 由 Index 注入：打开账号面板 */
+  onOpenAccount: () => void = () => {
+  };
+  /** 由 Index 注入：打开数据源状态面板 */
+  onOpenDataSource: () => void = () => {
+  };
+  /** 账号状态文案（由 Index 注入，避免本页直接依赖 account.ts 的存储） */
+  @Prop accountLabel: string = '未登录';
   onChanged: () => void = () => {
   };
 
@@ -295,6 +303,50 @@ export struct ProfileView {
 
       Divider().strokeWidth(1).color(BWColor.line)
 
+      // 账号入口（parity.md §4：登录/同步/恢复/退出/删号都在面板里）
+      Row({ space: 12 }) {
+        Text('账号')
+          .fontSize(BWFont.bodySm)
+          .fontColor(BWColor.ink)
+        Blank()
+        Text(this.accountLabel)
+          .fontSize(BWFont.captionSm)
+          .fontColor(BWColor.ink3)
+          .maxLines(1)
+          .constraintSize({ maxWidth: 140 })
+        Text('›')
+          .fontSize(BWFont.caption)
+          .fontColor(BWColor.ink3)
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .onClick(() => {
+        this.onOpenAccount();
+      })
+
+      Divider().strokeWidth(1).color(BWColor.line)
+
+      // 数据源（parity.md §1：Key 后台统一下发，这里只展示状态）
+      Row({ space: 12 }) {
+        Text('数据源')
+          .fontSize(BWFont.bodySm)
+          .fontColor(BWColor.ink)
+        Blank()
+        Text('高德 / 百度 / OSM / 维基')
+          .fontSize(BWFont.captionSm)
+          .fontColor(BWColor.ink3)
+        Text('›')
+          .fontSize(BWFont.caption)
+          .fontColor(BWColor.ink3)
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+      .onClick(() => {
+        this.onOpenDataSource();
+      })
+
+      Divider().strokeWidth(1).color(BWColor.line)
+
       this.settingRow('隐私与安全', false)
 
       Divider().strokeWidth(1).color(BWColor.line)
@@ -331,7 +383,7 @@ export struct ProfileView {
 
         Text(this.modal === 'privacy'
           ? '位置只在本地判断距离，不上传；照片与卡片都留在你的手机里。目的地在你到达前不会显示。'
-          : 'BlindWalk 0.1 · 原型\n不看见终点，才看得见路。')
+          : '步谜 StepRiddle 0.3 · 原型\n不看见终点，才看得见路。')
           .fontSize(BWFont.caption)
           .fontColor(BWColor.ink2)
           .lineHeight(22)
@@ -387,7 +439,7 @@ export struct ProfileView {
           }
           .margin({ top: 18 })
 
-          Text('BlindWalk 0.1 · 原型')
+          Text('步谜 StepRiddle · 原型')
             .fontSize(BWFont.captionSm)
             .fontColor(BWColor.ink3)
             .width('100%')

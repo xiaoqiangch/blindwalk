@@ -53,7 +53,7 @@ struct RealMapView: View {
             // 左上角说明：目的地保密
             HStack(spacing: 5) {
                 Image(systemName: "eye.slash")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                 Text("目的地保密中 · 还有 \(remainingMeters) 米")
                     .font(BWTheme.caption(11))
             }
@@ -68,9 +68,9 @@ struct RealMapView: View {
             // 右下角「真实地图」标记
             HStack(spacing: 4) {
                 Image(systemName: "map")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                 Text("真实地图")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
             }
             .foregroundStyle(BWTheme.teal)
             .padding(.horizontal, 8)

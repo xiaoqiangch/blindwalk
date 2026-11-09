@@ -386,7 +386,7 @@ struct BurySurpriseView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Text(SurpriseLocation.coordinateText(resolvedPoint))
-                        .font(.system(size: 10.5, weight: .regular))
+                        .font(.system(size: 12.5, weight: .regular))
                         .monospacedDigit()
                         .foregroundStyle(BWTheme.ink3)
                 }

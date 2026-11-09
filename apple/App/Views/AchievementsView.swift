@@ -76,7 +76,7 @@ struct AchievementsView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(achievement.name)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
@@ -102,7 +102,7 @@ struct AchievementsView: View {
 
             if achievement.isUnlocked {
                 Text("已获得")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(0.5)
                     .foregroundStyle(BWTheme.amberDeep)
                     .padding(.horizontal, 6)
@@ -114,7 +114,7 @@ struct AchievementsView: View {
                     .rotationEffect(.degrees(-6))
             } else {
                 Text("\(achievement.progress)/\(achievement.target)")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.ink3)
             }

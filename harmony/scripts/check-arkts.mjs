@@ -12,6 +12,8 @@
  *   5. $string: / $color: / $media: / $profile: 引用的资源都存在
  *   6. 产品保密规则：JourneyView 不出现 currentPlace.name
  *   7. 工程契约：core/store.ts 导出 initStore / getStore
+ *   8. 功能对齐：parity.md 的关键常量/入口存在（三档/硬帽/失败文案/迷雾参数）
+ *   9. 反虚构兜底：真实模式下不得调用 startQuest()（内置地点抽盒）
  *
  * 用法：node harmony/scripts/check-arkts.mjs
  */
@@ -363,6 +365,168 @@ function checkStoreContract() {
 }
 
 // ============================================================
+// 8) 功能对齐：parity.md 关键常量 / 入口存在
+// ============================================================
+
+function readCoreFile(name) {
+  return path.join(ETS_ROOT, 'core', name);
+}
+
+function coreText(name) {
+  const file = readCoreFile(name);
+  if (!fs.existsSync(file)) return '';
+  return fs.readFileSync(file, 'utf8');
+}
+
+function expectIn(section, file, text, needles) {
+  let missing = 0;
+  for (const needle of needles) {
+    if (!text.includes(needle)) {
+      fail(section, `${file} 缺少 ${needle}`);
+      missing += 1;
+    }
+  }
+  return missing;
+}
+
+function checkParity() {
+  const parity = coreText('parity.ts');
+  if (parity.length === 0) {
+    fail('功能对齐', '缺少 core/parity.ts（parity.md §2 的唯一实现）');
+    return;
+  }
+  let missing = expectIn('功能对齐', 'core/parity.ts', parity, [
+    'LANDMARK_KEYWORDS',
+    'POI_NEVER_WORDS',
+    'POI_SOFT_BAD_WORDS',
+    'HARD_MAX_METERS',
+    'HARD_MAX_SCALE',
+    'DEDUPE_METERS',
+    'PER_CATEGORY_LIMIT',
+    'tierParams',
+    'pickCandidate',
+    'trimDiverse',
+    'SEARCH_FAIL_TITLE'
+  ]);
+  if (missing === 0) pass('功能对齐', 'core/parity.ts 含三档/硬帽/黑名单/去重/多样性/失败文案');
+
+  const fog = coreText('fog.ts');
+  if (fog.length === 0) {
+    fail('功能对齐', '缺少 core/fog.ts（parity.md §3 的迷雾路径）');
+    return;
+  }
+  const fogMissing = expectIn('功能对齐', 'core/fog.ts', fog, [
+    'FOG_AHEAD_MAX: number = 260',
+    'FOG_BEHIND_MAX: number = 140',
+    'FOG_FADE_METERS: number = 46',
+    '#C9A98A',
+    '#E89B4C',
+    'CHEVRON_SPACING_METERS: number = 55',
+    'OFF_ROUTE_THRESHOLD_METERS: number = 18',
+    'FOG_HIDE_REMAINING_METERS: number = 60',
+    'NEARBY_COPY'
+  ]);
+
+  const providers = coreText('providers.ts');
+  if (providers.length === 0) {
+    fail('功能对齐', '缺少 core/providers.ts（多数据源）');
+  } else {
+    expectIn('功能对齐', 'core/providers.ts', providers, [
+      'restapi.amap.com/v3/place/around',
+      'api.map.baidu.com/place/v2/search',
+      'overpass',
+      'zh.wikipedia.org',
+      'wgs84ToGcj02',
+      'bd09ToWgs84',
+      'AMAP_PAGE_SIZE: number = 25',
+      'AMAP_MAX_PAGES: number = 3',
+      'BAIDU_PAGE_SIZE: number = 20'
+    ]);
+  }
+
+  const mapkeys = coreText('mapkeys.ts');
+  if (mapkeys.length === 0) {
+    fail('功能对齐', '缺少 core/mapkeys.ts（Key 下发）');
+  } else {
+    expectIn('功能对齐', 'core/mapkeys.ts', mapkeys, [
+      'xiaoqiangch.github.io/blindwalk/mapkeys.json',
+      '/api/public/mapkeys',
+      'MAPKEYS_CACHE_TTL_MS'
+    ]);
+    if (mapkeys.includes('demo-key-1234')) {
+      fail('功能对齐', 'core/mapkeys.ts 里写死了真实 Key（必须由后台下发）');
+    }
+  }
+
+  const account = coreText('account.ts');
+  if (account.length === 0) {
+    fail('功能对齐', '缺少 core/account.ts（账号）');
+  } else {
+    expectIn('功能对齐', 'core/account.ts', account, [
+      'http://127.0.0.1:8803',
+      '/api/auth/register',
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/me',
+      '/api/me/profile',
+      '/api/me',
+      'extractCookie'
+    ]);
+  }
+
+  if (fogMissing === 0) pass('功能对齐', 'core/fog.ts 含前后可见/渐隐/线色/箭头/离路/隐藏常量');
+  pass('功能对齐', 'core/providers.ts / core/mapkeys.ts / core/account.ts 契约齐全');
+}
+
+// ============================================================
+// 9) 反虚构兜底：真实模式不得调用 startQuest()
+// ============================================================
+
+function checkNoFakeFallback() {
+  const setupFile = path.join(ETS_ROOT, 'views', 'SetupSheet.ets');
+  if (!fs.existsSync(setupFile)) {
+    fail('反虚构兜底', '缺少 views/SetupSheet.ets');
+    return;
+  }
+  const rawText = fs.readFileSync(setupFile, 'utf8');
+  const text = stripComments(rawText);
+
+  // startQuest() 只允许出现在「显式演示模式」函数里（函数名 startDemoExplicitly）
+  const callPattern = /startQuest\s*\(/g;
+  const matches = [];
+  let match;
+  while ((match = callPattern.exec(text)) !== null) {
+    matches.push(match.index);
+  }
+  if (matches.length === 0) {
+    fail('反虚构兜底', 'SetupSheet.ets 没有 startQuest 调用？演示入口应保留');
+    return;
+  }
+  for (const index of matches) {
+    const before = text.slice(Math.max(0, index - 700), index);
+    if (!before.includes('startDemoExplicitly')) {
+      fail('反虚构兜底',
+        'SetupSheet.ets 在非演示入口调用了 startQuest()（内置地点抽盒），违反 parity.md §2「绝不虚构兜底」');
+    }
+  }
+
+  // 真实入口必须存在
+  if (!text.includes('startQuestWithPlace')) {
+    fail('反虚构兜底', 'SetupSheet.ets 没有调用 startQuestWithPlace()（真实模式必须用它）');
+  }
+  if (!text.includes('prepareQuest')) {
+    fail('反虚构兜底', 'SetupSheet.ets 没有调用 prepareQuest()（三档真实搜索入口）');
+  }
+  if (!text.includes('BwSearchFailedPanel')) {
+    fail('反虚构兜底', 'SetupSheet.ets 没有失败面板（找不到真实地点必须明确告知）');
+  }
+  if (!text.includes('BwLocationBlockedPanel')) {
+    fail('反虚构兜底', 'SetupSheet.ets 没有定位受阻面板');
+  }
+  pass('反虚构兜底', '真实模式只走 startQuestWithPlace；startQuest() 仅限显式演示');
+}
+
+// ============================================================
 // 输出
 // ============================================================
 
@@ -373,7 +537,9 @@ const sections = [
   ['@Entry 注册', checkEntryPages],
   ['资源引用', checkResources],
   ['保密规则', checkSecretRule],
-  ['工程契约', checkStoreContract]
+  ['工程契约', checkStoreContract],
+  ['功能对齐', checkParity],
+  ['反虚构兜底', checkNoFakeFallback]
 ];
 
 console.log('═══ 盲走 BlindWalk · HarmonyOS ArkTS 静态自检 ═══');

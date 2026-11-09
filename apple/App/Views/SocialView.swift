@@ -61,7 +61,7 @@ struct SocialView: View {
 
             Button(action: refreshTogetherCode) {
                 Text("同频")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BWTheme.ink2)
                     .padding(.horizontal, 14)
                     .frame(height: 30)
@@ -101,7 +101,7 @@ struct SocialView: View {
 
                 Button(action: copyTogetherCode) {
                     Text("复制")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(BWTheme.ink)
                         .padding(.horizontal, 15)
                         .frame(height: 34)
@@ -116,7 +116,7 @@ struct SocialView: View {
             .padding(.bottom, 10)
 
             Text("好友输入同频码，各自开盒，结束后交换线索")
-                .font(.system(size: 10.5))
+                .font(.system(size: 12.5))
                 .foregroundStyle(BWTheme.ink.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -166,7 +166,7 @@ struct SocialView: View {
                     }
                 } label: {
                     Text(showAllLeaderboard ? "收起" : "展开 · 其余 \(max(0, allLeaderboard.count - entries.count)) 位")
-                        .font(.system(size: 10.5))
+                        .font(.system(size: 12.5))
                         .foregroundStyle(BWTheme.ink3)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 6)
@@ -189,7 +189,7 @@ struct SocialView: View {
     private func leaderboardRow(rank: Int, entry: LeaderboardEntry) -> some View {
         HStack(spacing: 10) {
             Text("\(rank)")
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(rankColor(rank))
                 .frame(width: 16)
@@ -202,12 +202,12 @@ struct SocialView: View {
 
             HStack(spacing: 5) {
                 Text(entry.name)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(1)
                 if entry.isMe {
                     Text("你")
-                        .font(.system(size: 9))
+                        .font(.system(size: 11))
                         .tracking(0.4)
                         .foregroundStyle(BWTheme.ink3)
                 }
@@ -216,7 +216,7 @@ struct SocialView: View {
             Spacer(minLength: 0)
 
             Text("\(entry.score)")
-                .font(.system(size: 12.5, weight: .bold))
+                .font(.system(size: 13.5, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(BWTheme.ink)
         }
@@ -287,10 +287,10 @@ struct SocialView: View {
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(post.authorName)
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .font(.system(size: 13.5, weight: .semibold))
                         .foregroundStyle(BWTheme.ink)
                     Text(BWFormat.relative(post.createdAt))
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .monospacedDigit()
                         .foregroundStyle(BWTheme.ink3)
                 }
@@ -298,7 +298,7 @@ struct SocialView: View {
                 Spacer(minLength: 0)
 
                 Text("揭晓")
-                    .font(.system(size: 9))
+                    .font(.system(size: 11))
                     .tracking(0.5)
                     .foregroundStyle(BWTheme.ink3)
                     .padding(.horizontal, 7)
@@ -311,7 +311,7 @@ struct SocialView: View {
                 Text(post.categoryEmoji)
                     .font(.system(size: 16))
                 Text(post.placeName)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(1)
                 Spacer(minLength: 6)
@@ -327,7 +327,7 @@ struct SocialView: View {
             )
 
             Text(post.caption)
-                .font(.system(size: 13))
+                .font(.system(size: 14))
                 .foregroundStyle(BWTheme.ink2)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -367,13 +367,13 @@ struct SocialView: View {
             HStack(spacing: 4) {
                 if emoji.isEmpty {
                     Text(key)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                 } else {
                     Text(emoji)
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                 }
                 Text("\(count)")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .monospacedDigit()
             }
             .foregroundStyle(isTapped ? BWTheme.ink : BWTheme.ink2)

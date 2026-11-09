@@ -1,8 +1,13 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 旅程 Journey（design-system §5.3）
+ * 盲走 BlindWalk · HarmonyOS ArkUI — 旅程 Journey（design-system §5.3 + parity.md §3）
  *
- * 视觉基准：prototype/web/app.js journeyHTML + screenshots/realgeo-showcase.png
- * 结构：顶栏（盲盒进行中 + 计时 + 暂停）→ 抽象地图 → 距离 + 方位 → 三阶线索 → 底部操作
+ * 结构：顶栏（盲盒进行中 + 计时 + 暂停）→ **迷雾路径视图**（真实模式）
+ *       → 距离 + 方位 → 三阶线索 → 底部操作
+ *
+ * 迷雾路径（docs/parity.md §3 / core/fog.ts）：
+ * - heading-up；前方 min(260, 剩余-25)m；后方 min(140, 已走-5)m；两端 46m 渐隐
+ * - 已走 #C9A98A / 前方 #E89B4C；每 55m 箭头；「你」白底琥珀圈；右下指北针
+ * - 剩余 < 60m 整段隐藏，只显示「就在附近 · 抬头看看周围」
  *
  * 保密规则（产品灵魂）：本页**绝不渲染 currentPlace.name**。
  * 只显示「目的地保密中 · 还有 N 米」、方位箭头、以及不含地名的三阶线索。
@@ -12,7 +17,7 @@
  */
 
 import { getStore } from '../core/store';
-import { AppSnapshot } from '../core/contract';
+import { AppSnapshot, RoutePolyline } from '../core/contract';
 import {
   GeoPoint,
   HINT_THRESHOLDS,
@@ -29,6 +34,7 @@ import {
   BwQuietButton
 } from '../components/Common';
 import { BwAbstractMap } from '../components/AbstractMap';
+import { BwFogPath } from '../components/FogPath';
 import { GeoWatcher } from '../components/Location';
 import { bwSleep } from '../components/Async';
 import { activeSession, emptySnapshot, readSnapshot } from '../components/StoreBridge';
@@ -72,6 +78,9 @@ export struct JourneyView {
   @State private flashOpacity: number = 0;
   @State private arrivalHandled: boolean = false;
   @State private watchFailed: boolean = false;
+  @State private fogCaption: string = '正在规划路径…';
+  @State private fixLat: number = 0;
+  @State private fixLon: number = 0;
 
   private timerId: number = -1;
   private watcher: GeoWatcher | undefined = undefined;
@@ -82,6 +91,12 @@ export struct JourneyView {
     this.timerId = setInterval(() => {
       this.nowMs = Date.now();
     }, 1000);
+
+    const origin: GeoPoint | undefined = this.snapshot.lastKnownOrigin;
+    if (origin !== undefined) {
+      this.fixLat = origin.latitude;
+      this.fixLon = origin.longitude;
+    }
 
     const session: QuestSession | undefined = this.session();
     if (session === undefined) {
@@ -184,6 +199,8 @@ export struct JourneyView {
   }
 
   private onGeoPoint(point: GeoPoint): void {
+    this.fixLat = point.latitude;
+    this.fixLon = point.longitude;
     const store = getStore();
     store.setLastKnownOrigin(point);
     const events: QuestEvent[] = store.updateGeoLocation(point);
@@ -419,6 +436,62 @@ export struct JourneyView {
     .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, bottom: 8 })
   }
 
+  /** 当前路线折线（真实模式才有） */
+  private routePoints(): number[][] {
+    const route: RoutePolyline | undefined = this.snapshot.route;
+    if (route === undefined) return [];
+    return route.points;
+  }
+
+  private routeDistance(): number {
+    const route: RoutePolyline | undefined = this.snapshot.route;
+    if (route === undefined) return 0;
+    return route.distanceMeters;
+  }
+
+  private hasRoute(): boolean {
+    return this.routePoints().length >= 2;
+  }
+
+  /**
+   * 迷雾路径视图（真实模式 + 有路线时）。
+   * 没有路线时退回抽象地图（并且不显示任何终点标记）。
+   */
+  @Builder
+  pathSection() {
+    if (this.isRealMode() && this.hasRoute()) {
+      Column({ space: 6 }) {
+        BwFogPath({
+          routePoints: this.routePoints(),
+          routeDistance: this.routeDistance(),
+          hereLat: this.fixLat,
+          hereLon: this.fixLon,
+          viewHeight: this.mapHeight(),
+          onCaption: (text: string) => {
+            this.fogCaption = text;
+          }
+        })
+
+        Row({ space: 6 }) {
+          Text('👁')
+            .fontSize(BWFont.microSm)
+          Text(this.fogCaption)
+            .fontSize(BWFont.micro)
+            .fontColor(BWColor.ink3)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+        }
+        .width('100%')
+        .padding({ left: 4, right: 4 })
+      }
+      .width('100%')
+      .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding })
+    } else {
+      this.mapSection()
+    }
+  }
+
   @Builder
   mapSection() {
     Stack({ alignContent: Alignment.BottomStart }) {
@@ -533,7 +606,7 @@ export struct JourneyView {
           .strokeWidth(1)
 
         Text(this.isClueUnlocked(index) ? '✓' : String(index + 1))
-          .fontSize(10)
+          .fontSize(BWFont.microSm)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.isClueUnlocked(index) ? BWColor.teal : BWColor.ink3)
       }
@@ -665,7 +738,7 @@ export struct JourneyView {
     Column({ space: 0 }) {
       this.topBar()
       this.statusRow()
-      this.mapSection()
+      this.pathSection()
       this.distanceSection()
       this.clueSection()
       this.actionSection()

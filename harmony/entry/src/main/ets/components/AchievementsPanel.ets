@@ -68,7 +68,7 @@ export struct AchievementsPanel {
   achievementRow(achievement: Achievement) {
     Row({ space: 14 }) {
       Text(achievement.icon)
-        .fontSize(22)
+        .fontSize(BWFont.title)
         .textAlign(TextAlign.Center)
         .width(46)
         .height(46)

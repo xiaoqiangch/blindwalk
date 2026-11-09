@@ -5,11 +5,11 @@ import SwiftUI
 @main
 struct BlindWalkApp: App {
 
-    /// MVP 演示开关：
-    /// - true：用 `BlindWalkStore.demo()` 预置「已经用了 12 天 / 18 张卡 / 正在走第 3 个盲盒」的状态，
-    ///   方便录屏与走查（design-system §7 的演示数据）。
-    /// - false：走真实路径，从 UserDefaults 读回上次的 Profile（正式版默认）。
-    private static let usesDemoData = true
+    /// 正式版默认走真实路径（从 UserDefaults 读回 Profile）；
+    /// 只有带 `BW_PREVIEW` 的截图/走查模式才预置演示数据。
+    private static var usesDemoData: Bool {
+        !(ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? "").isEmpty
+    }
 
     @State private var store: BlindWalkStore = BlindWalkApp.makeStore()
 
@@ -34,6 +34,42 @@ struct BlindWalkApp: App {
             if preview == "live" {
                 store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
                 _ = store.startQuest()
+            }
+            // 三端对齐自检：真实地点 + 迷雾路径（`BW_PREVIEW=parity`）
+            if preview == "parity" {
+                let origin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
+                let target = GeoPoint(latitude: 31.2330, longitude: 121.4710) // 人民公园（真实 POI，路线适合展示迷雾）
+                store.lastKnownOrigin = origin
+                _ = store.startQuest(origin: origin)
+                let poi = POICandidate(
+                    id: "amap-demo-museum",
+                    name: "人民公园",
+                    coordinate: target,
+                    address: "黄浦区 · 人民公园",
+                    category: .park,
+                    source: "amap"
+                )
+                let place = RealPlaceFactory.scrub(RealPlaceFactory.makePlace(
+                    from: poi, origin: origin, mood: .drift, hour: 10, startMeters: 480
+                ))
+                if let current = store.session {
+                    let distance = max(Double(QuestSession.arriveThreshold + 1), GeoMath.distance(from: origin, to: target))
+                    let total = max(Int(distance.rounded()), QuestSession.arriveThreshold + 1)
+                    let bearing = GeoMath.bearing(from: origin, to: target)
+                    store.session = QuestSession(
+                        id: current.id,
+                        placeID: current.placeID,
+                        startedAt: current.startedAt,
+                        totalMeters: total,
+                        remainingMeters: total,
+                        phase: .walking,
+                        unlockedHintCount: 1,
+                        target: target,
+                        currentBearing: bearing
+                    )
+                    store.currentPlace = place
+                    _ = store.updateLocation(distanceMeters: Double(total), bearingDegrees: bearing)
+                }
             }
             // 真实 POI 自检：用内置的一条真实 POI 直接建旅程（不走 MapKit，离线可复现）
             if preview == "realquest" {
@@ -102,7 +138,7 @@ struct RootView: View {
         default: tab = .home
         }
         _selectedTab = State(initialValue: tab)
-        _isJourneyPresented = State(initialValue: ["journey", "reveal", "live", "realquest"].contains(preview))
+        _isJourneyPresented = State(initialValue: ["journey", "reveal", "live", "realquest", "parity"].contains(preview))
     }
 
     var body: some View {

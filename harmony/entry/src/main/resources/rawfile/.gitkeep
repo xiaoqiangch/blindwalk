@@ -1,0 +1,2 @@
+# mapkeys.json 在这里（部署时由后台导出注入，**不进 git**）
+# 结构：{"keys":{"amap":"...","baidu":""},"version":"..."}

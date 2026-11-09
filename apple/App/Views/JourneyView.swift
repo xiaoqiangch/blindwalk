@@ -42,6 +42,9 @@ struct JourneyView: View {
     @State private var walkedTrail: [GeoPoint] = []
     /// 手机朝向（真机才有）
     @State private var headingDegrees: Double?
+    /// 步行路线（迷雾路径的形状来源；Valhalla）
+    @State private var route: WalkingRoute?
+    @State private var routeTarget: GeoPoint?
     /// 用户主动选择「用演示模式继续」
     @State private var choseDemo = false
     /// 等太久没定位 → 先允许演示
@@ -200,7 +203,7 @@ struct JourneyView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("盲盒进行中")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .tracking(1.2)
                     .foregroundStyle(BWTheme.amberDeep)
 
@@ -217,7 +220,7 @@ struct JourneyView: View {
             Button(action: togglePause) {
                 HStack(spacing: 4) {
                     Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                     Text(isPaused ? "继续" : "暂停")
                         .font(BWTheme.caption(11))
                 }
@@ -257,9 +260,9 @@ struct JourneyView: View {
             // 来源标签：真实地标 / 编辑精选 / 演示（只标来源，不泄露地点信息）
             HStack(spacing: 4) {
                 Image(systemName: questSourceIcon)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                 Text(questSourceLabel)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
                     .lineLimit(1)
             }
             .foregroundStyle(questSourceTint)
@@ -281,7 +284,7 @@ struct JourneyView: View {
                     .foregroundStyle(BWTheme.amberDeep)
             } else if locationMode == .tracking {
                 Text("GPS")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .tracking(0.8)
                     .foregroundStyle(BWTheme.teal)
                     .padding(.horizontal, 8)
@@ -348,12 +351,12 @@ struct JourneyView: View {
         VStack(spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                Text("这是编辑精选的地点")
                     .font(.system(size: 12, weight: .semibold))
+                Text("这是编辑精选的地点")
+                    .font(.system(size: 13, weight: .semibold))
             }
             Text("终点仍然保密。到了才知道是哪里。")
-                .font(.system(size: 10))
+                .font(.system(size: 12))
                 .foregroundStyle(BWTheme.cream.opacity(0.68))
         }
         .foregroundStyle(BWTheme.cream)
@@ -378,14 +381,12 @@ struct JourneyView: View {
 
     private func mapSection(session: QuestSession) -> some View {
         ZStack(alignment: .topLeading) {
-            // 真实地点 + 有真实坐标 → 真实地图；否则退回抽象手绘地图
-            if session.target != nil, store.currentPlace?.source != "catalog" {
-                // 真实地图内部已经画了「目的地保密中」胶囊，外层不再重复
-                RealMapView(
-                    userLocation: store.lastKnownOrigin,
-                    trail: walkedTrail,
-                    remainingMeters: session.remainingMeters,
-                    height: nil
+            // 真实地点 + 有真实坐标 → 迷雾路径（heading-up，不画终点）；演示模式才用抽象地图
+            if session.target != nil, PlaceSource.isReal(store.currentPlace?.source) {
+                FogPathView(
+                    route: route,
+                    here: currentPoint,
+                    remainingMeters: session.remainingMeters
                 )
             } else {
                 JourneyMapView(
@@ -397,13 +398,39 @@ struct JourneyView: View {
         }
     }
 
+    /// 当前定位点（真实 GPS 优先；预览/演示模式用 store 里最近一次定位）
+    private var currentPoint: GeoPoint? {
+        lastReading?.origin ?? store.lastKnownOrigin
+    }
+
+    /// 拿到真实目的地后拉一次步行路线；失败不影响旅程（只显示「正在规划路径」）
+    private func loadRouteIfNeeded() {
+        guard let target = store.session?.target, let here = currentPoint else { return }
+        if routeTarget == target, route != nil { return }
+        routeTarget = target
+        Task { @MainActor in
+            let fetched = await RouteService.shared.walkingRoute(from: here, to: target)
+            guard routeTarget == target else { return }
+            route = fetched
+            if ProcessInfo.processInfo.environment["BW_DEBUG_POI"] == "1" {
+                if let fetched {
+                    let first = fetched.points.first ?? here
+                    let last = fetched.points.last ?? target
+                    print("[route] n=\(fetched.points.count) dist=\(Int(fetched.distanceMeters)) first=\(first.latitude),\(first.longitude) last=\(last.latitude),\(last.longitude) here=\(here.latitude),\(here.longitude) target=\(target.latitude),\(target.longitude)")
+                } else {
+                    print("[route] nil")
+                }
+            }
+        }
+    }
+
     /// 抽象地图上的「目的地保密中」胶囊（真实地图自带，不重复画）
     private func mapCaption(session: QuestSession) -> some View {
         HStack(spacing: 5) {
             Image(systemName: "eye.slash")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
             Text("目的地保密中 · 还有 \(session.remainingMeters) 米")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .italic()
         }
         .foregroundStyle(BWTheme.ink2)
@@ -422,7 +449,7 @@ struct JourneyView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(session.remainingMeters)")
-                    .font(BWTheme.display(54))
+                    .font(BWTheme.display(30))
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.ink)
 
@@ -511,7 +538,7 @@ struct JourneyView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "location.slash")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BWTheme.ember)
                 Text("开启定位权限才能真实散步")
                     .font(BWTheme.title(14))
@@ -599,7 +626,7 @@ struct JourneyView: View {
 
             if unlocked {
                 HStack(alignment: .top, spacing: 8) {
-                    Text("✅").font(.system(size: 13))
+                    Text("✅").font(.system(size: 14))
                     Text(hint)
                         .font(BWTheme.body(14))
                         .foregroundStyle(BWTheme.ink)
@@ -618,7 +645,7 @@ struct JourneyView: View {
             } else {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(BWTheme.ink3)
                     Text(lockedCopy(index: index, session: session))
                         .font(BWTheme.caption(13))
@@ -649,11 +676,11 @@ struct JourneyView: View {
                 .stroke(unlocked ? BWTheme.teal.opacity(0.4) : BWTheme.line, lineWidth: 1)
             if unlocked {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(BWTheme.teal)
             } else {
                 Text("\(index + 1)")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(BWTheme.ink3)
             }
         }
@@ -857,7 +884,21 @@ struct JourneyView: View {
             }
         }
 
+        // 截图/预览：不弹定位授权，用模拟起点做一条真实路线（`BW_PREVIEW=parity`）
+        let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        if preview == "parity", let origin = store.lastKnownOrigin {
+            lastReading = LocationReading(
+                origin: origin,
+                remainingMeters: Double(store.session?.remainingMeters ?? 0),
+                bearingDegrees: store.session?.currentBearing,
+                headingDegrees: nil,
+                horizontalAccuracy: 8
+            )
+            if walkedTrail.isEmpty { walkedTrail = [origin] }
+        }
+
         startLiveLocationIfPossible()
+        loadRouteIfNeeded()
         applyAutoArrivePreviewIfNeeded()
     }
 
@@ -892,6 +933,11 @@ struct JourneyView: View {
         let env = ProcessInfo.processInfo.environment
         let preview = env["BW_PREVIEW"] ?? ""
         let forceLive = env["BW_LIVE_GPS"] == "1" || preview == "live"
+        if preview == "parity" {
+            // 截图走查：用合成定位走真实路线，不弹系统授权
+            refreshMode()
+            return
+        }
         guard preview.isEmpty || forceLive else {
             // 截图/走查：不弹系统定位授权，直接用演示步行（来源标签仍然准确）
             choseDemo = true
@@ -963,6 +1009,8 @@ struct JourneyView: View {
                 walkedTrail.append(origin)
             }
         }
+
+        loadRouteIfNeeded()
 
         // 会话已经有真实目的地（真实 POI / 真实坐标）→ 把这个坐标交给定位服务，
         // 否则 service 不知道 target，距离永远停在初始值。

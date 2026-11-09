@@ -187,7 +187,7 @@ struct RevealView: View {
                             VStack(spacing: 0) {
                                 revealCard(place)
                                 Text("这个地点，只为你亮一次。")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: 12))
                                     .tracking(0.6)
                                     .foregroundStyle(BWTheme.cream.opacity(0.42))
                                     .padding(.top, 14)
@@ -224,7 +224,7 @@ struct RevealView: View {
         HStack {
             TimelineView(.periodic(from: Date(), by: 20)) { context in
                 Text(BWFormat.clock(seconds: elapsed(context.date)))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.cream.opacity(0.92))
             }
@@ -239,7 +239,7 @@ struct RevealView: View {
                     onClose()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(BWTheme.cream.opacity(0.72))
                         .frame(width: 30, height: 30)
                         .background(BWTheme.cream.opacity(0.08))
@@ -258,7 +258,7 @@ struct RevealView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
                 Text(serialText)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .tracking(1)
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.ink3)
@@ -290,7 +290,7 @@ struct RevealView: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("\(BWFormat.areaName(place.area)) · \(place.category)")
-                    .font(.system(size: 10.5))
+                    .font(.system(size: 12.5))
                     .tracking(0.8)
                     .foregroundStyle(BWTheme.ink3)
             }
@@ -302,7 +302,7 @@ struct RevealView: View {
             VStack(alignment: .leading, spacing: 6) {
                 BWMicroLabel("为什么是这里：")
                 Text(place.why)
-                    .font(.system(size: 13))
+                    .font(.system(size: 14))
                     .foregroundStyle(BWTheme.ink2)
                     .lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
@@ -319,7 +319,7 @@ struct RevealView: View {
 
             if hasCollected {
                 Text("它现在是你的了。")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .tracking(0.5)
                     .foregroundStyle(BWTheme.ink3)
                     .frame(maxWidth: .infinity)
@@ -341,9 +341,9 @@ struct RevealView: View {
     private var curatedTag: some View {
         HStack(spacing: 4) {
             Image(systemName: "sparkles")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
             Text("编辑精选")
-                .font(.system(size: 9.5, weight: .bold))
+                .font(.system(size: 11.5, weight: .bold))
                 .tracking(0.6)
         }
         .foregroundStyle(BWTheme.amberDeep)
@@ -386,9 +386,9 @@ struct RevealView: View {
 
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                     Text("编辑精选")
-                        .font(.system(size: 9.5, weight: .bold))
+                        .font(.system(size: 11.5, weight: .bold))
                         .tracking(0.6)
                 }
                 .foregroundStyle(BWTheme.ink)
@@ -403,7 +403,7 @@ struct RevealView: View {
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
                     Text("图片：\(credit)")
-                        .font(.system(size: 9))
+                        .font(.system(size: 11))
                         .foregroundStyle(BWTheme.ink3)
                 }
                 .padding(.trailing, 2)
@@ -430,11 +430,11 @@ struct RevealView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 3) {
-                    Text("🎯").font(.system(size: 10))
+                    Text("🎯").font(.system(size: 12))
                     BWMicroLabel("小任务：")
                 }
                 Text(place.task)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 13.5))
                     .foregroundStyle(BWTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -447,7 +447,7 @@ struct RevealView: View {
                 BWHaptics.light()
             } label: {
                 Text(taskDone ? "已完成" : "完成后点一下")
-                    .font(.system(size: 9.5))
+                    .font(.system(size: 11.5))
                     .foregroundStyle(taskDone ? BWTheme.teal : BWTheme.ink3)
                     .padding(.top, 1)
             }

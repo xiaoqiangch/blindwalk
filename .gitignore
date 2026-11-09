@@ -22,3 +22,6 @@ account/*.db-shm
 
 # 后台下发的地图 Key（部署时注入 gh-pages，绝不提交主仓）
 prototype/web/mapkeys.json
+
+# iOS 构建时注入的地图 Key（由 scripts/inject-ios-mapkeys.sh 生成，绝不提交）
+apple/App/Resources/mapkeys.json

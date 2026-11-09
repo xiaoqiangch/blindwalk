@@ -72,7 +72,7 @@ struct SurpriseHubCard: View {
                     Text("我的惊喜")
                         .font(BWType.caption(10.5))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .semibold))
+                        .font(.system(size: 10.5, weight: .semibold))
                 }
                 .foregroundStyle(BWTheme.ink3)
             }
@@ -132,9 +132,9 @@ struct SurpriseHubCard: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: systemName)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
@@ -327,7 +327,7 @@ struct SurprisesView: View {
                     SurpriseThumb(name: surprise.photoName, layout: .fixed(CGSize(width: 54, height: 68)))
                         .overlay(alignment: .bottomTrailing) {
                             Text(surprise.authorEmoji)
-                                .font(.system(size: 13))
+                                .font(.system(size: 14))
                                 .offset(x: 4, y: 4)
                         }
 
@@ -365,7 +365,7 @@ struct SurprisesView: View {
         HStack(spacing: 10) {
             SurpriseThumb(name: surprise.photoName, layout: .fixed(CGSize(width: 40, height: 50)))
             Image(systemName: "arrow.left.arrow.right")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(BWTheme.ink3)
             SurpriseThumb(name: surprise.finderPhotoName ?? "", layout: .fixed(CGSize(width: 40, height: 50)))
 
@@ -432,7 +432,7 @@ struct SurprisesView: View {
 
                     if let score = surprise.matchScore {
                         Text("\(Int((score * 100).rounded()))% 像")
-                            .font(.system(size: 10.5, weight: .bold))
+                            .font(.system(size: 12.5, weight: .bold))
                             .foregroundStyle(BWTheme.teal)
                             .padding(.horizontal, 8)
                             .frame(height: 22)
@@ -585,7 +585,7 @@ struct SurpriseThumb: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(BWTheme.ink3)
                 Text("照片不在本机")
-                    .font(.system(size: 8.5))
+                    .font(.system(size: 10.5))
                     .foregroundStyle(BWTheme.ink3)
                     .multilineTextAlignment(.center)
             }
@@ -601,7 +601,7 @@ struct SurpriseStatusBadge: View {
     var body: some View {
         let style = styleInfo
         Text(style.0)
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: 12, weight: .bold))
             .tracking(0.2)
             .foregroundStyle(style.1)
             .padding(.horizontal, 8)
@@ -631,10 +631,10 @@ struct SurprisePill: View {
         HStack(spacing: 3) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
             }
             Text(text)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 12.5, weight: .semibold))
                 .monospacedDigit()
         }
         .foregroundStyle(tint)

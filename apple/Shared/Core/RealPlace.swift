@@ -22,6 +22,9 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
     case plaza         // 广场
     case market        // 市集
     case temple        // 庙宇/教堂
+    case museum        // 博物馆/展馆
+    case historic      // 老建筑/故居/遗址
+    case venue         // 演出场所/体育场
 
     public var label: String {
         switch self {
@@ -39,6 +42,9 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
         case .plaza: return "广场"
         case .market: return "市集"
         case .temple: return "老建筑"
+        case .museum: return "博物馆"
+        case .historic: return "老房子"
+        case .venue: return "演出场所"
         }
     }
 
@@ -58,6 +64,9 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
         case .plaza: return "⛲️"
         case .market: return "🧺"
         case .temple: return "🏛️"
+        case .museum: return "🏛️"
+        case .historic: return "🏮"
+        case .venue: return "🎻"
         }
     }
 
@@ -67,10 +76,10 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
             return .common
         case .bookstore, .library, .bridge, .garden, .market:
             return .rare
-        case .art, .viewpoint, .river:
+        case .art, .viewpoint, .river, .venue:
             return .epic
-        case .temple:
-            return .hidden
+        case .temple, .museum, .historic:
+            return .rare
         }
     }
 
@@ -83,6 +92,10 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
             return [.discover]
         case .market, .plaza, .convenience, .cafe:
             return [.lively]
+        case .museum, .venue:
+            return [.discover]
+        case .historic:
+            return [.drift, .discover]
         }
     }
 
@@ -103,6 +116,9 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
         case .plaza: return "观察 30 秒，找出走得最慢的那个人。"
         case .market: return "挑一样你不认识的东西，问老板是什么。"
         case .temple: return "找一处你觉得最旧的痕迹。"
+        case .museum: return "找一个你愿意再看第二眼的展品，记住它的位置。"
+        case .historic: return "找一处你觉得最旧的痕迹。"
+        case .venue: return "找一张你愿意看的演出海报，拍下来。"
         }
     }
 
@@ -125,6 +141,9 @@ public enum RealPlaceCategory: String, CaseIterable, Sendable {
         case .plaza: far = "人会变多。"; mid = "找一块空着的石头或台阶。"
         case .market: far = "声音会变杂。"; mid = "找一个人挤人、但没人赶时间的地方。"
         case .temple: far = "会突然安静，也会突然古老。"; mid = "找一处门框比周围都旧的地方。"
+        case .museum: far = "会看到很多人排着队，也会突然安静。"; mid = "找一栋有很长台阶、门很高的建筑。"
+        case .historic: far = "会突然安静，也会突然古老。"; mid = "找一处门框比周围都旧的地方。"
+        case .venue: far = "傍晚会亮起一串灯。"; mid = "找一处门口贴着演出海报的地方。"
         }
         return [far, mid, "就在前面。抬手机，慢慢看。"]
     }
@@ -158,14 +177,30 @@ public struct POICandidate: Hashable, Sendable {
     public let address: String?
     public let category: RealPlaceCategory
     public let source: String
+    public let photoUrl: String?
+    public let photoCredit: String?
+    public let summary: String?
 
-    public init(id: String, name: String, coordinate: GeoPoint, address: String?, category: RealPlaceCategory, source: String) {
+    public init(
+        id: String,
+        name: String,
+        coordinate: GeoPoint,
+        address: String?,
+        category: RealPlaceCategory,
+        source: String,
+        photoUrl: String? = nil,
+        photoCredit: String? = nil,
+        summary: String? = nil
+    ) {
         self.id = id
         self.name = name
         self.coordinate = coordinate
         self.address = address
         self.category = category
         self.source = source
+        self.photoUrl = photoUrl
+        self.photoCredit = photoCredit
+        self.summary = summary
     }
 }
 
@@ -213,7 +248,7 @@ public enum RealPlaceFactory {
     private static func area(for category: RealPlaceCategory) -> Area {
         switch category {
         case .river, .bridge: return .river
-        case .bookstore, .library, .art, .temple, .market: return .oldtown
+        case .bookstore, .library, .art, .temple, .market, .museum, .historic, .venue: return .oldtown
         default: return .near
         }
     }

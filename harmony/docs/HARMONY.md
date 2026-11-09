@@ -1,6 +1,6 @@
 # 盲走 BlindWalk · HarmonyOS 移植
 
-> 状态：v0.6 移植开发中（2026-11-09）
+> 状态：v0.7 功能对齐 Web v32 完成（2026-11-09）
 > 目标平台：**HarmonyOS NEXT**（API 12 / 5.0.0），ArkTS + ArkUI 声明式
 > 本机限制：**没有 DevEco Studio / hvigor / ohpm**，所以 `.hap` 编译需在你装的 DevEco 里完成；逻辑层已用 TypeScript + Node 做真实校验。
 
@@ -21,7 +21,7 @@ entry/src/main/ets/
 ├── core/            ← 纯逻辑（TypeScript，可在 Node 里跑测试，不依赖 ArkUI）
 │   ├── types.ts         数据契约（对应 apple/Shared/Core/Models.swift）
 │   ├── contract.ts      UI↔逻辑 调用契约（对应 @Observable BlindWalkStore 的公开面）
-│   ├── geo.ts           Haversine 距离 / 方位角 / 按方位偏移
+│   ├── geo.ts           Haversine 距离 / 方位角 / 按方位偏移 / WGS↔GCJ↔BD 坐标转换
 │   ├── catalog.ts       24 个内置地点（对应 PlaceCatalog.swift）
 │   ├── engine.ts        种子随机 + 抽盒权重 + 序列号 + 心情亲和
 │   ├── session.ts       旅程状态机（线索阈值 400/200/60、到达 30m）
@@ -29,12 +29,23 @@ entry/src/main/ets/
 │   ├── achievements.ts  成就判定
 │   ├── demo.ts          演示数据（口径与 Web/iOS 一致）
 │   ├── social.ts        圈子动态 + 排行榜
-│   ├── store.ts         编排：抽盒/推进/揭晓/收录/埋寻/持久化
-│   └── persistence.ts   KeyValueStore（HarmonyOS 端注入 @ohos.data.preferences）
+│   ├── store.ts         编排：抽盒/推进/揭晓/收录/埋寻/持久化/真实地点入口
+│   ├── persistence.ts   KeyValueStore（HarmonyOS 端注入 @ohos.data.preferences）
+│   ├── parity.ts        三端对齐规格：三档放宽/硬帽/黑名单/去重/类别多样性（parity.md §2）
+│   ├── http.ts          HttpClient 接口（平台实现由 UI 注入）
+│   ├── providers.ts     高德/百度/OSM/维基解析与编排（parity.md §1）
+│   ├── mapkeys.ts       地图 Key 下发（包内→Pages→后台→免费源，12h 缓存）
+│   ├── search.ts        三档搜索编排 + 策展优先 + **明确失败**（绝不虚构）
+│   ├── flow.ts          抽盒完整编排（Key→策展→搜索）+ 路线规划
+│   ├── route.ts         Valhalla 步行路线（polyline6 解码）
+│   ├── fog.ts           迷雾路径几何（parity.md §3，纯函数可测）
+│   ├── geocode.ts       地址 → 坐标（GPS 不可用时的真实地点出口）
+│   └── account.ts       账号服务（手动 Cookie 管理）
 ├── theme/Theme.ets      设计 token（奶油底 / 琥珀主色 / 圆角 / 字号）
 ├── pages/Index.ets      Tab 外壳
 ├── views/               7 个界面：Home / SetupSheet / Journey / Reveal / Cards / Social / Profile
-├── components/          共享小组件
+├── components/          共享小组件 + 平台注入（HttpClient / Location / PreferencesKV）
+│                        + 迷雾路径 Canvas（FogPath）+ 失败面板 + 账号/数据源面板
 └── entryability/        EntryAbility（窗口、定位权限）
 ```
 
@@ -55,6 +66,12 @@ entry/src/main/ets/
 | 真实定位（`@ohos.geoLocationManager`） | ✅ 已接，权限拒绝会降级到演示模式 |
 | 真实地图 | ⏳ 本轮用 ArkUI Canvas 手绘抽象街区（和 Web 版同源），不引入需 AGC 配置的 Map Kit |
 | 埋惊喜 / 寻惊喜界面 | ⏳ 逻辑层已备好；界面本轮只放首页入口卡片 |
+| **真实 POI 数据源**（高德/百度/OSM/维基） | ✅ v0.7 完成，ArkTS 直接 HTTP（无 CORS） |
+| **三档放宽 + 硬帽 + 黑名单**（parity.md §2） | ✅ v0.7 完成，纯 TS 单测覆盖 |
+| **明确失败面板**（绝不虚构兜底） | ✅ v0.7 完成，三按钮同 Web |
+| **迷雾路径视图**（parity.md §3） | ✅ v0.7 几何层单测覆盖；Canvas 绘制待 DevEco 首编 |
+| **账号**（登录/同步/恢复/退出/删号） | ✅ v0.7 完成（手动 Cookie） |
+| **字号对齐 Web v32**（无 <10pt） | ✅ v0.7 完成 |
 
 ---
 
@@ -91,15 +108,34 @@ File → Project Structure → Signing Configs → 勾选 Automatically generate
 
 ## 4. 逻辑层校验（本机可跑，真实结果）
 
-最近一次运行（2026-11-09 09:5x）：
+最近一次运行（2026-11-09 23:1x，v0.7 对齐后）：
 
 ```
 1. tsc -p tsconfig.test.json --noEmit   → 0 error
-2. npm test                             → 39/39 通过
-3. ArkTS 静态检查（20 个 .ets）           → 0 error
+2. npm test                             → 98/98 通过（原 39 项 + 新增 59 项）
+3. ArkTS 静态检查（25 个 .ets）           → 0 error
     ✅ import 路径  ✅ ArkTS 严格模式  ✅ ForEach key
     ✅ @Entry 注册  ✅ 资源引用       ✅ 保密规则  ✅ 工程契约
 ```
+
+新增 59 项测试覆盖（对照 docs/parity.md）：
+
+| 分组 | 内容 |
+|---|---|
+| 坐标系 | WGS↔GCJ↔BD 往返误差 < 3m；境外不偏移 |
+| 三档放宽 | min/max 距离公式、距离硬帽、层级单调 |
+| 质量门槛 | 硬排除（公厕/加油站）、软降权（便利店 ×0.22）、类别权重 |
+| 去重/多样性 | 30m 或同名合并、每类最多 5、按距离排序 |
+| 择优 | 前 40%（≥3）加权随机，软黑名单不优先 |
+| 数据源解析 | 高德/百度/OSM/维基 fixture（含坐标转换、过滤规则） |
+| 数据源编排 | 无 Key 只跑 OSM+维基、单源失败不影响其他源 |
+| 三档搜索 | 找到 / 全失败 / 档位放宽 / 最后用软黑名单点 / 策展优先 |
+| Key 下发 | 包内→Pages→后台→免费源四级降级、12h 缓存、掩码 |
+| 账号 | Set-Cookie 提取、本地校验、同步超限、401 清会话、恢复 |
+| 迷雾几何 | 窗口公式、沿线投影、两端渐隐、箭头 55m、<60m 隐藏、指北针 |
+| 抽盒编排 | prepareQuest 成功/失败路径、策展 6h 缓存 |
+| 地址/路线 | 地址→坐标三级、polyline6 往返、Valhalla 解析、10min 缓存 |
+| 保密 | 照片/署名/简介到达前必须抹掉（快照 JSON 不含图片域名） |
 
 Lead 还做了一轮**不依赖队友测试的独立复核**（自己写脚本 import 编译产物）：
 
@@ -175,7 +211,7 @@ bash scripts/check-harmony.sh
 
 ## 7. 待 DevEco 首编验证的点
 
-代码里已标 `⚠️ 待 DevEco 验证` 的共 5 处（都是 API 签名层面，写法取了官方文档最保守的形式）：
+代码里已标 `⚠️ 待 DevEco 验证` 的共 8 处（都是 API 签名层面，写法取了官方文档最保守的形式）：
 
 | 文件 | 待验证内容 |
 |---|---|
@@ -183,9 +219,23 @@ bash scripts/check-harmony.sh
 | `components/Location.ets` | `geoLocationManager.getCurrentLocation` / `on('locationChange')` 的 API 12 写法 |
 | `components/PreferencesKV.ets` | `@kit.ArkData` 的 `preferences.getSync / putSync / deleteSync` 签名 |
 | `components/AbstractMap.ets` | `CanvasRenderingContext2D` 的字体与 `lineDash` 写法 |
-| `components/Async.ets` | `@kit.BasicServicesKit` 的 pasteboard 导入方式 |
+| `components/FogPath.ets` | **Canvas 的 `rotate` / `setLineDash` / `globalAlpha` / `arc` 四件套**（迷雾路径全部靠它） |
+| `components/HttpClient.ets` | **`http.createHttp()` / `request()` 的 API 12 签名**、`expectDataType`、`header` 键名大小写、`responseCode` 类型 |
+| `components/HttpClient.ets` | **`resourceManager.getRawFileContent('mapkeys.json')`**（包内 Key 下发；文件不存在时必须走 catch 分支） |
+| `components/AccountPanel.ets` | `TextInput` 的 `InputType.Password`、`promptAction.showToast` |
 
-首次编译报错大概率集中在这 5 处，改起来都是机械调整。其余（组件树、装饰器、状态管理）是按 ArkTS 规范写的。
+首次编译报错大概率集中在这 8 处，改起来都是机械调整。其余（组件树、装饰器、状态管理）是按 ArkTS 规范写的。
+
+### v0.7 新增、需要真机确认的行为
+
+| 行为 | 本机无法验证的原因 | 真机上怎么确认 |
+|---|---|---|
+| 高德/百度 Key 真实可用 | 没有真 Key（Key 由后台下发，主仓不存） | 「我的 → 数据源」显示「已由后台配置 ✓」；抽盒成功 |
+| 高德返回 GCJ-02 已正确转回 WGS | 需要真实响应 | 抽到的地点距离与地图 App 大体一致（偏差应在几十米内，不是几百米） |
+| 迷雾路径 Canvas 绘制 | 需要渲染 | 旅程页看到琥珀色前方路径 + 灰褐已走段 + 两端渐隐 + 指北针 |
+| 剩余 < 60m 隐藏整段 | 需要走完一段 | 接近终点时路径消失，只剩「就在附近 · 抬头看看周围」 |
+| 账号 Cookie 持久化 | 需要 `@ohos.net.http` 真实响应头 | 登录后杀进程重开，仍是登录态 |
+| 账号 CORS/地址 | 鸿蒙无 CORS，但要注意「真机不能访问 127.0.0.1」 | 把服务地址改成电脑局域网 IP（如 `http://192.168.1.5:8803`） |
 
 ## 8. 立即可测的替代路径（今晚就能用）
 
@@ -204,8 +254,30 @@ bash scripts/check-harmony.sh
 | 版本 | 内容 |
 |---|---|
 | v0.6（本轮） | 工程骨架 + 逻辑层（含测试）+ 7 个主界面 + 真实定位 |
-| v0.7 | 埋惊喜 / 寻惊喜界面（相机 + 相册 + dHash 取图）、震动反馈 |
-| v0.8 | 华为账号登录、云同步、桌面卡片（服务卡片显示「下一个盲盒」） |
+| **v0.7（本轮）** | **功能对齐 Web v32**：多数据源真实 POI、三档放宽、明确失败面板、迷雾路径、账号、字号 |
+
+### v0.7 联调实测发现并修掉的问题（真实网络，不是纸面推演）
+
+用真实的高德 Key + 公网维基跑了 `nearby` / `findRealPlace`，抓出 4 个真 bug：
+
+| # | 问题 | 现象 | 修法 |
+|---|---|---|---|
+| 1 | **维基 / Overpass 缺 User-Agent** | 直连返回 403 / 406（浏览器会自动带 UA，原生 HTTP 客户端不会）→ 免费源全挂 | `core/providers.ts` 导出 `USER_AGENT`，所有 GET/POST 显式带上；`geocode.ts` / `route.ts` / `search.ts` / `mapkeys.ts` 同改 |
+| 2 | **地标关键字整串传给高德** | `keywords=公园\|风景名胜\|…` 返回 `status=1` 但 `count=0`（**静默空结果**，最阴的一个） | `parity.landmarkKeywordList()` 拆成单词逐个查，只查前 `LANDMARK_KEYWORD_LIMIT=3` 个（兼顾高德 QPS） |
+| 3 | **类别判定顺序错** | 「国际饭店」因简介提到「人民公园」被判成 `park`；维基条目尤其严重 | `mapCategory()` 改为**名称优先、原始类别兜底**；维基改用 `categoryFromWikiTitle()`（只信标题） |
+| 4 | **去重时跨 POI 借类别** | 30m 内的餐厅把隔壁寺庙的 `temple` 借走（「鲜得来 → 寺庙」） | `mergeMissing()` 只在**同名**时互补类别；照片/地址这类客观属性仍可互补 |
+| 5 | **rawfile 逐字节解码** | `String.fromCharCode` 把 UTF-8 中文解成乱码 → `JSON.parse` 失败 | `util.TextDecoder.create('utf-8')`（`components/HttpClient.ets`） |
+
+> 修完后实测：高德 95 条 + 维基 7 条 → 去重后 40 条候选，抽到的是「上海博物馆 / 延福绿地 / 人民广场」这类**真的值得走过去**的地方，不再是楼下的餐厅。
+
+#### 本机网络环境的已知限制
+
+- **Overpass 三个镜像从本机全部超时**（`overpass-api.de` / `kumi` / `private.coffee`）。
+  Web 版用同样的三个端点，同样失败 → 确认是**本机网络环境**（代理/出口）问题，不是代码。
+  代码侧已按 parity 实现「3 镜像 × 4.5s 超时、整体 8s」，失败只影响 OSM 一个源，不影响整体（维基 + 高德照常）。
+- 维基、高德、Valhalla 从本机可正常访问（已实测 200）。
+| v0.8 | 埋惊喜 / 寻惊喜界面（相机 + 相册 + dHash 取图）、震动反馈 |
+| v0.9 | 华为账号登录（替代自建账号）、桌面卡片（服务卡片显示「下一个盲盒」） |
 | v0.9+ | 折叠屏/平板适配（GridRow 断点）、深色模式、无障碍 |
 | 待评估 | 华为手表端（Wearable 是独立技术栈，工作量和手机端相当） |
 

@@ -1,25 +1,46 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 抽盒设置 Sheet（design-system §5.2）
+ * 盲走 BlindWalk · HarmonyOS ArkUI — 抽盒设置 Sheet（design-system §5.2 + parity.md）
  *
  * 视觉基准：prototype/web/app.js sheetHTML + screenshots/showcase.png（SETUP 屏）
- * 流程：选时长 / 心情 / 区域 →「摇一个盲盒」→ 申请定位权限 + 取一次坐标（失败降级演示）
- *       → 600ms 摇盒 → store.startQuest(origin) → 关闭 sheet 进旅程。
  *
+ * 流程（严格按 docs/parity.md §1 §2）：
+ *   选时长/心情/区域 →「摇一个盲盒」
+ *     → 申请定位 + 取一次坐标（拒绝/超时 → **定位受阻面板**，不偷偷用虚构地点）
+ *     → 地图 Key 下发 + 策展 pois.json
+ *     → 三档放宽真实搜索（高德/百度/OSM/维基）
+ *     → 成功：startQuestWithPlace（真实来源 + 真实坐标）
+ *     → 失败：**明确失败面板**（扩大范围 / 换个位置 / 显式选演示）
+ *
+ * 产品红线：真实模式下**绝不虚构兜底**。演示模式只能由用户点按钮显式进入。
  * 保密：本页不读取 currentPlace，也不展示任何地点名。
  */
 
 import { common } from '@kit.AbilityKit';
 import { getStore } from '../core/store';
-import { AppSnapshot } from '../core/contract';
-import { Area, GeoPoint, Mood, WalkDuration } from '../core/types';
+import { AppSnapshot, DataSourceStatus, KeyValueStore } from '../core/contract';
+import { Area, GeoPoint, Mood, Place, WalkDuration } from '../core/types';
+import { SourceReport } from '../core/http';
+import { HttpClient } from '../core/http';
+import {
+  QuestFlowDeps,
+  QuestStartResult,
+  prepareQuest,
+  toDataSourceStatus
+} from '../core/flow';
 import {
   BwMicroLabel,
   BwPill,
   BwPrimaryButton
 } from '../components/Common';
-import { bwSleep } from '../components/Async';
+import { bwSleep, bwToast } from '../components/Async';
 import { emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import { getCurrentLocationOnce, requestLocationPermission } from '../components/Location';
+import {
+  BwLocationBlockedPanel,
+  BwManualLocationSheet,
+  BwSearchFailedPanel
+} from '../components/SearchPanels';
+import { geocodeAddress } from '../core/geocode';
 import {
   BWColor,
   BWFont,
@@ -87,6 +108,12 @@ export struct SetupSheet {
   @Prop winWidth: number = 400;
   @Prop winHeight: number = 800;
 
+  /** 由 Index 注入：平台依赖（http / preferences / rawfile） */
+  http: HttpClient | undefined = undefined;
+  kv: KeyValueStore | undefined = undefined;
+  readBundledKeys: () => string | undefined = () => undefined;
+  adminBase: string = 'http://127.0.0.1:8802';
+
   onClose: () => void = () => {
   };
   onStarted: () => void = () => {
@@ -101,6 +128,19 @@ export struct SetupSheet {
   @State private busy: boolean = false;
   @State private statusText: string = '';
   @State private failed: boolean = false;
+
+  /** 定位受阻（denied / timeout / no-fix）；空串 = 正常 */
+  @State private locationBlockedReason: string = '';
+  /** 真实搜索失败；空串 = 没有失败 */
+  @State private searchFailedReason: string = '';
+  /** 失败面板要展示的源回报 */
+  @State private searchReports: SourceReport[] = [];
+  /** 上次搜索命中的档位（0/1/2） */
+  @State private searchTier: number = 0;
+  /** 手动位置弹层 */
+  @State private manualOpen: boolean = false;
+  /** 当前用于搜索的位置（定位失败后可被手动输入替换） */
+  @State private manualOrigin: GeoPoint | undefined = undefined;
 
   aboutToAppear(): void {
     this.load();
@@ -167,39 +207,64 @@ export struct SetupSheet {
     this.onChanged();
   }
 
-  /** 摇一个盲盒：权限 + 定位 → 摇盒 600ms → startQuest */
+  /** 组装平台依赖（http / kv 由 Index 注入） */
+  private deps(): QuestFlowDeps | undefined {
+    if (this.http === undefined || this.kv === undefined) return undefined;
+    const deps: QuestFlowDeps = {
+      http: this.http,
+      kv: this.kv,
+      readBundledKeys: this.readBundledKeys,
+      adminBase: this.adminBase,
+      now: (): number => Date.now()
+    };
+    return deps;
+  }
+
+  /**
+   * 摇一个盲盒（真实模式主流程）。
+   *
+   * 关键：任何一步失败都**停在面板上**，绝不静默变成虚构地点。
+   */
   private async shakeAndStart(): Promise<void> {
     if (this.busy) {
       return;
     }
     this.busy = true;
     this.failed = false;
-    this.statusText = '正在看附近有什么…';
+    this.searchFailedReason = '';
+    this.locationBlockedReason = '';
+    this.statusText = '正在取你的位置…';
 
-    // 1. 申请定位权限（拒绝就降级演示，不阻塞）
-    const context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-    const granted: boolean = await requestLocationPermission(context);
-
-    // 2. 取一次当前位置（6 秒超时）
-    let origin: GeoPoint | undefined = undefined;
-    if (granted) {
+    // ---------- 1. 定位（拒绝 / 超时 → 明确面板） ----------
+    let origin: GeoPoint | undefined = this.manualOrigin;
+    if (origin === undefined) {
+      const context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+      const granted: boolean = await requestLocationPermission(context);
+      if (!granted) {
+        this.busy = false;
+        this.statusText = '';
+        this.locationBlockedReason = 'denied';
+        return;
+      }
       try {
         origin = await getCurrentLocationOnce(6000);
       } catch (err) {
         origin = undefined;
       }
     }
-
-    const store = getStore();
-    if (origin !== undefined) {
-      store.setLastKnownOrigin(origin);
-      store.setDemoMode(false);
-    } else {
-      store.setDemoMode(true);
+    if (origin === undefined) {
+      this.busy = false;
+      this.statusText = '';
+      this.locationBlockedReason = 'timeout';
+      return;
     }
 
-    // 3. 摇盒动画 600ms（±6° 三次）
-    this.statusText = origin !== undefined ? '正在摇…' : '定位没开，先用演示模式陪你走';
+    const store = getStore();
+    store.setLastKnownOrigin(origin);
+    store.setDemoMode(false);
+
+    // ---------- 2. 摇盒动画（600ms，与设计稿一致） ----------
+    this.statusText = '正在看附近有什么…';
     this.isShaking = true;
     animateTo({
       duration: 100,
@@ -209,21 +274,116 @@ export struct SetupSheet {
     }, () => {
       this.shakeAngle = 6;
     });
-    await bwSleep(700);
+
+    // ---------- 3. 真实搜索（Key 下发 + 策展优先 + 三档放宽） ----------
+    const deps: QuestFlowDeps | undefined = this.deps();
+    let result: QuestStartResult | undefined = undefined;
+    if (deps !== undefined) {
+      try {
+        result = await prepareQuest(deps, {
+          origin: origin,
+          mood: this.snapshot.selectedMood,
+          duration: this.snapshot.selectedDuration,
+          startTier: this.searchTier >= 2 ? 2 : 0
+        }, Math.random());
+      } catch (err) {
+        result = undefined;
+      }
+    }
+
+    await bwSleep(400);
     this.isShaking = false;
     this.shakeAngle = 0;
-
-    // 4. 抽盒（失败要处理 undefined 分支）
-    const result = store.startQuest(origin);
     this.busy = false;
     this.statusText = '';
-    if (result === undefined) {
-      this.failed = true;
+
+    // 依赖缺失（Index 没注入）也不该静默继续
+    if (deps === undefined || result === undefined) {
+      this.searchFailedReason = 'network';
+      this.searchReports = [];
       return;
+    }
+
+    // 数据源状态始终记录下来（设置页 / 失败面板都能看到）
+    const status: DataSourceStatus = toDataSourceStatus(
+      result.keySource, result.keys, result.reports, Date.now(), result.curatedCount
+    );
+    store.setDataSourceStatus(status);
+    this.searchReports = result.reports;
+    this.searchTier = result.tier;
+
+    // ---------- 4. 失败：明确面板，绝不虚构 ----------
+    if (result.place === undefined) {
+      this.searchFailedReason = result.failReason.length > 0 ? result.failReason : 'no-real-place';
+      this.onChanged();
+      return;
+    }
+
+    // ---------- 5. 成功：用真实地点开始旅程 ----------
+    const place: Place = result.place;
+    const started = store.startQuestWithPlace(place, origin);
+    if (started === undefined) {
+      // store 的闸门拦下了不合规地点（理论上不会发生，兜底也不编造）
+      this.searchFailedReason = 'not-real';
+      this.onChanged();
+      return;
+    }
+    if (place.source === 'curated') {
+      bwToast('这是编辑精选的地点');
+    } else if (result.poolSize > 0) {
+      bwToast('附近找到 ' + String(result.poolSize) + ' 个真实地点');
     }
     this.load();
     this.onChanged();
     this.onStarted();
+  }
+
+  /** 显式进入演示模式（只在用户点按钮时发生） */
+  private startDemoExplicitly(): void {
+    const store = getStore();
+    store.setDemoMode(true);
+    this.locationBlockedReason = '';
+    this.searchFailedReason = '';
+    this.searchTier = 0;
+    const result = store.startQuest();
+    if (result === undefined) {
+      this.failed = true;
+      this.onChanged();
+      return;
+    }
+    bwToast('演示模式 · 内置地点');
+    this.load();
+    this.onChanged();
+    this.onStarted();
+  }
+
+  /** 扩大范围再找：从最宽档重来一次 */
+  private searchWider(): void {
+    this.searchTier = 2;
+    this.searchFailedReason = '';
+    this.shakeAndStart();
+  }
+
+  /** 手动位置：弹层输入地址/坐标 → 用它重新搜索 */
+  private async submitManualLocation(query: string): Promise<void> {
+    const deps: QuestFlowDeps | undefined = this.deps();
+    if (deps === undefined) {
+      this.manualOpen = false;
+      return;
+    }
+    const hit = await geocodeAddress(deps.http, query);
+    this.manualOpen = false;
+    if (hit === undefined) {
+      bwToast('没查到这个地方，再试试');
+      return;
+    }
+    this.manualOrigin = hit.location;
+    this.locationBlockedReason = '';
+    this.searchFailedReason = '';
+    getStore().setLastKnownOrigin(hit.location);
+    bwToast('位置已设为：' + hit.label);
+    // 位置有了，直接重新摇一次
+    this.shakeAndStart();
   }
 
   // ============================================================
@@ -357,10 +517,56 @@ export struct SetupSheet {
 
   @Builder
   actionSection() {
-    Column({ space: 4 }) {
+    Column({ space: 8 }) {
+      // ---------- 失败 / 受阻面板（优先展示，绝不静默降级） ----------
+      if (this.locationBlockedReason.length > 0) {
+        BwLocationBlockedPanel({
+          reason: this.locationBlockedReason,
+          onRetryLocation: () => {
+            this.locationBlockedReason = '';
+            this.shakeAndStart();
+          },
+          onManualLocation: () => {
+            this.manualOpen = true;
+          },
+          onStartDemo: () => {
+            this.startDemoExplicitly();
+          }
+        })
+      }
+
+      if (this.searchFailedReason.length > 0) {
+        BwSearchFailedPanel({
+          reason: this.searchFailedReason,
+          reports: this.searchReports,
+          tier: this.searchTier,
+          onSearchWider: () => {
+            this.searchWider();
+          },
+          onManualLocation: () => {
+            this.manualOpen = true;
+          },
+          onStartDemo: () => {
+            this.startDemoExplicitly();
+          }
+        })
+      }
+
+      if (this.manualOpen) {
+        BwManualLocationSheet({
+          onCancel: () => {
+            this.manualOpen = false;
+          },
+          onSubmit: (query: string) => {
+            this.submitManualLocation(query);
+          }
+        })
+      }
+
+      // ---------- 主按钮 ----------
       Row() {
         BwPrimaryButton({
-          title: '摇一个盲盒',
+          title: this.busy ? '正在找真实地点…' : '摇一个盲盒',
           enabled: !this.busy,
           onTap: () => {
             this.shakeAndStart();
@@ -392,9 +598,9 @@ export struct SetupSheet {
           .textAlign(TextAlign.Center)
       }
 
-      if (this.snapshot.demoMode) {
-        Text('演示模式 · 定位不可用时按内置地点抽盒')
-          .fontSize(BWFont.micro)
+      if (this.manualOrigin !== undefined) {
+        Text('当前位置：手动设置（搜索半径内优先）')
+          .fontSize(BWFont.microSm)
           .fontColor(BWColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)

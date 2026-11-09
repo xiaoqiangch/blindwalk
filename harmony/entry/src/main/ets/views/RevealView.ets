@@ -100,10 +100,25 @@ export struct RevealView {
     if (place.address !== undefined && place.address.length > 0) {
       meta = meta + ' · ' + place.address;
     }
-    if (place.source === 'osm' || place.source === 'geo' || place.source === 'apple') {
-      meta = meta + ' · 真实地点';
-    }
     return meta;
+  }
+
+  /** 来源标签（parity.md §1：编辑精选 / 真实地标 / 演示） */
+  private sourceLabel(place: Place): string {
+    if (place.source === 'curated') return '编辑精选';
+    if (place.source === 'amap') return '高德地图 · 真实地点';
+    if (place.source === 'baidu') return '百度地图 · 真实地点';
+    if (place.source === 'osm') return 'OpenStreetMap · 真实地点';
+    if (place.source === 'wiki') return '维基百科 · 真实地标';
+    return '演示模式 · 内置地点';
+  }
+
+  private hasPhoto(place: Place): boolean {
+    return place.photoUrl !== undefined && place.photoUrl.length > 0;
+  }
+
+  private isCurated(place: Place): boolean {
+    return place.source === 'curated';
   }
 
   // ============================================================
@@ -399,6 +414,29 @@ export struct RevealView {
       .width('100%')
       .padding({ bottom: 13 })
 
+      // 实景照片（只有到达后才展示；photoUrl 在 walking 阶段被 mask 掉）
+      if (this.hasPhoto(place)) {
+        Column({ space: 4 }) {
+          Image(place.photoUrl)
+            .width('100%')
+            .height(this.isShort() ? 132 : 168)
+            .objectFit(ImageFit.Cover)
+            .borderRadius(BWSize.cardRadiusSm)
+            .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+            .alt($r('app.media.app_icon'))
+
+          if (place.photoCredit !== undefined && place.photoCredit.length > 0) {
+            Text('图片：' + place.photoCredit)
+              .fontSize(BWFont.microSm)
+              .fontColor(BWColor.ink3)
+              .width('100%')
+              .textAlign(TextAlign.End)
+          }
+        }
+        .width('100%')
+        .padding({ bottom: 8 })
+      }
+
       Column({ space: 7 }) {
         Text(place.emoji)
           .fontSize(46)
@@ -413,6 +451,30 @@ export struct RevealView {
           .fontColor(BWColor.ink3)
           .textAlign(TextAlign.Center)
           .maxLines(2)
+
+        // 来源标签：编辑精选 / 真实地标 / 演示
+        Row({ space: 5 }) {
+          Text(this.isCurated(place) ? '✨' : (place.source === 'catalog' ? '🧪' : '📍'))
+            .fontSize(BWFont.microSm)
+          Text(this.sourceLabel(place))
+            .fontSize(BWFont.microSm)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.isCurated(place) ? BWColor.amberDeep
+              : (place.source === 'catalog' ? BWColor.ink3 : BWColor.teal))
+        }
+        .padding({ left: 9, right: 9, top: 3, bottom: 3 })
+        .backgroundColor(this.isCurated(place) ? BWColor.amberSoft
+          : (place.source === 'catalog' ? BWColor.paper2 : BWColor.tealSoft))
+        .borderRadius(BWSize.chipRadius)
+
+        if (place.summary !== undefined && place.summary.length > 0) {
+          Text(place.summary)
+            .fontSize(BWFont.captionSm)
+            .fontColor(BWColor.ink3)
+            .textAlign(TextAlign.Center)
+            .maxLines(3)
+            .lineHeight(19)
+        }
       }
       .width('100%')
       .padding({ bottom: 11 })

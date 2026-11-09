@@ -80,22 +80,29 @@ export class BWSize {
 }
 
 // ============================================================
-// 字号（design-system §3）
+// 字号（docs/parity.md §5 — 对齐 Web v32）
+//
+// 三端统一口径：
+//   - 正文 14–16（body 15.5 / bodySm 14.5）
+//   - 次要 12–13.5（caption 13 / captionSm 12）
+//   - 标签 10–12.5（micro 11.5 / microSm 10.5）
+//   - 大数字 22–30 起（title 22 / hero 26 / digits 46）
+// **不再使用 <10pt 的字号**（旧版 microSm=9 / 页面里写死 7 都改掉了）。
 // ============================================================
 
 export class BWFont {
   static readonly display: number = 40;
-  static readonly digits: number = 54;
+  static readonly digits: number = 46;
   static readonly hero: number = 26;
   static readonly title: number = 22;
-  static readonly titleMd: number = 17;
-  static readonly titleSm: number = 15;
-  static readonly body: number = 15;
-  static readonly bodySm: number = 14;
-  static readonly caption: number = 12;
-  static readonly captionSm: number = 11;
-  static readonly micro: number = 10;
-  static readonly microSm: number = 9;
+  static readonly titleMd: number = 18;
+  static readonly titleSm: number = 16;
+  static readonly body: number = 15.5;
+  static readonly bodySm: number = 14.5;
+  static readonly caption: number = 13;
+  static readonly captionSm: number = 12;
+  static readonly micro: number = 11.5;
+  static readonly microSm: number = 10.5;
 }
 
 // ============================================================

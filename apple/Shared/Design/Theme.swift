@@ -40,7 +40,7 @@ public enum BWTheme {
     public static func isShort(_ height: CGFloat) -> Bool { height < shortHeightBreakpoint }
 
     // 字体
-    public static func display(_ size: CGFloat = 40) -> Font {
+    public static func display(_ size: CGFloat = 30) -> Font {
         .system(size: size, weight: .bold, design: .rounded)
     }
 
@@ -52,7 +52,7 @@ public enum BWTheme {
         .system(size: size, weight: .regular, design: .default)
     }
 
-    public static func caption(_ size: CGFloat = 12) -> Font {
+    public static func caption(_ size: CGFloat = 13) -> Font {
         .system(size: size, weight: .medium, design: .default)
     }
 

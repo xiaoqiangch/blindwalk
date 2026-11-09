@@ -119,28 +119,28 @@ enum BWKraft {
 
 enum BWType {
     /// 页面标题：回忆册 / 圈子 / 我的（web .pagehead h1，22 / 700）
-    static func pageTitle() -> Font { .system(size: 22, weight: .bold) }
+    static func pageTitle() -> Font { .system(size: 24, weight: .bold) }
 
     /// 首页大头文案（web .home__hero h2，26 / 700）
-    static func hero() -> Font { .system(size: 26, weight: .bold) }
+    static func hero() -> Font { .system(size: 28, weight: .bold) }
 
     /// 主按钮（web .btn，15.5 / 650）
-    static func cta(_ size: CGFloat = 15.5) -> Font { .system(size: size, weight: .semibold) }
+    static func cta(_ size: CGFloat = 16) -> Font { .system(size: size, weight: .semibold) }
 
     /// 卡片 / 列表主标题（web 13.5 / 650）
-    static func rowTitle(_ size: CGFloat = 13.5) -> Font { .system(size: size, weight: .semibold) }
+    static func rowTitle(_ size: CGFloat = 14.5) -> Font { .system(size: size, weight: .semibold) }
 
     /// 正文（web 13 / 400）
     static func body(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .regular) }
 
     /// 辅助文字（web 10.5 / 400）
-    static func caption(_ size: CGFloat = 10.5) -> Font { .system(size: size, weight: .regular) }
+    static func caption(_ size: CGFloat = 12.5) -> Font { .system(size: size, weight: .regular) }
 
     /// 微标：10 / 650 + 字距（web .micro / .section-head h2）
-    static func micro(_ size: CGFloat = 10) -> Font { .system(size: size, weight: .semibold) }
+    static func micro(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .semibold) }
 
     /// 数字（web tabular-nums）
-    static func number(_ size: CGFloat = 19) -> Font { .system(size: size, weight: .bold) }
+    static func number(_ size: CGFloat = 24) -> Font { .system(size: size, weight: .bold) }
 }
 
 // MARK: - 动态字体

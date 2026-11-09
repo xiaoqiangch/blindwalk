@@ -120,7 +120,7 @@ struct CardsView: View {
                 .font(BWType.body(12))
                 .foregroundStyle(BWTheme.ink2)
             Text(value)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(BWTheme.ink)
         }
@@ -177,7 +177,7 @@ struct CardsView: View {
                     .padding(.bottom, 6)
 
                 Text(place.name)
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
@@ -189,7 +189,7 @@ struct CardsView: View {
                 HStack(alignment: .center, spacing: 0) {
                     if let card {
                         Text(BWFormat.compactDate(card.collectedAt))
-                            .font(.system(size: 8.5))
+                            .font(.system(size: 10.5))
                             .monospacedDigit()
                             .foregroundStyle(BWTheme.ink3)
                     }
@@ -214,7 +214,7 @@ struct CardsView: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(BWTheme.ink3)
                 Text("未解锁")
-                    .font(.system(size: 9))
+                    .font(.system(size: 11))
                     .tracking(0.5)
                     .foregroundStyle(BWTheme.ink3)
             }
@@ -269,7 +269,7 @@ struct CardsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         BWMicroLabel("为什么是这里")
                         Text(place.why)
-                            .font(.system(size: 13))
+                            .font(.system(size: 14))
                             .foregroundStyle(BWTheme.ink2)
                             .lineSpacing(4)
                             .fixedSize(horizontal: false, vertical: true)
@@ -316,17 +316,17 @@ struct CardsView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 3) {
-                    Text("🎯").font(.system(size: 10))
+                    Text("🎯").font(.system(size: 12))
                     BWMicroLabel("小任务")
                 }
                 Text(place.task)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 13.5))
                     .foregroundStyle(BWTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let card = store.card(for: place.id) {
                     Text(card.taskDone ? "已完成" : "还没打卡 · 下次再去补上")
-                        .font(.system(size: 9.5))
+                        .font(.system(size: 11.5))
                         .foregroundStyle(card.taskDone ? BWTheme.teal : BWTheme.ink3)
                 }
             }

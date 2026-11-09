@@ -55,6 +55,18 @@ public final class BlindWalkStore {
     /// 演示惊喜是否还锚在默认坐标（人民广场）——只重定位一次
     private var seedSurprisesRebased = false
 
+    /// 从账号恢复：整包覆盖本机 Profile / 惊喜，并落盘。
+    /// 只是把「账号里的事实」换到本机，不动正在进行的旅程。
+    public func applyRemote(profile remoteProfile: Profile, surprises remoteSurprises: [BuriedSurprise]?) {
+        profile = remoteProfile
+        if let remoteSurprises {
+            surprises = remoteSurprises
+            surprisePersistence.saveSurprises(remoteSurprises)
+        }
+        persistence.saveProfile(remoteProfile)
+        lastEvents = []
+    }
+
     /// 埋下的惊喜（作者与寻者的双向社区）
     public var surprises: [BuriedSurprise]
 

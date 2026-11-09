@@ -185,7 +185,7 @@ struct SeekSurpriseView: View {
     private var locationBanner: some View {
         HStack(alignment: .center, spacing: 8) {
             Image(systemName: isDemoDistance ? "location.slash" : "location.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(isDemoDistance ? BWTheme.ember : BWTheme.teal)
 
             Text(isDemoDistance ? "没有定位，距离按演示位置算。" : "距离按你此刻的位置算。")
@@ -277,7 +277,7 @@ struct SeekSurpriseView: View {
                     }
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(BWTheme.ink3)
                 }
             }
@@ -364,7 +364,7 @@ struct SeekSurpriseView: View {
                         .foregroundStyle(phase == .approach ? BWTheme.amberDeep : BWTheme.teal)
                     if isDemoDistance {
                         Text("演示距离")
-                            .font(.system(size: 9))
+                            .font(.system(size: 11))
                             .foregroundStyle(BWTheme.ember)
                     }
                 }
@@ -414,11 +414,11 @@ struct SeekSurpriseView: View {
                     .stroke(unlocked ? BWTheme.teal.opacity(0.4) : BWTheme.line, lineWidth: 1)
                 if unlocked {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(BWTheme.teal)
                 } else {
                     Text("\(index + 1)")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(BWTheme.ink3)
                 }
             }
@@ -426,7 +426,7 @@ struct SeekSurpriseView: View {
 
             if unlocked {
                 HStack(alignment: .top, spacing: 8) {
-                    Text("✅").font(.system(size: 13))
+                    Text("✅").font(.system(size: 14))
                     Text(clue)
                         .font(BWTheme.body(14))
                         .foregroundStyle(BWTheme.ink)
@@ -445,7 +445,7 @@ struct SeekSurpriseView: View {
             } else {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(BWTheme.ink3)
                     Text(lockedClueCopy(surprise, index: index))
                         .font(BWTheme.caption(13))
@@ -502,7 +502,7 @@ struct SeekSurpriseView: View {
                         simulateArrival()
                     } label: {
                         Text("演示：当作到了")
-                            .font(.system(size: 10.5, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(BWTheme.ink2)
                             .padding(.horizontal, 10)
                             .frame(height: 26)
@@ -531,7 +531,7 @@ struct SeekSurpriseView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BWTheme.amberDeep)
                 Text("你已经在范围里了")
                     .font(BWType.rowTitle(13))
@@ -578,7 +578,7 @@ struct SeekSurpriseView: View {
                 Spacer(minLength: 0)
                 if let outcome {
                     Text(outcome.isDemo ? "演示匹配 · \(outcome.percentText) 像" : "\(outcome.percentText) 像")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(outcome.passed ? BWTheme.teal : BWTheme.amberDeep)
                         .padding(.horizontal, 10)
@@ -664,7 +664,7 @@ struct SeekSurpriseView: View {
                     .foregroundStyle(BWTheme.ink3)
                 if isDemo {
                     Text("演示照片")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(BWTheme.ember)
                 }
             }
@@ -695,7 +695,7 @@ struct SeekSurpriseView: View {
 
             if let achievement = result.newAchievements.first {
                 HStack(spacing: 6) {
-                    Text(achievement.icon).font(.system(size: 13))
+                    Text(achievement.icon).font(.system(size: 14))
                     Text("成就解锁 · \(achievement.name)")
                         .font(BWType.caption(11))
                         .foregroundStyle(BWTheme.ink2)

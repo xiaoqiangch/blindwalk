@@ -13,29 +13,39 @@
 		11AE94C165B91A4DDC56FC4E /* BlindBoxEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */; };
 		18D59FC48CF85765B1F7100D /* BlindBoxEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */; };
 		1CF184EA2DDCB3BE42E170CE /* QuestSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA513A9498B51AFE53978783 /* QuestSession.swift */; };
+		1DA75462546518416619AB9F /* FogRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C32CED7AF462F55729EC986 /* FogRoute.swift */; };
 		1EF7B8ADDA08401FFDED0A1B /* SocialFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */; };
 		1F3367FE9BF570277E85E142 /* CardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F359E858D26B6FD6D1505F63 /* CardsView.swift */; };
 		1FAFCC05B277CF5D3D01A40C /* Geo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC584FA7E099332F73FFF6 /* Geo.swift */; };
 		25A60ADFA39A5051A7425486 /* PlaceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */; };
 		322CA0A7FFEFF8A738566C43 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689294560BE4BF6181B1453D /* HomeView.swift */; };
 		35471DD9BB27D9D8199E124F /* WatchStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */; };
+		3841682DD0022373281DA857 /* RouteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8B7F84840371328C872A00E /* RouteService.swift */; };
+		3A8AB9432AC0602D464F79C0 /* ChinaCoordinate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */; };
 		414B34AF4CE288CA207ED3AA /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA40E0C2A43409A4E481D14E /* Persistence.swift */; };
 		425A93736B96BE49F53748DF /* Surprise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9253D71503B5F918050C51F4 /* Surprise.swift */; };
 		482F1D222B1FBC0A7960977F /* MapKitPlaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */; };
 		4BF57F97C11C20CA6889EBB8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBA8CF4BC1C0A062E8A18418 /* Theme.swift */; };
+		5524D075DAD849C9FA56D473 /* POISelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20DAF4F2CE482E03210F638 /* POISelection.swift */; };
 		622A6CE08A4595690C4F6A17 /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */; };
+		62819349657A2EA682B20BAC /* FogRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C32CED7AF462F55729EC986 /* FogRoute.swift */; };
 		65367C04799084881DD01F8B /* WatchRevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */; };
+		686C9FE71579505FCA0E534D /* mapkeys.example.json in Resources */ = {isa = PBXBuildFile; fileRef = 0FCB50D61010535D18FEBE86 /* mapkeys.example.json */; };
 		6CF0F147BB80CF22136F9237 /* PlaceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */; };
+		6FDBBEA955AF0832887EC1B5 /* OneShotLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63BDC78AD6AD4E42C0F90677 /* OneShotLocationService.swift */; };
 		739234F1BC84BD53D0E49268 /* WatchSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */; };
 		741668A3ADB106DE7432C281 /* BurySurpriseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */; };
 		741C5CFE2E5C032AE541EDD3 /* WatchStatusChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07421175E805830B544FE273 /* WatchStatusChip.swift */; };
 		7787D883CF9210EA80724C12 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C002EA791982D766EFF7D65 /* Models.swift */; };
+		7D0C5081A192FE5A86611E7E /* mapkeys.json in Resources */ = {isa = PBXBuildFile; fileRef = 1C6FCF040D56B3704DB457A1 /* mapkeys.json */; };
 		7F74E17A691172CB45C49507 /* SocialFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */; };
 		899D80DAD5C54859810269A8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBA8CF4BC1C0A062E8A18418 /* Theme.swift */; };
 		89AAF8051CB82D6BD719F36B /* Surprise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9253D71503B5F918050C51F4 /* Surprise.swift */; };
+		8D915D93074C5687288275A6 /* BoxFailureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */; };
 		90A23F0424413427879B3ACC /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8EF4087D54404A6C023159 /* Haptics.swift */; };
 		92F6D9520291CF10B92A3034 /* WatchProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF616B4BB4AFDA6F272B112 /* WatchProgressView.swift */; };
 		9501666D3FE38F8994806EA3 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E14316DB285700ADB0BCE9 /* LocationService.swift */; };
+		9766D34028990C6D56B5C839 /* MapKeysService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */; };
 		98C9CEC460107F273DAC5346 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A05814C4F86D14A5BC867AA3 /* RevealView.swift */; };
 		9D9494B1FC5D0668FC151D47 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA5D682DDD8E3C01A93D097 /* ProfileView.swift */; };
 		A364FEF531DD18BADBD88691 /* BlindWalkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */; };
@@ -43,11 +53,15 @@
 		A65B0685B66BF54C2E16AFF1 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
 		A8157CE0DA8127F38126584C /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */; };
 		A91EA277D8E111D51C0951A5 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA40E0C2A43409A4E481D14E /* Persistence.swift */; };
+		ACBFDE5A97FD925A0D679FCA /* ChinaCoordinate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */; };
+		B29861D75217A582C8E906F7 /* POIProviderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F30BCE02B19E59E1C79AB4F /* POIProviderService.swift */; };
 		B8DA9B33C2E644FD6A5C318F /* SeekSurpriseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1848811E5667A8E2B18E2E38 /* SeekSurpriseView.swift */; };
 		BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */; };
 		BED2E3D61C56FFE69D7CD128 /* WatchMineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303A58E5C96F79C7E61E5762 /* WatchMineView.swift */; };
+		C07C8880FC9CB67C42433CAE /* AccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3166A8709169C9CD90B32608 /* AccountService.swift */; };
 		C26F357316EA470DEA7BB520 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B5340A7CFC80269A2CE14B /* SocialView.swift */; };
 		C61F053670A332BE0C7CFFC5 /* JourneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE1A9F06329E16054D9DE63 /* JourneyView.swift */; };
+		C74EA64438EFFE7A183B4CA0 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDADD9AAE3636A8464DEBFF /* AccountView.swift */; };
 		CE99051D25C8F2C561DF6A69 /* WatchHintsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43778105E95EAC72B52BB8DA /* WatchHintsView.swift */; };
 		CF76A66805DDA62C81ADBC75 /* SurprisesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */; };
 		CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */; };
@@ -56,9 +70,11 @@
 		D5025E8173D9743FC3854DE7 /* BlindWalkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 62D026A54430D6071C532D3F /* BlindWalkWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8F91F82CD07252A192319D /* AdminPOIService.swift */; };
 		DB1FC20885913E7BB8C84A58 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
+		DBFE1E97CABB256C5136AE0B /* POISelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20DAF4F2CE482E03210F638 /* POISelection.swift */; };
 		E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DCE5FA997B304D62130D27 /* BWComponents.swift */; };
 		E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */; };
 		E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */; };
+		EA702E0F6AFAD1F755B6B146 /* FogPathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C79429687D9D63E48268048 /* FogPathView.swift */; };
 		EAA1B03724EB6CC685C561E6 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
@@ -96,25 +112,33 @@
 		0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealPlace.swift; sourceTree = "<group>"; };
 		0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRevealView.swift; sourceTree = "<group>"; };
 		07421175E805830B544FE273 /* WatchStatusChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStatusChip.swift; sourceTree = "<group>"; };
+		07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChinaCoordinate.swift; sourceTree = "<group>"; };
 		07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkWatchApp.swift; sourceTree = "<group>"; };
 		0F8F91F82CD07252A192319D /* AdminPOIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPOIService.swift; sourceTree = "<group>"; };
+		0FCB50D61010535D18FEBE86 /* mapkeys.example.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mapkeys.example.json; sourceTree = "<group>"; };
 		105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStyle.swift; sourceTree = "<group>"; };
 		1848811E5667A8E2B18E2E38 /* SeekSurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeekSurpriseView.swift; sourceTree = "<group>"; };
 		19DCE5FA997B304D62130D27 /* BWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWComponents.swift; sourceTree = "<group>"; };
+		1C6FCF040D56B3704DB457A1 /* mapkeys.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mapkeys.json; sourceTree = "<group>"; };
 		2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurySurpriseView.swift; sourceTree = "<group>"; };
 		303A58E5C96F79C7E61E5762 /* WatchMineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMineView.swift; sourceTree = "<group>"; };
+		3166A8709169C9CD90B32608 /* AccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountService.swift; sourceTree = "<group>"; };
 		37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsView.swift; sourceTree = "<group>"; };
 		3CF616B4BB4AFDA6F272B112 /* WatchProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchProgressView.swift; sourceTree = "<group>"; };
 		41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 		43778105E95EAC72B52BB8DA /* WatchHintsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHintsView.swift; sourceTree = "<group>"; };
 		4C002EA791982D766EFF7D65 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindBoxEngine.swift; sourceTree = "<group>"; };
+		4F30BCE02B19E59E1C79AB4F /* POIProviderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = POIProviderService.swift; sourceTree = "<group>"; };
 		5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceCatalog.swift; sourceTree = "<group>"; };
 		546E206FAC40B7771C273A42 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
+		5C79429687D9D63E48268048 /* FogPathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogPathView.swift; sourceTree = "<group>"; };
 		5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWUtilities.swift; sourceTree = "<group>"; };
 		62D026A54430D6071C532D3F /* BlindWalkWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlindWalkWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		63BDC78AD6AD4E42C0F90677 /* OneShotLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneShotLocationService.swift; sourceTree = "<group>"; };
 		6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKitPlaceService.swift; sourceTree = "<group>"; };
 		689294560BE4BF6181B1453D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		6C32CED7AF462F55729EC986 /* FogRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogRoute.swift; sourceTree = "<group>"; };
 		79E14316DB285700ADB0BCE9 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkStore.swift; sourceTree = "<group>"; };
 		90861B528F81DAE111BF4C7B /* RealMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealMapView.swift; sourceTree = "<group>"; };
@@ -124,12 +148,16 @@
 		A05814C4F86D14A5BC867AA3 /* RevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealView.swift; sourceTree = "<group>"; };
 		AA513A9498B51AFE53978783 /* QuestSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestSession.swift; sourceTree = "<group>"; };
 		AFE1A9F06329E16054D9DE63 /* JourneyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyView.swift; sourceTree = "<group>"; };
+		B20DAF4F2CE482E03210F638 /* POISelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = POISelection.swift; sourceTree = "<group>"; };
 		B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionSummary.swift; sourceTree = "<group>"; };
+		BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoxFailureView.swift; sourceTree = "<group>"; };
 		BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BlindWalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKeysService.swift; sourceTree = "<group>"; };
 		C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurprisesView.swift; sourceTree = "<group>"; };
 		C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		CB8EF4087D54404A6C023159 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		CBA8CF4BC1C0A062E8A18418 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		CCDADD9AAE3636A8464DEBFF /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialFeed.swift; sourceTree = "<group>"; };
 		D4BC584FA7E099332F73FFF6 /* Geo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geo.swift; sourceTree = "<group>"; };
 		D8B5340A7CFC80269A2CE14B /* SocialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialView.swift; sourceTree = "<group>"; };
@@ -139,6 +167,7 @@
 		EA40E0C2A43409A4E481D14E /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
 		F359E858D26B6FD6D1505F63 /* CardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardsView.swift; sourceTree = "<group>"; };
 		F72DDD9DB50EFFF8AFAA31FE /* BoxSetupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoxSetupSheet.swift; sourceTree = "<group>"; };
+		F8B7F84840371328C872A00E /* RouteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -172,11 +201,14 @@
 				41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */,
 				4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */,
 				85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */,
+				07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */,
 				546E206FAC40B7771C273A42 /* DemoData.swift */,
+				6C32CED7AF462F55729EC986 /* FogRoute.swift */,
 				D4BC584FA7E099332F73FFF6 /* Geo.swift */,
 				4C002EA791982D766EFF7D65 /* Models.swift */,
 				EA40E0C2A43409A4E481D14E /* Persistence.swift */,
 				5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */,
+				B20DAF4F2CE482E03210F638 /* POISelection.swift */,
 				AA513A9498B51AFE53978783 /* QuestSession.swift */,
 				0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */,
 				D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */,
@@ -209,11 +241,21 @@
 			isa = PBXGroup;
 			children = (
 				E25F82415EE382C5092A1911 /* BlindWalkApp.swift */,
+				AA6391E58C1E19D02073FA90 /* Resources */,
 				D25973A7F3834D557DAB410C /* Services */,
 				6E9417953E12FFCEA0F3A1C8 /* Theme */,
 				D8B7C25B632B3534796ABF61 /* Views */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		AA6391E58C1E19D02073FA90 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0FCB50D61010535D18FEBE86 /* mapkeys.example.json */,
+				1C6FCF040D56B3704DB457A1 /* mapkeys.json */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		AEB40F1CCFB39664D5391BE3 /* Design */ = {
@@ -227,10 +269,15 @@
 		D25973A7F3834D557DAB410C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				3166A8709169C9CD90B32608 /* AccountService.swift */,
 				0F8F91F82CD07252A192319D /* AdminPOIService.swift */,
 				79E14316DB285700ADB0BCE9 /* LocationService.swift */,
+				BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */,
 				6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */,
+				63BDC78AD6AD4E42C0F90677 /* OneShotLocationService.swift */,
 				95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */,
+				4F30BCE02B19E59E1C79AB4F /* POIProviderService.swift */,
+				F8B7F84840371328C872A00E /* RouteService.swift */,
 				E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */,
 			);
 			path = Services;
@@ -239,10 +286,13 @@
 		D8B7C25B632B3534796ABF61 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				CCDADD9AAE3636A8464DEBFF /* AccountView.swift */,
 				37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */,
+				BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */,
 				F72DDD9DB50EFFF8AFAA31FE /* BoxSetupSheet.swift */,
 				2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */,
 				F359E858D26B6FD6D1505F63 /* CardsView.swift */,
+				5C79429687D9D63E48268048 /* FogPathView.swift */,
 				689294560BE4BF6181B1453D /* HomeView.swift */,
 				E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */,
 				AFE1A9F06329E16054D9DE63 /* JourneyView.swift */,
@@ -291,6 +341,7 @@
 			buildConfigurationList = DFC5E93504232AFEBF01D5BF /* Build configuration list for PBXNativeTarget "BlindWalk" */;
 			buildPhases = (
 				CFE9534CFBA0C855919001A3 /* Sources */,
+				D7293E2154AA5AAD541C4E55 /* Resources */,
 				97D982018C7F3E3FF1D439E9 /* Embed Watch Content */,
 			);
 			buildRules = (
@@ -342,6 +393,18 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		D7293E2154AA5AAD541C4E55 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				686C9FE71579505FCA0E534D /* mapkeys.example.json in Resources */,
+				7D0C5081A192FE5A86611E7E /* mapkeys.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		46C0E304302A70F15F65E4B7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -351,10 +414,13 @@
 				18D59FC48CF85765B1F7100D /* BlindBoxEngine.swift in Sources */,
 				FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */,
 				E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */,
+				ACBFDE5A97FD925A0D679FCA /* ChinaCoordinate.swift in Sources */,
 				ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */,
+				1DA75462546518416619AB9F /* FogRoute.swift in Sources */,
 				FF6E51B46C4D7F475BFAF112 /* Geo.swift in Sources */,
 				90A23F0424413427879B3ACC /* Haptics.swift in Sources */,
 				7787D883CF9210EA80724C12 /* Models.swift in Sources */,
+				DBFE1E97CABB256C5136AE0B /* POISelection.swift in Sources */,
 				414B34AF4CE288CA207ED3AA /* Persistence.swift in Sources */,
 				6CF0F147BB80CF22136F9237 /* PlaceCatalog.swift in Sources */,
 				0BFDE57FA86DD528503B8457 /* QuestSession.swift in Sources */,
@@ -376,6 +442,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C07C8880FC9CB67C42433CAE /* AccountService.swift in Sources */,
+				C74EA64438EFFE7A183B4CA0 /* AccountView.swift in Sources */,
 				CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */,
 				BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */,
 				D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */,
@@ -384,17 +452,25 @@
 				11AE94C165B91A4DDC56FC4E /* BlindBoxEngine.swift in Sources */,
 				A5D06F9803F46DAA4B9ADAA6 /* BlindWalkApp.swift in Sources */,
 				A364FEF531DD18BADBD88691 /* BlindWalkStore.swift in Sources */,
+				8D915D93074C5687288275A6 /* BoxFailureView.swift in Sources */,
 				0473991C7CDF22D88AEB9A4C /* BoxSetupSheet.swift in Sources */,
 				741668A3ADB106DE7432C281 /* BurySurpriseView.swift in Sources */,
 				1F3367FE9BF570277E85E142 /* CardsView.swift in Sources */,
+				3A8AB9432AC0602D464F79C0 /* ChinaCoordinate.swift in Sources */,
 				A65B0685B66BF54C2E16AFF1 /* DemoData.swift in Sources */,
+				EA702E0F6AFAD1F755B6B146 /* FogPathView.swift in Sources */,
+				62819349657A2EA682B20BAC /* FogRoute.swift in Sources */,
 				1FAFCC05B277CF5D3D01A40C /* Geo.swift in Sources */,
 				322CA0A7FFEFF8A738566C43 /* HomeView.swift in Sources */,
 				FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */,
 				C61F053670A332BE0C7CFFC5 /* JourneyView.swift in Sources */,
 				9501666D3FE38F8994806EA3 /* LocationService.swift in Sources */,
+				9766D34028990C6D56B5C839 /* MapKeysService.swift in Sources */,
 				482F1D222B1FBC0A7960977F /* MapKitPlaceService.swift in Sources */,
 				1159B26E2CFE0B1EFC38F296 /* Models.swift in Sources */,
+				6FDBBEA955AF0832887EC1B5 /* OneShotLocationService.swift in Sources */,
+				B29861D75217A582C8E906F7 /* POIProviderService.swift in Sources */,
+				5524D075DAD849C9FA56D473 /* POISelection.swift in Sources */,
 				A91EA277D8E111D51C0951A5 /* Persistence.swift in Sources */,
 				E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */,
 				25A60ADFA39A5051A7425486 /* PlaceCatalog.swift in Sources */,
@@ -403,6 +479,7 @@
 				FFDBCADFB25177EB4E85FBD9 /* RealMapView.swift in Sources */,
 				EAA1B03724EB6CC685C561E6 /* RealPlace.swift in Sources */,
 				98C9CEC460107F273DAC5346 /* RevealView.swift in Sources */,
+				3841682DD0022373281DA857 /* RouteService.swift in Sources */,
 				B8DA9B33C2E644FD6A5C318F /* SeekSurpriseView.swift in Sources */,
 				1EF7B8ADDA08401FFDED0A1B /* SocialFeed.swift in Sources */,
 				C26F357316EA470DEA7BB520 /* SocialView.swift in Sources */,

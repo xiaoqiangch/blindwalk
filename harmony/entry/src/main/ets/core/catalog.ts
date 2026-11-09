@@ -508,6 +508,9 @@ export function clonePlace(place: Place): Place {
   };
   if (coordinate !== undefined) copy.coordinate = coordinate;
   if (place.address !== undefined) copy.address = place.address;
+  if (place.photoUrl !== undefined) copy.photoUrl = place.photoUrl;
+  if (place.photoCredit !== undefined) copy.photoCredit = place.photoCredit;
+  if (place.summary !== undefined) copy.summary = place.summary;
   return copy;
 }
 
@@ -531,6 +534,10 @@ export function maskPlaceForWalking(place: Place): Place {
   copy.why = '';
   copy.task = '';
   copy.hints = scrubHints(copy.hints, place.name);
+  // 照片也是剧透：到了才给看
+  copy.photoUrl = undefined;
+  copy.photoCredit = undefined;
+  copy.summary = '';
   return copy;
 }
 
@@ -553,6 +560,36 @@ export enum RealPlaceCategory {
   Plaza = 'plaza',
   Market = 'market',
   Temple = 'temple',
+  Museum = 'museum',
+  Historic = 'historic',
+  Venue = 'venue',
+}
+
+/**
+ * 17 类 POI key → RealPlaceCategory（parity.md §1 的类别表）
+ * 未知 key 回退 Plaza。
+ */
+export function realCategoryFromKey(key: string): RealPlaceCategory {
+  switch (key) {
+    case 'cafe': return RealPlaceCategory.Cafe;
+    case 'bookstore': return RealPlaceCategory.Bookstore;
+    case 'library': return RealPlaceCategory.Library;
+    case 'park': return RealPlaceCategory.Park;
+    case 'bench': return RealPlaceCategory.Bench;
+    case 'bridge': return RealPlaceCategory.Bridge;
+    case 'art': return RealPlaceCategory.Art;
+    case 'river': return RealPlaceCategory.River;
+    case 'convenience': return RealPlaceCategory.Convenience;
+    case 'viewpoint': return RealPlaceCategory.Viewpoint;
+    case 'garden': return RealPlaceCategory.Garden;
+    case 'plaza': return RealPlaceCategory.Plaza;
+    case 'market': return RealPlaceCategory.Market;
+    case 'temple': return RealPlaceCategory.Temple;
+    case 'museum': return RealPlaceCategory.Museum;
+    case 'historic': return RealPlaceCategory.Historic;
+    case 'venue': return RealPlaceCategory.Venue;
+    default: return RealPlaceCategory.Plaza;
+  }
 }
 
 export function realCategoryLabel(category: RealPlaceCategory): string {
@@ -571,6 +608,9 @@ export function realCategoryLabel(category: RealPlaceCategory): string {
     case RealPlaceCategory.Plaza: return '广场';
     case RealPlaceCategory.Market: return '市集';
     case RealPlaceCategory.Temple: return '老建筑';
+    case RealPlaceCategory.Museum: return '博物馆';
+    case RealPlaceCategory.Historic: return '老房子';
+    case RealPlaceCategory.Venue: return '剧场';
     default: return '街角';
   }
 }
@@ -591,6 +631,9 @@ export function realCategoryEmoji(category: RealPlaceCategory): string {
     case RealPlaceCategory.Plaza: return '⛲️';
     case RealPlaceCategory.Market: return '🧺';
     case RealPlaceCategory.Temple: return '🏛️';
+    case RealPlaceCategory.Museum: return '🖼️';
+    case RealPlaceCategory.Historic: return '🏚️';
+    case RealPlaceCategory.Venue: return '🎭';
     default: return '📍';
   }
 }
@@ -615,6 +658,11 @@ export function realCategoryRarity(category: RealPlaceCategory): Rarity {
       return Rarity.Epic;
     case RealPlaceCategory.Temple:
       return Rarity.Hidden;
+    case RealPlaceCategory.Museum:
+    case RealPlaceCategory.Venue:
+      return Rarity.Rare;
+    case RealPlaceCategory.Historic:
+      return Rarity.Epic;
     default:
       return Rarity.Common;
   }
@@ -631,6 +679,8 @@ export function realCategoryArea(category: RealPlaceCategory): Area {
     case RealPlaceCategory.Art:
     case RealPlaceCategory.Temple:
     case RealPlaceCategory.Market:
+    case RealPlaceCategory.Museum:
+    case RealPlaceCategory.Historic:
       return Area.OldTown;
     default:
       return Area.Near;
@@ -654,6 +704,9 @@ export function realCategoryTask(category: RealPlaceCategory): string {
     case RealPlaceCategory.Plaza: return '观察 30 秒，找出走得最慢的那个人。';
     case RealPlaceCategory.Market: return '挑一样你不认识的东西，问老板是什么。';
     case RealPlaceCategory.Temple: return '找一处你觉得最旧的痕迹。';
+    case RealPlaceCategory.Museum: return '挑一件最不起眼的展品，看满一分钟。';
+    case RealPlaceCategory.Historic: return '摸一摸这栋房子的墙，猜它多少岁了。';
+    case RealPlaceCategory.Venue: return '看一眼今天演什么，再决定要不要进去。';
     default: return '站一会儿，看看这附近。';
   }
 }
@@ -677,6 +730,9 @@ export function realCategoryHints(category: RealPlaceCategory): string[] {
     case RealPlaceCategory.Plaza: far = '人会变多。'; mid = '找一块空着的石头或台阶。'; break;
     case RealPlaceCategory.Market: far = '声音会变杂。'; mid = '找一个人挤人、但没人赶时间的地方。'; break;
     case RealPlaceCategory.Temple: far = '会突然安静，也会突然古老。'; mid = '找一处门框比周围都旧的地方。'; break;
+    case RealPlaceCategory.Museum: far = '前面会变得安静，而且有空调的味道。'; mid = '找一扇很大的门，里面挂着画。'; break;
+    case RealPlaceCategory.Historic: far = '砖的颜色会变旧。'; mid = '找一栋比周围矮、但比周围老的房子。'; break;
+    case RealPlaceCategory.Venue: far = '会开始听到人声和音乐。'; mid = '找一扇亮着灯、贴着海报的门。'; break;
     default: break;
   }
   return [far, mid, '就在前面。抬手机，慢慢看。'];

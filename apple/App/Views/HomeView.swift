@@ -96,9 +96,9 @@ struct HomeView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
-                Text("🔥").font(.system(size: 11))
+                Text("🔥").font(.system(size: 12))
                 Text("\(store.profile.streakDays) 天")
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.ink)
             }
@@ -119,7 +119,7 @@ struct HomeView: View {
                 .foregroundStyle(BWTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text("不用选。让城市替你选。")
-                .font(.system(size: 13.5))
+                .font(.system(size: 14.5))
                 .foregroundStyle(BWTheme.ink2)
         }
         .padding(.top, 17)
@@ -177,10 +177,10 @@ struct HomeView: View {
         Button(action: onOpenJourney) {
             HStack(spacing: 3) {
                 Text("继续 · \(store.session?.remainingMeters ?? 0) m")
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .monospacedDigit()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
             }
             .foregroundStyle(BWTheme.ink.opacity(0.68))
             .padding(.horizontal, 10)
@@ -215,10 +215,10 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("3 个朋友")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BWTheme.ink2)
                 Text("今晚也在散步")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(BWTheme.ink3)
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -247,7 +247,7 @@ struct HomeView: View {
             }
 
             Text(friend.name)
-                .font(.system(size: 8.5))
+                .font(.system(size: 10.5))
                 .foregroundStyle(BWTheme.ink3)
                 .lineLimit(1)
                 .fixedSize()
@@ -285,7 +285,7 @@ struct HomeView: View {
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(BWTheme.ink3)
                 }
                 .padding(.leading, 10)
@@ -304,10 +304,10 @@ struct HomeView: View {
         } else {
             VStack(alignment: .leading, spacing: 4) {
                 Text("第一盒还没开。")
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
                 Text("城市已经准备好了。")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundStyle(BWTheme.ink3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

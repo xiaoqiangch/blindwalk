@@ -66,7 +66,7 @@ struct JourneyMapView: View {
         }
         .overlay(alignment: .leading) {
             Text("你")
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 10.5, weight: .semibold))
                 .foregroundStyle(BWTheme.ink2)
                 .fixedSize()
                 .offset(x: 18)
@@ -90,7 +90,7 @@ struct JourneyMapView: View {
                 .frame(width: 8, height: 8)
 
             Text("?")
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(BWTheme.ink)
                 .offset(y: 22)
         }

@@ -45,7 +45,7 @@ struct WatchStatusChip: View {
     private var chip: some View {
         HStack(spacing: 5) {
             Image(systemName: iconName)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(tint)
                 .symbolEffect(.pulse, isActive: isConnecting)
 

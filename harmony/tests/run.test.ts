@@ -22,7 +22,6 @@ import {
   BuriedSurprise,
   FeedPost,
   GeoPoint,
-  HINT_THRESHOLDS,
   Mood,
   Place,
   PlaceCard,
@@ -53,7 +52,6 @@ import {
 import {
   SessionUpdate,
   arrowSymbol,
-  cloneSession,
   compassCopy,
   confirmReveal,
   createSession,
@@ -77,16 +75,141 @@ import {
   findAchievement
 } from '../entry/src/main/ets/core/achievements';
 import {
-  DEMO_ORIGIN,
-  DEMO_REVEAL_SERIAL
+  DEMO_ORIGIN
 } from '../entry/src/main/ets/core/demo';
 import {
   MemoryKV,
   PROFILE_KEY,
-  SURPRISES_KEY
+  SURPRISES_KEY,
+  profileFromJson,
+  surprisesFromJson
 } from '../entry/src/main/ets/core/persistence';
-import { getStore, initStore, registerPlaces } from '../entry/src/main/ets/core/store';
-import { distance, offset, bearing, compassLabel, arrow } from '../entry/src/main/ets/core/geo';
+import { getStore, getStoreInstance, initStore, registerPlaces } from '../entry/src/main/ets/core/store';
+import {
+  distance,
+  offset,
+  bearing,
+  compassLabel,
+  arrow,
+  wgs84ToGcj02,
+  gcj02ToWgs84,
+  wgs84ToBd09,
+  bd09ToWgs84,
+  gcj02ToBd09,
+  bd09ToGcj02
+} from '../entry/src/main/ets/core/geo';
+import {
+  DEDUPE_METERS,
+  HARD_MAX_METERS,
+  LANDMARK_KEYWORD_LIMIT,
+  LANDMARK_KEYWORDS,
+  landmarkKeywordList,
+  POI_NEVER_WORDS,
+  POI_SOFT_BAD_WORDS,
+  PER_CATEGORY_LIMIT,
+  PoiCandidate,
+  categoryMeta,
+  candidateWeight,
+  dedupe,
+  durationMeters,
+  isDullCandidate,
+  pickCandidate,
+  scoreWalkworthy,
+  sortByDistance,
+  tierParams,
+  trimDiverse
+} from '../entry/src/main/ets/core/parity';
+import {
+  baiduUrl,
+  amapUrl,
+  mapCategory,
+  nearby,
+  parseAmap,
+  parseBaidu,
+  parseOverpass,
+  parseWiki,
+  providerLabel
+} from '../entry/src/main/ets/core/providers';
+import {
+  ADMIN_BASE_DEFAULT,
+  MAPKEYS_CACHE_KEY,
+  MAPKEYS_CACHE_TTL_MS,
+  fetchAdminKeys,
+  loadMapKeys,
+  maskKey,
+  parseMapKeys,
+  readCachedKeys,
+  writeCachedKeys
+} from '../entry/src/main/ets/core/mapkeys';
+import {
+  ACCOUNT_BASE_DEFAULT,
+  AccountConfig,
+  accountErrorText,
+  extractCookie,
+  login,
+  logout,
+  me,
+  normalizeBaseUrl,
+  pushProfile,
+  readAccountConfig,
+  register,
+  writeAccountConfig
+} from '../entry/src/main/ets/core/account';
+import {
+  HttpClient,
+  HttpRequest,
+  HttpResponse,
+  MapKeys,
+  emptyKeys
+} from '../entry/src/main/ets/core/http';
+import {
+  curatedToCandidate,
+  findRealPlace,
+  isRealSource,
+  parseCuratedPois,
+  pickCurated
+} from '../entry/src/main/ets/core/search';
+import {
+  CHEVRON_SPACING_METERS,
+  FOG_AHEAD_MAX,
+  FOG_BEHIND_MAX,
+  FOG_FADE_METERS,
+  FOG_HIDE_REMAINING_METERS,
+  NEARBY_COPY,
+  RouteLine,
+  buildCumulative,
+  defaultLayout,
+  estimatedMinutes,
+  fogGeometry,
+  fogWindow,
+  pointAlongPath,
+  routeProgressOf,
+  segmentBearing,
+  shouldShowOffRoute
+} from '../entry/src/main/ets/core/fog';
+import { isRealPlaceSource } from '../entry/src/main/ets/core/store';
+import {
+  areaLabelFrom,
+  geocodeAddress,
+  parseCoordinateText,
+  parseNominatim,
+  parseNominatimReverse
+} from '../entry/src/main/ets/core/geocode';
+import {
+  QuestFlowDeps,
+  loadCuratedPois,
+  planRoute,
+  prepareQuest,
+  resetCuratedCache,
+  toDataSourceStatus
+} from '../entry/src/main/ets/core/flow';
+import {
+  ROUTE_CACHE_TTL_MS,
+  decodePolyline6,
+  fetchWalkingRoute,
+  parseValhalla,
+  toRoutePolyline
+} from '../entry/src/main/ets/core/route';
 
 interface TestCase {
   name: string;
@@ -1082,6 +1205,1442 @@ test('快照：返回对象是浅拷贝，改快照不影响内部状态', async
   assert.notEqual(next.explorableSurprises[0].photoUri, 'leaked.jpg');
   if (next.session !== undefined) assert.equal(next.session.remainingMeters, 480);
   if (next.currentPlace !== undefined) assert.notEqual(next.currentPlace.name, '被改了');
+});
+
+// ============================================================
+// 10. 坐标系转换（parity：高德 GCJ-02 / 百度 BD-09）
+// ============================================================
+
+test('坐标：WGS-84 → GCJ-02 偏移约 100~700 米，逆算误差 < 3 米', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const gcj: GeoPoint = wgs84ToGcj02(origin.latitude, origin.longitude);
+  const shifted: number = distance(origin, gcj);
+  assert.ok(shifted > 80 && shifted < 800, '国内 GCJ 偏移应在百米量级，实测 ' + shifted.toFixed(1));
+  const back: GeoPoint = gcj02ToWgs84(gcj.latitude, gcj.longitude);
+  const error: number = distance(origin, back);
+  assert.ok(error < 3, 'GCJ 逆算误差应 < 3 米，实测 ' + error.toFixed(2));
+});
+
+test('坐标：BD-09 往返误差 < 3 米；境外不做偏移', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const bd: GeoPoint = wgs84ToBd09(origin.latitude, origin.longitude);
+  const back: GeoPoint = bd09ToWgs84(bd.latitude, bd.longitude);
+  assert.ok(distance(origin, back) < 3, 'BD-09 往返误差应 < 3 米');
+  const viaGcj: GeoPoint = gcj02ToBd09(...([wgs84ToGcj02(origin.latitude, origin.longitude).latitude,
+    wgs84ToGcj02(origin.latitude, origin.longitude).longitude] as [number, number]));
+  assert.ok(distance(bd, viaGcj) < 2, 'WGS→BD 应等于 WGS→GCJ→BD');
+  const backGcj: GeoPoint = bd09ToGcj02(bd.latitude, bd.longitude);
+  assert.ok(distance(backGcj, wgs84ToGcj02(origin.latitude, origin.longitude)) < 2);
+
+  const london: GeoPoint = geoPoint(51.5074, -0.1278);
+  const untouched: GeoPoint = wgs84ToGcj02(london.latitude, london.longitude);
+  assert.equal(untouched.latitude, london.latitude, '境外不做 GCJ 偏移');
+});
+
+// ============================================================
+// 11. 三档放宽 / 距离硬帽 / 质量门槛（parity §2）
+// ============================================================
+
+test('选点：时长米数 240 / 480 / 960', (): void => {
+  assert.equal(durationMeters(WalkDuration.M15), 240);
+  assert.equal(durationMeters(WalkDuration.M30), 480);
+  assert.equal(durationMeters(WalkDuration.M60), 960);
+});
+
+test('选点：三档最小/最大距离严格按 parity 公式', (): void => {
+  const t0 = tierParams(0, WalkDuration.M30);
+  assert.equal(t0.relax, 0);
+  assert.equal(t0.minDistance, Math.max(168, 480 * 0.35), '档 1 最小 = max(168, 0.35×480)');
+  assert.equal(t0.maxDistance, 480 * 1.7, '档 1 最大 = 1.7×480');
+  assert.equal(t0.radiusScale, 1);
+
+  const t1 = tierParams(1, WalkDuration.M30);
+  assert.equal(t1.minDistance, Math.max(120, 480 * 0.25));
+  assert.equal(t1.maxDistance, 480 * 2.2);
+  assert.equal(t1.radiusScale, 1.8);
+
+  const t2 = tierParams(2, WalkDuration.M30);
+  assert.equal(t2.minDistance, Math.max(86, 480 * 0.18));
+  assert.equal(t2.maxDistance, 480 * 2.7);
+  assert.equal(t2.radiusScale, 3.2);
+});
+
+test('选点：距离硬帽 min(3500, 3.4×时长米) 任何档都不得突破', (): void => {
+  // 硬帽是天花板：每档 maxDistance = min(硬帽, 倍数×时长米)，永远不超
+  for (let relax = 0; relax <= 2; relax += 1) {
+    const durations: WalkDuration[] = [WalkDuration.M15, WalkDuration.M30, WalkDuration.M60];
+    for (let d = 0; d < durations.length; d += 1) {
+      const meters: number = durationMeters(durations[d]);
+      const hardMax: number = Math.min(HARD_MAX_METERS, meters * 3.4);
+      const params = tierParams(relax, durations[d]);
+      assert.ok(params.maxDistance <= hardMax + 0.001,
+        'relax=' + String(relax) + ' 时长=' + String(meters) + ' 不得超过硬帽 ' + String(hardMax));
+      assert.ok(params.maxDistance <= HARD_MAX_METERS, '永不超过 3500m');
+      assert.ok(params.minDistance < params.maxDistance, '最小距离必须小于最大距离');
+    }
+  }
+  // 15 分钟档的硬帽真正生效（2.7×240=648 < 3.4×240=816，所以档 2 由 2.7 决定）
+  assert.equal(tierParams(2, WalkDuration.M15).maxDistance, 240 * 2.7);
+  // 档位越宽 max 越大（单调）
+  const a = tierParams(0, WalkDuration.M60).maxDistance;
+  const b = tierParams(1, WalkDuration.M60).maxDistance;
+  const c = tierParams(2, WalkDuration.M60).maxDistance;
+  assert.ok(a < b && b < c);
+});
+
+test('选点：硬排除（公厕/加油站/停车场）与软降权（便利店/快递）', (): void => {
+  assert.equal(scoreWalkworthy('人民公园').ok, true);
+  assert.equal(scoreWalkworthy('人民公园').penalty, 1);
+  assert.equal(scoreWalkworthy('公共厕所').ok, false);
+  assert.equal(scoreWalkworthy('中石化加油站').ok, false);
+  assert.equal(scoreWalkworthy('地下停车场入口').ok, false);
+  assert.equal(scoreWalkworthy('A座').ok, true, '带中文的仍算地点');
+  assert.equal(scoreWalkworthy('3-2-101').ok, false, '纯编号不算地点');
+  assert.equal(scoreWalkworthy('菜鸟驿站').ok, true);
+  assert.ok(scoreWalkworthy('菜鸟驿站').penalty < 0.3, '软降权不淘汰，但权重 ×0.22');
+  assert.ok(POI_NEVER_WORDS.test('装修中'));
+  assert.ok(POI_SOFT_BAD_WORDS.test('便利店'));
+  assert.equal(isDullCandidate({
+    id: 'x', name: '丰巢快递柜', latitude: 31.2, longitude: 121.4, category: 'convenience', source: 'osm'
+  }), true);
+});
+
+test('选点：类别权重（公园 1.7 / 便利店 0，relax 拉平）', (): void => {
+  const park: PoiCandidate = { id: 'p', name: '静安公园', latitude: 31.2, longitude: 121.4, category: 'park', source: 'osm' };
+  const shop: PoiCandidate = { id: 'c', name: '全家便利店', latitude: 31.2, longitude: 121.4, category: 'convenience', source: 'osm' };
+  assert.equal(categoryMeta('park').distinctive, 1.7);
+  assert.equal(categoryMeta('convenience').distinctive, 0);
+  const parkW = candidateWeight(park, Mood.Drift, 0);
+  const shopW = candidateWeight(shop, Mood.Drift, 0);
+  assert.ok(parkW > shopW * 3, '公园权重应远高于便利店');
+
+  // relax=2 时非良好类别被拉平（0.85 而不是 0.35）
+  const parkW2 = candidateWeight(park, Mood.Drift, 2);
+  const shopW2 = candidateWeight(shop, Mood.Drift, 2);
+  assert.ok(shopW2 / parkW2 > shopW / parkW, '放宽档应缩小类别差距');
+});
+
+test('选点：去重 30m（同名 / 近邻合并，保留有图的那条）', (): void => {
+  const a: PoiCandidate = { id: '1', name: '星巴克', latitude: 31.2304, longitude: 121.4737, category: 'cafe', source: 'amap' };
+  const b: PoiCandidate = { id: '2', name: '星巴克', latitude: 31.2304, longitude: 121.4737, category: 'cafe', source: 'osm', photoUrl: 'http://x/y.jpg' };
+  const c: PoiCandidate = { id: '3', name: '静安公园', latitude: 31.2314, longitude: 121.4737, category: 'park', source: 'osm' };
+  const out = dedupe([a, b, c], DEDUPE_METERS);
+  assert.equal(out.length, 2, '同名合并');
+  const merged = out.filter((item) => item.name === '星巴克')[0];
+  assert.equal(merged.photoUrl, 'http://x/y.jpg', '应保留有图的那条');
+  assert.equal(merged.source, 'osm', '质量更高的（有图）应留下');
+
+  // 距离 < 30m 不同名也算重复
+  const d: PoiCandidate = { id: '4', name: 'Manner', latitude: 31.2304, longitude: 121.4738, category: 'cafe', source: 'osm' };
+  const e: PoiCandidate = { id: '5', name: 'Manner Coffee', latitude: 31.2304, longitude: 121.47385, category: 'cafe', source: 'osm' };
+  assert.equal(dedupe([d, e], DEDUPE_METERS).length, 1, '30m 内合并');
+});
+
+test('选点：按距离排序 + 类别多样性（每类最多 5）', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const list: PoiCandidate[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    list.push({
+      id: 'cafe-' + String(i), name: '咖啡店 ' + String(i),
+      latitude: 31.2304 + i * 0.0002, longitude: 121.4737, category: 'cafe', source: 'osm'
+    });
+  }
+  list.push({ id: 'park-1', name: '公园', latitude: 31.2354, longitude: 121.4737, category: 'park', source: 'osm' });
+  const sorted = sortByDistance(list, origin, 5000);
+  assert.equal(sorted.length, 11);
+  assert.ok((sorted[0].distance ?? 0) < (sorted[10].distance ?? 0), '应按距离升序');
+
+  const trimmed = trimDiverse(sorted, 6);
+  assert.equal(trimmed.length, 6);
+  const cafeCount = trimmed.filter((item) => item.category === 'cafe').length;
+  assert.ok(cafeCount <= PER_CATEGORY_LIMIT, '每类最多 5 个');
+  assert.equal(trimmed.filter((item) => item.category === 'park').length, 1, '稍远的公园不应被挤掉');
+});
+
+test('选点：择优取前 40%（至少 3 个）做加权随机', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const list: PoiCandidate[] = [
+    { id: 'a', name: '静安公园', latitude: 31.2354, longitude: 121.4737, category: 'park', source: 'osm', distance: 500 },
+    { id: 'b', name: '小馄饨摊', latitude: 31.2355, longitude: 121.4737, category: 'plaza', source: 'amap', distance: 520 },
+    { id: 'c', name: '社区图书馆', latitude: 31.2356, longitude: 121.4737, category: 'library', source: 'wiki', distance: 540 },
+    { id: 'd', name: '菜鸟驿站', latitude: 31.2357, longitude: 121.4737, category: 'convenience', source: 'osm', distance: 560 }
+  ];
+  const picked = pickCandidate(list, {
+    origin: origin, mood: Mood.Drift, relax: 0, minDistance: 168, maxDistance: 816, random: 0.01
+  });
+  assert.ok(picked !== undefined);
+  if (picked !== undefined) {
+    assert.notEqual(picked.candidate.id, 'd', '软黑名单点不该被优先抽中');
+  }
+  // 距离窗口外全部淘汰 → undefined（调用方继续下一档）
+  assert.equal(pickCandidate(list, {
+    origin: origin, mood: Mood.Drift, relax: 0, minDistance: 900, maxDistance: 1200, random: 0.5
+  }), undefined);
+});
+
+// ============================================================
+// 12. 数据源解析（fixture，不依赖网络）
+// ============================================================
+
+function amapFixture(): Record<string, unknown> {
+  return {
+    status: '1',
+    info: 'OK',
+    pois: [
+      {
+        id: 'B0001', name: '静安公园', type: '风景名胜;公园;公园',
+        location: '121.473700,31.230400', address: '南京西路 1649 号',
+        cityname: '上海市', adname: '静安区',
+        photos: [{ title: '公园', url: 'http://store.is.autonavi.com/x.jpg' }]
+      },
+      { id: 'B0002', name: '公共厕所', type: '公共设施;公共厕所', location: '121.474,31.231', address: '' },
+      { id: 'B0003', name: '', type: '餐饮服务;咖啡厅', location: '121.474,31.231', address: '' }
+    ]
+  };
+}
+
+function baiduFixture(): Record<string, unknown> {
+  // 百度返回的是 BD-09，所以 fixture 里的坐标必须先按 BD-09 生成，
+  // 否则解析出来的 WGS 坐标会偏一公里（这正是坐标系转换要解决的问题）
+  const bd = wgs84ToBd09(31.2304, 121.4737);
+  const bd2 = wgs84ToBd09(31.231, 121.474);
+  return {
+    status: 0,
+    message: 'ok',
+    results: [
+      {
+        uid: 'uuid-1', name: 'Manner Coffee', address: '静安嘉里中心',
+        location: { lat: bd.latitude, lng: bd.longitude },
+        detail_info: { tag: '咖啡厅', image_url: 'https://img.baidu.com/x.jpg' }
+      },
+      {
+        uid: 'uuid-2', name: '某某停车场', address: '',
+        location: { lat: bd2.latitude, lng: bd2.longitude }, detail_info: { tag: '' }
+      }
+    ]
+  };
+}
+
+test('数据源：高德解析（GCJ→WGS、类别取最后一段、照片、地址回退）', (): void => {
+  const list = parseAmap(amapFixture());
+  assert.equal(list.length, 2, '无名的 POI 应被丢弃');
+  const park = list[0];
+  assert.equal(park.name, '静安公园');
+  assert.equal(park.category, 'park', 'type 取最后一段「公园」');
+  assert.equal(park.source, 'amap');
+  assert.equal(park.photoUrl, 'http://store.is.autonavi.com/x.jpg');
+  assert.equal(park.photoCredit, '高德地图');
+  assert.equal(park.address, '南京西路 1649 号');
+  // 坐标已从 GCJ-02 转回 WGS-84（拍回去应该在 200 米左右，不会 0）
+  const backToGcj = wgs84ToGcj02(park.latitude, park.longitude);
+  assert.ok(distance(geoPoint(31.2304, 121.4737), backToGcj) < 5, 'GCJ 往返应回到原位');
+  assert.ok(list[1].name === '公共厕所', '解析阶段不淘汰（由 scoreWalkworthy 负责）');
+
+  // status != 1 直接空
+  assert.equal(parseAmap({ status: '0', pois: [] }).length, 0);
+});
+
+test('数据源：百度解析（BD→WGS、detail_info.tag、image_url）', (): void => {
+  const list = parseBaidu(baiduFixture());
+  assert.equal(list.length, 2);
+  const cafe = list[0];
+  assert.equal(cafe.name, 'Manner Coffee');
+  assert.equal(cafe.category, 'cafe');
+  assert.equal(cafe.source, 'baidu');
+  assert.equal(cafe.photoUrl, 'https://img.baidu.com/x.jpg');
+  assert.equal(cafe.photoCredit, '百度地图');
+  assert.equal(cafe.address, '静安嘉里中心');
+  assert.ok(distance(geoPoint(31.2304, 121.4737), geoPoint(cafe.latitude, cafe.longitude)) < 5,
+    'BD-09 往返应回到原位');
+  assert.equal(parseBaidu({ status: 1, results: [] }).length, 0);
+});
+
+test('数据源：URL 构造带坐标系转换与分页上限', (): void => {
+  const amapLink = amapUrl(31.2304, 121.4737, 1200, 25, 2, '公园', 'test-key-1234');
+  assert.ok(amapLink.indexOf('key=test-key-1234') >= 0);
+  assert.ok(amapLink.indexOf('offset=25') >= 0, '高德 offset 上限 25');
+  assert.ok(amapLink.indexOf('page=2') >= 0);
+  assert.ok(amapLink.indexOf('extensions=all') >= 0);
+  assert.ok(amapLink.indexOf(encodeURIComponent('公园')) >= 0);
+  // 高德 location 是 GCJ-02 的 lon,lat，不等于入参
+  assert.ok(amapLink.indexOf('location=121.473700,31.230400') < 0, '必须转换过坐标');
+  // offset 超上限被夹住
+  assert.ok(amapUrl(31.2, 121.4, 500, 99, 1, '', 'k').indexOf('offset=25') >= 0);
+
+  const baiduLink = baiduUrl(31.2304, 121.4737, 1200, 20, 'test-ak', '');
+  assert.ok(baiduLink.indexOf('ak=test-ak') >= 0);
+  assert.ok(baiduLink.indexOf('scope=2') >= 0);
+  assert.ok(baiduLink.indexOf('page_size=20') >= 0);
+  assert.ok(baiduLink.indexOf('query=' + encodeURIComponent('生活服务')) >= 0);
+  assert.ok(baiduUrl(31.2, 121.4, 500, 99, 'k', '').indexOf('page_size=20') >= 0);
+});
+
+test('数据源：OSM / 维基解析与过滤', (): void => {
+  const overpass = parseOverpass({
+    elements: [
+      { type: 'node', id: 1, lat: 31.23, lon: 121.47, tags: { name: '静安公园', leisure: 'park' } },
+      { type: 'node', id: 2, lat: 31.23, lon: 121.47, tags: { name: '无名店', amenity: 'toilets' } },
+      { type: 'node', id: 3, lat: 31.23, lon: 121.47, tags: { amenity: 'cafe' } }
+    ]
+  });
+  assert.equal(overpass.length, 1, '只收白名单标签 + 有名 + 有坐标');
+  assert.equal(overpass[0].category, 'park');
+  assert.equal(overpass[0].source, 'osm');
+
+  const wiki = parseWiki({
+    query: {
+      pages: {
+        '1': {
+          pageid: 1, title: '静安寺', extract: '上海著名寺庙',
+          coordinates: [{ lat: 31.2235, lon: 121.4454 }],
+          thumbnail: { source: 'https://upload.wikimedia.org/x.jpg' }
+        },
+        '2': {
+          pageid: 2, title: '静安区',
+          coordinates: [{ lat: 31.22, lon: 121.44 }],
+          thumbnail: { source: 'https://upload.wikimedia.org/y.jpg' }
+        },
+        '3': {
+          pageid: 3, title: '静安寺站',
+          coordinates: [{ lat: 31.22, lon: 121.44 }],
+          thumbnail: { source: 'https://upload.wikimedia.org/z.jpg' }
+        },
+        '4': {
+          pageid: 4, title: '某某大世界 (上海市)',
+          coordinates: [{ lat: 31.23, lon: 121.47 }],
+          thumbnail: { source: 'https://upload.wikimedia.org/w.jpg' }
+        }
+      }
+    }
+  });
+  assert.equal(wiki.length, 2, '行政区 / 地铁站应被过滤');
+  const temple = wiki[0];
+  assert.equal(temple.name, '静安寺');
+  assert.equal(temple.source, 'wiki');
+  assert.equal(temple.category, 'temple');
+  assert.equal(wiki[1].name, '某某大世界', '括号消歧义后缀应去掉');
+});
+
+test('数据源：类别映射（17 类，名称优先于原始类别）', (): void => {
+  assert.equal(mapCategory('', '静安公园'), 'park');
+  assert.equal(mapCategory('餐饮服务;咖啡厅', ''), 'cafe');
+  assert.equal(mapCategory('', '某某图书馆'), 'library');
+  assert.equal(mapCategory('', '完全没线索的名字'), 'plaza');
+  // 名称优先：原始类别说「中餐厅」，但名称里有「寺」→ 按名称判 temple
+  assert.equal(mapCategory('餐饮服务;中餐厅', '静安寺'), 'temple');
+  assert.equal(mapCategory('风景名胜;公园', '人民广场'), 'plaza', '人民广场是广场，不是公园');
+  assert.equal(mapCategory('', '广场公园'), 'park', '「广场公园」应判 park（park 规则在前）');
+  assert.equal(providerLabel('amap'), '高德地图');
+  assert.equal(providerLabel('unknown'), 'unknown');
+});
+
+test('数据源：去重时不同名 POI 不能互相借类别（实测踩过的坑）', (): void => {
+  // 保留的那条是「无类别（落 plaza）」的餐厅，隔壁 30m 是寺庙：
+  // 合并时**不能**把寺庙的类别借给它，否则会出现「鲜得来 → 寺庙」（实测踩过）
+  const restaurant: PoiCandidate = {
+    id: 'a', name: '鲜得来(云南路店)', latitude: 31.2304, longitude: 121.4737,
+    category: 'plaza', source: 'amap', address: '云南路', photoUrl: 'https://img.amap.com/x.jpg'
+  };
+  const temple: PoiCandidate = {
+    id: 'b', name: '云南路道观', latitude: 31.2304, longitude: 121.4738,
+    category: 'temple', source: 'osm'
+  };
+  const merged = dedupe([restaurant, temple], 30);
+  assert.equal(merged.length, 1, '30m 内应合并');
+  assert.equal(merged[0].name, '鲜得来(云南路店)', '质量更高的（有图）应留下');
+  assert.equal(merged[0].category, 'plaza', '不同名 → 不借类别，保持自己的 plaza');
+
+  // 同名（同一家店的两个来源）→ 可以互补类别
+  const noCategory: PoiCandidate = {
+    id: 'c', name: '静安寺', latitude: 31.2235, longitude: 121.4454, category: 'plaza', source: 'amap'
+  };
+  const withCategory: PoiCandidate = {
+    id: 'd', name: '静安寺', latitude: 31.2235, longitude: 121.4454, category: 'temple', source: 'wiki'
+  };
+  const sameName = dedupe([noCategory, withCategory], 30);
+  assert.equal(sameName.length, 1);
+  assert.equal(sameName[0].category, 'temple', '同名互补：拿到更具体的类别');
+});
+
+test('数据源：地标关键字必须拆成单个词（整串会让高德返回 count=0）', (): void => {
+  assert.ok(LANDMARK_KEYWORDS.indexOf('|') >= 0, '规格原文用 | 分隔');
+  const words = landmarkKeywordList();
+  assert.equal(words.length, 11);
+  assert.equal(words[0], '公园');
+  assert.equal(words[10], '古镇');
+  for (let i = 0; i < words.length; i += 1) {
+    assert.ok(words[i].indexOf('|') < 0, '拆出来的词不能再带分隔符');
+  }
+  assert.ok(LANDMARK_KEYWORD_LIMIT >= 1 && LANDMARK_KEYWORD_LIMIT <= 5, 'QPS 有限，只查少数几个');
+});
+
+// ============================================================
+// 13. 数据源编排（FakeHttp）
+// ============================================================
+
+class FakeHttp implements HttpClient {
+  private handler: (request: HttpRequest) => HttpResponse;
+  requests: HttpRequest[] = [];
+
+  constructor(handler: (request: HttpRequest) => HttpResponse) {
+    this.handler = handler;
+  }
+
+  async request(request: HttpRequest): Promise<HttpResponse> {
+    this.requests.push(request);
+    return this.handler(request);
+  }
+}
+
+function jsonResponse(payload: unknown): HttpResponse {
+  const response: HttpResponse = { status: 200, body: JSON.stringify(payload) };
+  return response;
+}
+
+test('编排：无 Key 时只跑 OSM + 维基，高德/百度标记未配置', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [{ type: 'node', id: 9, lat: 31.2354, lon: 121.4737, tags: { name: '静安公园', leisure: 'park' } }]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const keys: MapKeys = emptyKeys();
+  const result = await nearby(client, keys, {
+    latitude: 31.2304, longitude: 121.4737, radiusMeters: 1200, limit: 30
+  });
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].name, '静安公园');
+  const amapReport = result.reports.filter((item) => item.id === 'amap')[0];
+  assert.ok(amapReport !== undefined);
+  assert.equal(amapReport.ok, false);
+  assert.equal(amapReport.error, '未配置 Key');
+  assert.equal(result.reports.length, 4, '四个源都要有报告（失败面板逐条展示）');
+  const osmReport = result.reports.filter((item) => item.id === 'osm')[0];
+  assert.equal(osmReport.ok, true);
+  const baiduReport = result.reports.filter((item) => item.id === 'baidu')[0];
+  assert.equal(baiduReport.error, '未配置 Key');
+});
+
+test('编排：单源失败不影响其他源（手写 allSettled）', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('restapi.amap.com') >= 0) {
+      return { status: 500, body: 'boom' };
+    }
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [{ type: 'node', id: 1, lat: 31.2354, lon: 121.4737, tags: { name: '静安公园', leisure: 'park' } }]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const keys: MapKeys = emptyKeys();
+  keys.amap = 'test-key-1234';
+  const result = await nearby(client, keys, {
+    latitude: 31.2304, longitude: 121.4737, radiusMeters: 1200, limit: 30
+  });
+  assert.equal(result.candidates.length, 1, 'OSM 仍然给出结果');
+  const amapReport = result.reports.filter((item) => item.id === 'amap')[0];
+  assert.equal(amapReport.ok, false);
+  assert.ok(amapReport.error.length > 0, '失败原因要记下来给面板用');
+});
+
+test('编排：多源去重 + 按距离排序 + 类别多样性', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('restapi.amap.com') >= 0) {
+      return jsonResponse({
+        status: '1',
+        pois: [
+          { id: 'a1', name: '静安公园', type: '风景名胜;公园', location: '121.4737,31.2354', address: '南京西路' },
+          { id: 'a2', name: '便利店', type: '购物;便利店', location: '121.4737,31.2305', address: '' }
+        ]
+      });
+    }
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [
+          // 与高德同一个公园（30m 内）→ 应合并
+          { type: 'node', id: 1, lat: 31.2354, lon: 121.4737, tags: { name: '静安公园', leisure: 'park' } },
+          { type: 'node', id: 2, lat: 31.2344, lon: 121.4737, tags: { name: '静安寺', amenity: 'place_of_worship' } }
+        ]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const keys: MapKeys = emptyKeys();
+  keys.amap = 'test-key-1234';
+  const result = await nearby(client, keys, {
+    latitude: 31.2304, longitude: 121.4737, radiusMeters: 1200, limit: 30
+  });
+  const names = result.candidates.map((item) => item.name);
+  assert.equal(names.filter((name) => name === '静安公园').length, 1, '跨源同名应合并');
+  const distances = result.candidates.map((item) => item.distance ?? 0);
+  for (let i = 1; i < distances.length; i += 1) {
+    assert.ok(distances[i - 1] <= distances[i], '结果必须按距离升序');
+  }
+});
+
+// ============================================================
+// 14. 三档搜索编排（core/search.ts）：绝不虚构兜底
+// ============================================================
+
+test('搜索：找到真实地点 → 返回 place，source 真实', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [
+          { type: 'node', id: 1, lat: 31.2344, lon: 121.4737, tags: { name: '静安公园', leisure: 'park' } },
+          { type: 'node', id: 2, lat: 31.2334, lon: 121.4737, tags: { name: '社区图书馆', amenity: 'library' } }
+        ]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const outcome = await findRealPlace(
+    client, emptyKeys(), [], origin, Mood.Drift, WalkDuration.M30, 0.3, 40
+  );
+  assert.ok(outcome.place !== undefined, '应该找到真实地点');
+  if (outcome.place === undefined) return;
+  assert.ok(isRealSource(outcome.place.source), '来源必须是真实的');
+  assert.ok(outcome.place.coordinate !== undefined, '必须有真实坐标');
+  assert.equal(outcome.failReason, '');
+});
+
+test('搜索：全源无结果 → 明确失败，绝不用内置虚构地点', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) return jsonResponse({ elements: [] });
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const outcome = await findRealPlace(
+    client, emptyKeys(), [], origin, Mood.Drift, WalkDuration.M30, 0.3, 40
+  );
+  assert.equal(outcome.place, undefined, '找不到就必须失败');
+  assert.ok(outcome.failReason === 'no-real-place' || outcome.failReason === 'network');
+  const reportLines = outcome.reports.length;
+  assert.ok(reportLines >= 1, '失败面板要能逐条列出每个源的原因');
+});
+
+test('搜索：三档放宽 —— 档 1 太近的点，档 2/3 能接受', async (): Promise<void> => {
+  // 只在 130 米处有一个图书馆：档 1 最小 168m 拒绝，档 2 最小 120m 接受
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [{ type: 'node', id: 1, lat: 31.23157, lon: 121.4737, tags: { name: '社区图书馆', amenity: 'library' } }]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const outcome = await findRealPlace(
+    client, emptyKeys(), [], origin, Mood.Drift, WalkDuration.M30, 0.3, 40
+  );
+  assert.ok(outcome.place !== undefined, '放宽档应该接受 130m 的点');
+  assert.equal(outcome.tier, 1, '应该是第 2 档（relax=1）找到的');
+});
+
+test('搜索：只有软黑名单地点时，最后仍用它（不编造，不失败）', async (): Promise<void> => {
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) {
+      return jsonResponse({
+        elements: [{ type: 'node', id: 1, lat: 31.2344, lon: 121.4737, tags: { name: '菜鸟驿站', amenity: 'cafe' } }]
+      });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const outcome = await findRealPlace(
+    client, emptyKeys(), [], origin, Mood.Drift, WalkDuration.M30, 0.3, 40
+  );
+  assert.ok(outcome.place !== undefined, '真实但普通的地点最终仍可用');
+  if (outcome.place !== undefined) {
+    assert.equal(outcome.place.name, '菜鸟驿站');
+    assert.equal(outcome.place.source, 'osm');
+  }
+});
+
+test('搜索：策展数据优先于多数据源', async (): Promise<void> => {
+  const client = new FakeHttp((): HttpResponse => jsonResponse({ elements: [] }));
+  const curated = [{
+    id: 'c1', name: '编辑精选的咖啡馆', lat: 31.2344, lon: 121.4737, category: 'cafe',
+    why: '编辑写的理由', task: '编辑写的小任务', hints: ['一', '二', '三']
+  }];
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const outcome = await findRealPlace(
+    client, emptyKeys(), curated, origin, Mood.Drift, WalkDuration.M30, 0.3, 40
+  );
+  assert.ok(outcome.place !== undefined);
+  if (outcome.place !== undefined) {
+    assert.equal(outcome.source, 'curated');
+    assert.equal(outcome.place.name, '编辑精选的咖啡馆');
+    assert.equal(outcome.place.why, '编辑写的理由', '后台策展文案应覆盖模板');
+    assert.equal(outcome.place.source, 'curated');
+  }
+  assert.equal(curatedToCandidate(curated[0]).id, 'curated-c1');
+  assert.ok(pickCurated(curated, origin, Mood.Drift, 0, 100, 900, 0.3) !== undefined);
+  assert.equal(pickCurated([], origin, Mood.Drift, 0, 100, 900, 0.3), undefined);
+});
+
+// ============================================================
+// 15. 地图 Key 下发（后台统一下发，不写死）
+// ============================================================
+
+test('MapKeys：解析 {keys:{amap,baidu}} 与扁平结构', (): void => {
+  const nested = parseMapKeys({ keys: { amap: ' testkey1234 ', baidu: '' }, version: '1' });
+  assert.equal(nested.amap, 'testkey1234');
+  assert.equal(nested.baidu, '');
+  const flat = parseMapKeys({ amap: 'a', baidu: 'b' });
+  assert.equal(flat.amap, 'a');
+  assert.equal(flat.baidu, 'b');
+  assert.equal(parseMapKeys({}).amap, '');
+  assert.equal(maskKey('testkey1234abcd'), 'test…abcd');
+  assert.equal(maskKey(''), '');
+});
+
+test('MapKeys：缓存 12 小时内有效，过期失效', (): void => {
+  const kv: MemoryKV = new MemoryKV();
+  const now: number = 1700000000000;
+  writeCachedKeys(kv, { amap: 'k1', baidu: '' }, 'pages', now);
+  const hit = readCachedKeys(kv, now + 3600 * 1000);
+  assert.ok(hit !== undefined);
+  if (hit !== undefined) {
+    assert.equal(hit.keys.amap, 'k1');
+    assert.equal(hit.source, 'cache:pages');
+  }
+  assert.equal(readCachedKeys(kv, now + MAPKEYS_CACHE_TTL_MS + 1), undefined, '超过 12h 应失效');
+  assert.equal(kv.has(MAPKEYS_CACHE_KEY), true);
+});
+
+test('MapKeys：按 包内 → 公网 → 后台 → 免费源 的顺序降级', async (): Promise<void> => {
+  // ① 包内文件有 Key → 直接用它，不发请求
+  const client = new FakeHttp((): HttpResponse => jsonResponse({}));
+  const kv: MemoryKV = new MemoryKV();
+  const now: number = 1700000000000;
+  const bundled = await loadMapKeys(
+    client, kv,
+    (): string | undefined => '{"keys":{"amap":"bundled-key","baidu":""}}',
+    ADMIN_BASE_DEFAULT, now
+  );
+  assert.equal(bundled.source, 'bundled');
+  assert.equal(bundled.keys.amap, 'bundled-key');
+  assert.equal(client.requests.length, 0, '包内有 Key 就不该发请求');
+
+  // ② 包内没有 → 公网 Pages 成功
+  const kv2: MemoryKV = new MemoryKV();
+  const client2 = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('xiaoqiangch.github.io') >= 0) {
+      return jsonResponse({ keys: { amap: 'pages-key', baidu: '' } });
+    }
+    return { status: 404, body: '{}' };
+  });
+  const pages = await loadMapKeys(client2, kv2, (): string | undefined => undefined, ADMIN_BASE_DEFAULT, now);
+  assert.equal(pages.source, 'pages');
+  assert.equal(pages.keys.amap, 'pages-key');
+
+  // ③ 公网失败 → 后台端点
+  const kv3: MemoryKV = new MemoryKV();
+  const client3 = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('/api/public/mapkeys') >= 0) {
+      return jsonResponse({ ok: true, keys: { amap: 'admin-key', baidu: '' } });
+    }
+    return { status: 500, body: '{}' };
+  });
+  const admin = await loadMapKeys(client3, kv3, (): string | undefined => undefined, 'http://192.168.1.5:8802', now);
+  assert.equal(admin.source, 'admin');
+  assert.equal(admin.keys.amap, 'admin-key');
+  assert.equal(admin.adminBase, 'http://192.168.1.5:8802');
+
+  // ④ 全失败 → 空 Key（只跑 OSM + 维基）
+  const kv4: MemoryKV = new MemoryKV();
+  const client4 = new FakeHttp((): HttpResponse => ({ status: 500, body: '{}' }));
+  const none = await loadMapKeys(client4, kv4, (): string | undefined => undefined, ADMIN_BASE_DEFAULT, now);
+  assert.equal(none.source, 'none');
+  assert.equal(none.keys.amap, '');
+  assert.equal(none.keys.baidu, '');
+});
+
+test('MapKeys：环境返回的 Key 不写死、不进代码（fetchAdminKeys 走注入的 client）', async (): Promise<void> => {
+  const client = new FakeHttp((): HttpResponse => jsonResponse({ ok: true, keys: { amap: 'from-server', baidu: '' } }));
+  const keys = await fetchAdminKeys(client, 'http://127.0.0.1:8802/', 1000);
+  assert.equal(keys.amap, 'from-server');
+  assert.ok(client.requests[0].url === 'http://127.0.0.1:8802/api/public/mapkeys');
+});
+
+// ============================================================
+// 16. 账号（Cookie 手动管理）
+// ============================================================
+
+test('账号：从 set-cookie 抠出 bw_uid（大小写/多 Cookie 容错）', (): void => {
+  assert.equal(
+    extractCookie({ 'set-cookie': 'bw_uid=abc123; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000' }),
+    'bw_uid=abc123'
+  );
+  assert.equal(extractCookie({ 'Set-Cookie': 'foo=1; Path=/, bw_uid=xyz; HttpOnly' }), 'bw_uid=xyz');
+  assert.equal(extractCookie({ 'set-cookie': 'other=1' }), '');
+  assert.equal(extractCookie(undefined), '');
+});
+
+test('账号：注册成功写 Cookie 与用户名；失败给人类可读原因', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  const client = new FakeHttp((): HttpResponse => ({
+    status: 200,
+    body: JSON.stringify({ ok: true, user: { id: 'u1', username: '阿澈', createdAt: 1 } }),
+    headers: { 'set-cookie': 'bw_uid=tok1; HttpOnly; Path=/' }
+  }));
+  const result = await register(client, kv, 'http://127.0.0.1:8803', '阿澈澈', 'secret123');
+  assert.equal(result.ok, true);
+  if (result.value !== undefined) assert.equal(result.value.username, '阿澈');
+  const config = readAccountConfig(kv);
+  assert.equal(config.user !== undefined, true);
+  assert.equal(config.cookie, 'bw_uid=tok1');
+  assert.equal(config.baseUrl, 'http://127.0.0.1:8803');
+
+  const bad = new FakeHttp((): HttpResponse => ({
+    status: 401,
+    body: JSON.stringify({ error: '用户名或密码不对', code: 'BAD_CREDENTIALS' })
+  }));
+  const failed = await login(bad, new MemoryKV(), 'http://127.0.0.1:8803', '阿澈澈', 'wrong1');
+  assert.equal(failed.ok, false);
+  assert.equal(failed.code, 'BAD_CREDENTIALS');
+  assert.equal(failed.error, '用户名或密码不对');
+});
+
+test('账号：本地前置校验（用户名 3–24 / 密码 ≥6），不发请求', async (): Promise<void> => {
+  const client = new FakeHttp((): HttpResponse => jsonResponse({ ok: true }));
+  const shortName = await login(client, new MemoryKV(), ACCOUNT_BASE_DEFAULT, 'ab', 'secret123');
+  assert.equal(shortName.ok, false);
+  assert.equal(shortName.code, 'BAD_REQUEST');
+  const shortPass = await login(client, new MemoryKV(), ACCOUNT_BASE_DEFAULT, '阿澈澈', '123');
+  assert.equal(shortPass.ok, false);
+  assert.equal(client.requests.length, 0, '本地校验失败不该发请求');
+});
+
+test('账号：同步带 Cookie、超 240KB 拒绝；退出清本地', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  const config: AccountConfig = {
+    baseUrl: 'http://127.0.0.1:8803',
+    user: { id: 'u1', username: '阿澈', createdAt: 1 },
+    cookie: 'bw_uid=tok1'
+  };
+  writeAccountConfig(kv, config);
+
+  const client = new FakeHttp((): HttpResponse => jsonResponse({ ok: true, savedAt: 123, bytes: 10 }));
+  const pushed = await pushProfile(client, config, { app: 'blindwalk', profile: { xp: 1 } });
+  assert.equal(pushed.ok, true);
+  assert.equal(client.requests[0].headers !== undefined, true);
+  if (client.requests[0].headers !== undefined) {
+    assert.equal(client.requests[0].headers['Cookie'], 'bw_uid=tok1');
+  }
+
+  const huge: Record<string, unknown> = { blob: 'x'.repeat(250 * 1024) };
+  const rejected = await pushProfile(client, config, huge);
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.code, 'BAD_REQUEST');
+
+  const loggedOut = await logout(client, kv, config);
+  assert.equal(loggedOut.ok, true);
+  assert.equal(readAccountConfig(kv).user, undefined, '退出后本地应清掉用户');
+});
+
+test('账号：/me 返回 401 时自动清掉过期会话', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  const config: AccountConfig = {
+    baseUrl: 'http://127.0.0.1:8803',
+    user: { id: 'u1', username: '阿澈', createdAt: 1 },
+    cookie: 'bw_uid=expired'
+  };
+  writeAccountConfig(kv, config);
+  const client = new FakeHttp((): HttpResponse => ({
+    status: 401,
+    body: JSON.stringify({ error: '未登录', code: 'UNAUTHENTICATED' })
+  }));
+  const result = await me(client, kv, config);
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'UNAUTHENTICATED');
+  assert.equal(readAccountConfig(kv).user, undefined);
+  assert.equal(readAccountConfig(kv).cookie, undefined);
+});
+
+test('账号：/me 恢复整包数据（profile + surprises）', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  const config: AccountConfig = {
+    baseUrl: 'http://127.0.0.1:8803',
+    user: { id: 'u1', username: '阿澈', createdAt: 1 },
+    cookie: 'bw_uid=tok1'
+  };
+  const client = new FakeHttp((): HttpResponse => jsonResponse({
+    user: { id: 'u1', username: '阿澈', createdAt: 1 },
+    profile: { app: 'blindwalk', savedAt: 99, profile: { xp: 4240 }, surprises: [{ id: 's1' }] }
+  }));
+  const result = await me(client, kv, config);
+  assert.equal(result.ok, true);
+  if (result.value !== undefined) {
+    assert.equal(result.value.savedAt, 99);
+    assert.ok(result.value.profile !== undefined);
+    assert.equal(result.value.surprises !== undefined ? result.value.surprises.length : 0, 1);
+  }
+});
+
+test('账号：错误码文案 + 地址规范化', (): void => {
+  assert.equal(accountErrorText('USERNAME_TAKEN', 'x'), '这个用户名已被注册');
+  assert.equal(accountErrorText('TOO_MANY_ATTEMPTS', 'x'), '尝试次数太多，10 分钟后再试');
+  assert.equal(accountErrorText('UNKNOWN', '兜底'), '兜底');
+  assert.equal(normalizeBaseUrl('  http://127.0.0.1:8803/  '), 'http://127.0.0.1:8803');
+  assert.equal(normalizeBaseUrl(''), ACCOUNT_BASE_DEFAULT);
+  assert.equal(ACCOUNT_BASE_DEFAULT, 'http://127.0.0.1:8803');
+});
+
+// ============================================================
+// 17. 迷雾路径几何（parity §3）
+// ============================================================
+
+/** 正北方向 300 米、10 个点的竖直路线（便于手算） */
+function straightRoute(): RouteLine {
+  const points: number[][] = [];
+  const originLat: number = 31.2304;
+  for (let i = 0; i <= 10; i += 1) {
+    points.push([121.4737, originLat + i * 0.00027]);
+  }
+  const line: RouteLine = { points: points, distanceMeters: 300 };
+  return line;
+}
+
+test('迷雾：累计距离表与沿线取点', (): void => {
+  const line = straightRoute();
+  const cumulative = buildCumulative(line);
+  assert.ok(cumulative !== undefined);
+  if (cumulative === undefined) return;
+  assert.ok(Math.abs(cumulative.total - 300) < 6, '总长应约 300 米');
+  const head = pointAlongPath(cumulative, 0);
+  assert.ok(Math.abs(head.latitude - 31.2304) < 0.00001, '起点应等于第一个点');
+  const mid = pointAlongPath(cumulative, cumulative.total / 2);
+  assert.ok(Math.abs(mid.latitude - (31.2304 + 0.00135)) < 0.0002, '中点应在中间');
+  const tail = pointAlongPath(cumulative, 99999);
+  assert.ok(Math.abs(tail.latitude - (31.2304 + 0.0027)) < 0.00001, '越界夹到终点');
+});
+
+test('迷雾：窗口参数 min(260, 剩余-25) / min(140, 已走-5) / 剩余<60 隐藏', (): void => {
+  const w = fogWindow(100, 300);
+  assert.equal(w.remaining, 200);
+  assert.equal(w.ahead, Math.min(FOG_AHEAD_MAX, 200 - 25));
+  assert.equal(w.behind, Math.min(FOG_BEHIND_MAX, 100 - 5));
+  assert.equal(w.startS, 100 - w.behind);
+  assert.equal(w.endS, 100 + w.ahead);
+  assert.equal(w.fade, FOG_FADE_METERS);
+  assert.equal(w.hidden, false);
+
+  // 前方封顶 260（剩余很大时）/ 后方封顶 140（已走很远时）
+  const far = fogWindow(500, 1000);
+  assert.equal(far.ahead, FOG_AHEAD_MAX, '前方上限 260');
+  assert.equal(far.behind, FOG_BEHIND_MAX, '后方上限 140');
+
+  // 刚出发：后方为 0
+  const start = fogWindow(0, 300);
+  assert.equal(start.behind, 0, '刚出发后方不显示');
+
+  // 剩余 < 60 → 整段隐藏
+  const near = fogWindow(290, 300);
+  assert.equal(near.remaining, 10);
+  assert.equal(near.hidden, true, '剩余 < 60m 必须隐藏');
+  assert.equal(fogWindow(241, 300).hidden, true, '剩余 59 也隐藏');
+  assert.equal(fogWindow(240, 300).hidden, false, '剩余 60 不隐藏');
+  assert.equal(FOG_HIDE_REMAINING_METERS, 60);
+});
+
+test('迷雾：沿线投影（walked / offRoute / bearing / lateral）', (): void => {
+  const line = straightRoute();
+  const cumulative = buildCumulative(line)!;
+  const at100 = pointAlongPath(cumulative, 100);
+  // 在路径上 → 偏离 0
+  const onPath = routeProgressOf(line, at100);
+  assert.ok(onPath !== undefined);
+  if (onPath !== undefined) {
+    assert.ok(Math.abs(onPath.walked - 100) < 8, '沿路径里程应约 100，实测 ' + onPath.walked.toFixed(1));
+    assert.ok(onPath.offRoute < 1, '在路径上偏离应接近 0');
+    assert.ok(Math.abs(onPath.bearing) < 1, '正北路线朝向应约 0°');
+  }
+  // 往东偏 30 米 → offRoute ≈ 30，lateral 为正（右手边）
+  const shifted: GeoPoint = geoPoint(at100.latitude, at100.longitude + 0.00032);
+  const offPath = routeProgressOf(line, shifted);
+  assert.ok(offPath !== undefined);
+  if (offPath !== undefined) {
+    assert.ok(Math.abs(offPath.offRoute - 30) < 6, '偏离应约 30 米，实测 ' + offPath.offRoute.toFixed(1));
+    assert.ok(offPath.lateral > 20, '向东偏 → 横向为正');
+  }
+});
+
+test('迷雾：几何数据（已走/前方颜色、箭头间距、两端渐隐、指北针）', (): void => {
+  const line = straightRoute();
+  const cumulative = buildCumulative(line)!;
+  const here = pointAlongPath(cumulative, 100);
+  const layout = defaultLayout(320, 196);
+  const geometry = fogGeometry(line, here, layout);
+
+  assert.equal(geometry.hidden, false);
+  assert.ok(geometry.segments.length > 10, '应该画出一批线段');
+  assert.equal(geometry.caption, '迷雾模式 · 只看见前后一段');
+
+  const behind = geometry.segments.filter((segment) => segment.behind);
+  const ahead = geometry.segments.filter((segment) => !segment.behind);
+  assert.ok(behind.length > 0, '应该有已走部分');
+  assert.ok(ahead.length > 0, '应该有前方部分');
+  for (let i = 0; i < behind.length; i += 1) {
+    assert.equal(behind[i].color, '#C9A98A');
+    assert.equal(behind[i].width, 7);
+    assert.ok(behind[i].opacity <= 0.55 + 0.001, '已走部分不透明度 ≤ 0.55');
+  }
+  for (let i = 0; i < ahead.length; i += 1) {
+    assert.equal(ahead[i].color, '#E89B4C');
+    assert.equal(ahead[i].width, 9);
+  }
+  // 两端渐隐：窗口最边上一条应明显更透明
+  const first = geometry.segments[0];
+  assert.ok(first.opacity < 0.5, '窗口起点应渐隐');
+
+  // 箭头：至少 1 个，间距 55 米（正北直线上 y 间隔 = 55 * scaleY）
+  assert.ok(geometry.chevrons.length >= 1);
+  assert.ok(geometry.chevrons.length <= Math.floor(geometry.remaining / CHEVRON_SPACING_METERS) + 1);
+  // 指北针：正北路线 → 旋转 0
+  assert.ok(Math.abs(geometry.compassRotation) < 1);
+  // 「你」在画布下方居中
+  assert.ok(Math.abs(geometry.userX - layout.centerX) < 2);
+  assert.equal(geometry.userY, layout.centerY);
+});
+
+test('迷雾：剩余 < 60m 时不画任何路径（不露终点）', (): void => {
+  const line = straightRoute();
+  const cumulative = buildCumulative(line)!;
+  const here = pointAlongPath(cumulative, cumulative.total - 20);
+  const geometry = fogGeometry(line, here, defaultLayout(320, 196));
+  assert.equal(geometry.hidden, true);
+  assert.equal(geometry.segments.length, 0, '不能画任何路径');
+  assert.equal(geometry.chevrons.length, 0);
+  assert.equal(geometry.caption, NEARBY_COPY);
+});
+
+test('迷雾：偏离 > 18m 才提示，且带滞回', (): void => {
+  assert.equal(shouldShowOffRoute(10, false), false);
+  assert.equal(shouldShowOffRoute(20, false), true);
+  assert.equal(shouldShowOffRoute(20, true), true);
+  assert.equal(shouldShowOffRoute(15, true), true, '滞回：已显示时 15m 仍显示');
+  assert.equal(shouldShowOffRoute(13, true), false, '滞回：13m 才收起');
+  assert.equal(estimatedMinutes(150), 2);
+  assert.equal(estimatedMinutes(10), 1, '至少 1 分钟');
+});
+
+test('迷雾：指北针旋转 = -bearing（东向路线 → -90°）', (): void => {
+  // 正东 200 米
+  const points: number[][] = [];
+  for (let i = 0; i <= 5; i += 1) {
+    points.push([121.4737 + i * 0.00038, 31.2304]);
+  }
+  const line: RouteLine = { points: points, distanceMeters: 200 };
+  assert.ok(Math.abs(segmentBearing(31.2304, 121.4737, 31.2304, 121.4756) - 90) < 1, '正东应 90°');
+  const geometry = fogGeometry(line, geoPoint(31.2304, 121.4737), defaultLayout(320, 196));
+  assert.ok(Math.abs(geometry.compassRotation + 90) < 1,
+    '指北针应转 -bearing（东向 = -90°），实测 ' + geometry.compassRotation.toFixed(1));
+});
+
+// ============================================================
+// 18. Store：真实地点入口 / 路线 / 数据源状态
+// ============================================================
+
+test('Store：startQuestWithPlace 只接受真实来源 + 真实坐标', async (): Promise<void> => {
+  const store: BlindWalkStoreApi = await freshStore();
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+
+  const catalogPlace: Place = placeByID('river-steps')!;
+  assert.equal(store.startQuestWithPlace(catalogPlace, origin), undefined, '内置虚构地点必须被拒绝');
+
+  const realPlace: Place = {
+    id: 'real-test-1', name: '静安公园', area: Area.Near, category: '公园', emoji: '🌳',
+    rarity: Rarity.Common, why: '为什么', task: '小任务', hints: ['一', '二', '三'],
+    mapPoint: { x: 0.5, y: 0.5 }, radiusMeters: 1000,
+    coordinate: geoPoint(31.2344, 121.4737), source: 'osm'
+  };
+  const result = store.startQuestWithPlace(realPlace, origin);
+  assert.ok(result !== undefined, '真实地点应该能开始旅程');
+  if (result === undefined) return;
+  assert.equal(result.session.target !== undefined, true);
+  assert.equal(store.snapshot().demoMode, false);
+  assert.ok(result.session.totalMeters >= 120, '真实距离下限 120m');
+
+  const walkSnapshot = store.snapshot();
+  assert.equal(walkSnapshot.currentPlace!.name, '', '到达前仍然保密');
+  assert.equal(isRealPlaceSource('curated'), true);
+  assert.equal(isRealPlaceSource('catalog'), false);
+});
+
+test('Store：路线存取 + 数据源状态快照（浅拷贝）', async (): Promise<void> => {
+  const store: BlindWalkStoreApi = await freshStore();
+  assert.equal(store.currentRoute(), undefined);
+
+  store.setRoute({
+    points: [[121.4737, 31.2304], [121.4737, 31.2324]],
+    distanceMeters: 222,
+    fetchedAt: 123
+  });
+  const route = store.currentRoute();
+  assert.ok(route !== undefined);
+  if (route !== undefined) {
+    assert.equal(route.points.length, 2);
+    assert.equal(route.distanceMeters, 222);
+  }
+  assert.ok(store.snapshot().route !== undefined);
+
+  store.setDataSourceStatus({
+    keySource: 'pages', amapReady: true, baiduReady: false,
+    amapMask: '52da…f425', baiduMask: '',
+    reports: [], checkedAt: 456, curatedCount: 13
+  });
+  const status = store.dataSourceStatus();
+  assert.equal(status.keySource, 'pages');
+  assert.equal(status.amapReady, true);
+  const snap = store.snapshot();
+  assert.ok(snap.dataSource !== undefined);
+  if (snap.dataSource !== undefined) {
+    assert.equal(snap.dataSource.amapMask, '52da…f425');
+  }
+  store.setRoute(undefined);
+  assert.equal(store.currentRoute(), undefined);
+});
+
+test('策展：解析 pois.json（字段裁剪 / 非法坐标丢弃 / 缺字段容错）', (): void => {
+  const parsed = parseCuratedPois({
+    version: 1,
+    count: 3,
+    pois: [
+      {
+        id: 'poi-1', name: '上海音乐厅', lat: 31.22888889, lon: 121.47333333,
+        category: 'venue', emoji: '🎻', rarity: 'epic', area: 'oldtown',
+        photoUrl: 'https://thumb.wikimedia.org/x.jpg', photoCredit: 'Wikimedia Commons',
+        why: '编辑写的 why', task: '编辑写的 task', hints: ['一', '二', '三']
+      },
+      { id: 'poi-2', name: '坏坐标', lat: 999, lon: 121.4, category: 'park' },
+      { id: 'poi-3', name: '', lat: 31.2, lon: 121.4, category: 'park' },
+      { name: '缺 id 也能解析', lat: 31.23, lon: 121.47, category: 'cafe' }
+    ]
+  });
+  assert.equal(parsed.length, 2, '非法坐标 / 空名应丢弃');
+  assert.equal(parsed[0].name, '上海音乐厅');
+  assert.equal(parsed[0].category, 'venue');
+  assert.equal(parsed[0].why, '编辑写的 why');
+  assert.equal(parsed[0].task, '编辑写的 task');
+  assert.equal(parsed[0].hints !== undefined ? parsed[0].hints.length : 0, 3);
+  assert.ok(parsed[1].id.length > 0, '缺 id 应自动补');
+  assert.equal(parseCuratedPois({}).length, 0);
+  assert.equal(parseCuratedPois({ pois: 'not-array' }).length, 0);
+});
+
+test('抽盒编排：Key 下发 + 策展优先 + 真实地点（成功路径）', async (): Promise<void> => {
+  resetCuratedCache();
+  const pois = {
+    pois: [{
+      id: 'c1', name: '上海音乐厅', lat: 31.2330, lon: 121.4737, category: 'venue',
+      why: '编辑的理由', task: '编辑的任务', hints: ['一', '二', '三']
+    }]
+  };
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('xiaoqiangch.github.io/blindwalk/pois.json') >= 0) return jsonResponse(pois);
+    if (request.url.indexOf('mapkeys.json') >= 0) {
+      return jsonResponse({ keys: { amap: 'test-key-1234', baidu: '' } });
+    }
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const deps: QuestFlowDeps = {
+    http: client,
+    kv: new MemoryKV(),
+    readBundledKeys: (): string | undefined => undefined,
+    adminBase: 'http://127.0.0.1:8802',
+    now: (): number => 1700000000000
+  };
+  const result = await prepareQuest(deps, {
+    origin: geoPoint(31.2304, 121.4737),
+    mood: Mood.Drift,
+    duration: WalkDuration.M30
+  }, 0.2);
+  assert.equal(result.failReason, '', '应该成功');
+  assert.ok(result.place !== undefined);
+  if (result.place !== undefined) {
+    assert.equal(result.place.name, '上海音乐厅');
+    assert.equal(result.place.source, 'curated');
+    assert.equal(result.place.coordinate !== undefined, true);
+  }
+  assert.equal(result.curatedCount, 1);
+  assert.equal(result.keySource, 'pages');
+  assert.equal(result.keys.amap, 'test-key-1234');
+
+  const status = toDataSourceStatus(result.keySource, result.keys, result.reports, 1, result.curatedCount);
+  assert.equal(status.curatedCount, 1);
+  assert.equal(status.amapReady, true);
+  assert.equal(status.baiduReady, false);
+  assert.equal(status.amapMask, 'test…1234');
+});
+
+test('抽盒编排：没有真实地点时返回 failReason（绝不虚构）', async (): Promise<void> => {
+  resetCuratedCache();
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('overpass') >= 0) return jsonResponse({ elements: [] });
+    if (request.url.indexOf('pois.json') >= 0) return { status: 404, body: '{}' };
+    if (request.url.indexOf('mapkeys.json') >= 0) return { status: 404, body: '{}' };
+    return jsonResponse({ query: { pages: {} } });
+  });
+  const deps: QuestFlowDeps = {
+    http: client,
+    kv: new MemoryKV(),
+    readBundledKeys: (): string | undefined => undefined,
+    adminBase: 'http://127.0.0.1:8802',
+    now: (): number => 1700000000000
+  };
+  const result = await prepareQuest(deps, {
+    origin: geoPoint(31.2304, 121.4737),
+    mood: Mood.Drift,
+    duration: WalkDuration.M30
+  }, 0.2);
+  assert.equal(result.place, undefined, '找不到就必须失败，不能给内置地点');
+  assert.ok(result.failReason === 'no-real-place' || result.failReason === 'network');
+  assert.ok(result.reports.length >= 1, '失败面板需要逐条原因');
+  assert.equal(result.curatedCount, 0);
+  assert.equal(result.keySource, 'none');
+});
+
+test('抽盒编排：策展缓存 6 小时内不重复拉取', async (): Promise<void> => {
+  resetCuratedCache();
+  let curatedCalls: number = 0;
+  const client = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('pois.json') >= 0) {
+      curatedCalls += 1;
+      return jsonResponse({ pois: [] });
+    }
+    return jsonResponse({});
+  });
+  const now: number = 1700000000000;
+  await loadCuratedPois(client, now);
+  await loadCuratedPois(client, now + 1000);
+  assert.equal(curatedCalls, 1, '6 小时内应命中缓存');
+  await loadCuratedPois(client, now + 6 * 3600 * 1000 + 1);
+  assert.equal(curatedCalls, 2, '过期后重新拉取');
+
+  // 拉取失败 → 空数组且不抛错
+  resetCuratedCache();
+  const failing = new FakeHttp((): HttpResponse => ({ status: 500, body: '' }));
+  assert.equal((await loadCuratedPois(failing, now)).length, 0);
+});
+
+test('抽盒编排：路线规划失败返回 undefined（UI 降级为直线距离）', async (): Promise<void> => {
+  const ok = new FakeHttp((): HttpResponse => ({ status: 500, body: '' }));
+  const deps: QuestFlowDeps = {
+    http: ok,
+    kv: new MemoryKV(),
+    readBundledKeys: (): string | undefined => undefined,
+    adminBase: 'http://127.0.0.1:8802',
+    now: (): number => 1700000000000
+  };
+  const route = await planRoute(deps, geoPoint(31.2304, 121.4737), geoPoint(31.2344, 121.4737));
+  assert.equal(route, undefined);
+});
+
+test('保密：照片/署名/简介也必须在到达前抹掉（到了才给看）', async (): Promise<void> => {
+  const realPlace: Place = {
+    id: 'real-photo-test', name: '静安公园', area: Area.Near, category: '公园', emoji: '🌳',
+    rarity: Rarity.Common, why: '为什么', task: '小任务', hints: ['一', '二', '三'],
+    mapPoint: { x: 0.5, y: 0.5 }, radiusMeters: 1000,
+    coordinate: geoPoint(31.2344, 121.4737), source: 'wiki',
+    photoUrl: 'https://upload.wikimedia.org/x.jpg',
+    photoCredit: 'Wikimedia Commons',
+    summary: '一段简介'
+  };
+  const masked = maskPlaceForWalking(realPlace);
+  assert.equal(masked.name, '');
+  assert.equal(masked.photoUrl, undefined, '照片是剧透，必须抹掉');
+  assert.equal(masked.photoCredit, undefined);
+  assert.equal(masked.summary, '');
+  // 原对象不受影响（mask 是深拷贝）
+  assert.equal(realPlace.photoUrl, 'https://upload.wikimedia.org/x.jpg');
+
+  const store = await freshStore();
+  const started = store.startQuestWithPlace(realPlace, geoPoint(31.2304, 121.4737));
+  assert.ok(started !== undefined);
+  const walking = store.snapshot();
+  assert.equal(walking.currentPlace!.photoUrl, undefined, 'walking 时快照里不能有照片');
+  assert.ok(!JSON.stringify(walking.currentPlace).includes('wikimedia'), '快照 JSON 不得含图片域名');
+});
+
+test('账号恢复：profileFromJson / surprisesFromJson 能解回本地存档结构', async (): Promise<void> => {
+  const store: BlindWalkStoreApi = await freshStore();
+  // 先做点改动，让数据不是初始演示态
+  store.setDuration(WalkDuration.M60);
+  store.startQuest();
+  const buried: BuriedSurprise | undefined = store.burySurprise(buryParams());
+  assert.ok(buried !== undefined);
+  const before = store.snapshot();
+  const xpBefore: number = before.profile.xp;
+
+  // 模拟「同步到账号」的信封（结构 = 本地存档根）
+  const envelope: Record<string, unknown> = {
+    version: 1,
+    name: before.profile.name,
+    avatarEmoji: before.profile.avatarEmoji,
+    xp: xpBefore,
+    streakDays: before.profile.streakDays,
+    weeklySurprise: before.profile.weeklySurprise,
+    weeklyWindowStart: before.profile.weeklyWindowStart,
+    cards: before.profile.cards,
+    achievements: before.profile.achievements,
+    extras: {
+      totalKm: 12.5,
+      boxesOpened: 3,
+      walkArrivalTimes: [1700000000000],
+      togetherCount: 0,
+      feed: [],
+      realPlaces: [],
+      consolationPaid: []
+    },
+    surprises: before.mySurprises
+  };
+  const loaded = profileFromJson(JSON.stringify(envelope));
+  assert.ok(loaded !== undefined, '应能解析账号信封');
+  if (loaded === undefined) return;
+  assert.equal(loaded.profile.xp, xpBefore);
+  assert.equal(loaded.profile.name, before.profile.name);
+  assert.equal(loaded.profile.cards.length, before.profile.cards.length);
+  assert.equal(loaded.extras.totalKm, 12.5);
+  assert.equal(loaded.extras.boxesOpened, 3);
+
+  const parsedSurprises = surprisesFromJson(JSON.stringify(envelope['surprises']));
+  assert.ok(parsedSurprises !== undefined);
+  if (parsedSurprises !== undefined) {
+    assert.equal(parsedSurprises.length, 1);
+    assert.equal(parsedSurprises[0].authorName, '阿澈');
+  }
+
+  // 坏数据必须拒绝，不崩
+  assert.equal(profileFromJson('{坏 JSON'), undefined);
+  assert.equal(surprisesFromJson('not-json'), undefined);
+  assert.equal(surprisesFromJson('{}'), undefined);
+  // 空对象会被补成默认值（不死锁、不抛错）—— 只要 xp 缺省为 0
+  const blank = profileFromJson('{}');
+  assert.ok(blank !== undefined);
+  if (blank !== undefined) assert.equal(blank.profile.xp, 0);
+});
+
+test('账号恢复：applyRemotePayload 覆盖本机（缺字段保留原值）', async (): Promise<void> => {
+  // 需要直接拿 instance 的接口
+  await initStore(new MemoryKV());
+  const store: BlindWalkStoreApi = getStore();
+  const instance = getStoreInstance();
+  const before = store.snapshot();
+
+  const envelope: Record<string, unknown> = {
+    version: 1,
+    name: '云端阿澈',
+    avatarEmoji: '🫥',
+    xp: before.profile.xp + 500,
+    streakDays: 20,
+    weeklySurprise: 0,
+    weeklyWindowStart: 0,
+    cards: before.profile.cards,
+    achievements: before.profile.achievements,
+    extras: { totalKm: 0, boxesOpened: 0, walkArrivalTimes: [], togetherCount: 0, feed: [], realPlaces: [], consolationPaid: [] }
+  };
+  const applied = instance.applyRemotePayload({ profile: envelope });
+  assert.equal(applied, true);
+  const after = store.snapshot();
+  assert.equal(after.profile.name, '云端阿澈');
+  assert.equal(after.profile.xp, before.profile.xp + 500);
+  assert.equal(after.profile.streakDays, 20);
+
+  // 结构不对 → false，且不改本机
+  const xpNow: number = store.snapshot().profile.xp;
+  assert.equal(instance.applyRemotePayload({}), false);
+  assert.equal(instance.applyRemotePayload({ profile: { nothing: true } }), false);
+  assert.equal(store.snapshot().profile.xp, xpNow, '失败时本机数据不能变');
+});
+
+test('常量：地标关键字与 parity 一致', (): void => {
+  assert.equal(
+    LANDMARK_KEYWORDS,
+    '公园|风景名胜|博物馆|展览馆|广场|图书馆|书店|体育馆|寺|教堂|古镇'
+  );
+  assert.equal(DEDUPE_METERS, 30);
+  assert.equal(PER_CATEGORY_LIMIT, 5);
+});
+
+// ============================================================
+// 19. 地址 → 坐标（定位不可用时的真实地点出口）
+// ============================================================
+
+test('地理编码：直接输入坐标（含中文逗号）优先，不发请求', async (): Promise<void> => {
+  assert.equal(parseCoordinateText('31.2304,121.4737') !== undefined, true);
+  assert.equal(parseCoordinateText('31.2304，121.4737') !== undefined, true);
+  assert.equal(parseCoordinateText('上海静安寺'), undefined);
+  assert.equal(parseCoordinateText('91.0,200.0'), undefined, '越界坐标应拒绝');
+  const client = new FakeHttp((): HttpResponse => jsonResponse([]));
+  const hit = await geocodeAddress(client, ' 31.2304 , 121.4737 ');
+  assert.ok(hit !== undefined);
+  if (hit !== undefined) {
+    assert.equal(hit.source, 'manual');
+    assert.ok(Math.abs(hit.location.latitude - 31.2304) < 0.0001);
+  }
+  assert.equal(client.requests.length, 0, '直接坐标不该发请求');
+});
+
+test('地理编码：Nominatim 优先，失败回落 Photon', async (): Promise<void> => {
+  const nominatim = new FakeHttp((): HttpResponse => jsonResponse([
+    { lat: '31.2235', lon: '121.4454', display_name: '静安寺, 静安区, 上海市' }
+  ]));
+  const first = await geocodeAddress(nominatim, '静安寺');
+  assert.ok(first !== undefined);
+  if (first !== undefined) {
+    assert.equal(first.source, 'nominatim');
+    assert.equal(first.label, '静安寺, 静安区, 上海市');
+  }
+
+  const fallback = new FakeHttp((request: HttpRequest): HttpResponse => {
+    if (request.url.indexOf('nominatim') >= 0) throw new Error('timeout');
+    return jsonResponse({
+      features: [{
+        geometry: { coordinates: [121.4454, 31.2235] },
+        properties: { name: '静安寺', city: '上海' }
+      }]
+    });
+  });
+  const second = await geocodeAddress(fallback, '静安寺');
+  assert.ok(second !== undefined);
+  if (second !== undefined) {
+    assert.equal(second.source, 'photon');
+    assert.ok(second.label.indexOf('静安寺') >= 0);
+  }
+});
+
+test('地理编码：两边都失败返回 undefined（UI 提示再试，不编造）', async (): Promise<void> => {
+  const client = new FakeHttp((): HttpResponse => ({ status: 500, body: '' }));
+  assert.equal(await geocodeAddress(client, '不存在的地方'), undefined);
+  assert.equal(await geocodeAddress(client, '  '), undefined);
+});
+
+test('反查：坐标 → 「区 · 街道」', (): void => {
+  const parsed = parseNominatimReverse({
+    address: { city_district: '静安区', road: '南京西路' },
+    display_name: '南京西路, 静安区, 上海市'
+  });
+  assert.equal(parsed.area, '静安区');
+  assert.equal(parsed.road, '南京西路');
+  assert.equal(areaLabelFrom(parsed), '静安区 · 南京西路');
+  assert.equal(areaLabelFrom(undefined), '');
+  assert.equal(parseNominatim(undefined), undefined);
+  assert.equal(parseNominatim([]), undefined);
+});
+
+// ============================================================
+// 20. 步行路线（Valhalla）：折线解码 / 转向
+// ============================================================
+
+/** 手搓一个 polyline6：把 [lon, lat] 编码成 Valhalla 格式 */
+function encodePolyline6(points: number[][]): string {
+  let output: string = '';
+  let lastLat: number = 0;
+  let lastLon: number = 0;
+  const encodeValue = (value: number): string => {
+    let v: number = value < 0 ? ~(value << 1) : (value << 1);
+    let out: string = '';
+    while (v >= 0x20) {
+      out += String.fromCharCode((0x20 | (v & 0x1f)) + 63);
+      v >>= 5;
+    }
+    out += String.fromCharCode(v + 63);
+    return out;
+  };
+  for (let i = 0; i < points.length; i += 1) {
+    const lon = Math.round(points[i][0] * 1e6);
+    const lat = Math.round(points[i][1] * 1e6);
+    output += encodeValue(lat - lastLat);
+    output += encodeValue(lon - lastLon);
+    lastLat = lat;
+    lastLon = lon;
+  }
+  return output;
+}
+
+test('路线：polyline6 编解码往返一致', (): void => {
+  const points: number[][] = [[121.4737, 31.2304], [121.4737, 31.2324], [121.4767, 31.2324]];
+  const encoded: string = encodePolyline6(points);
+  const decoded: number[][] = decodePolyline6(encoded);
+  assert.equal(decoded.length, points.length);
+  for (let i = 0; i < points.length; i += 1) {
+    assert.ok(Math.abs(decoded[i][0] - points[i][0]) < 0.000001, '经度应还原');
+    assert.ok(Math.abs(decoded[i][1] - points[i][1]) < 0.000001, '纬度应还原');
+  }
+  assert.equal(decodePolyline6('').length, 0);
+});
+
+test('路线：解析 Valhalla（距离 / 转向序列 / 累计里程）', (): void => {
+  const points: number[][] = [[121.4737, 31.2304], [121.4737, 31.2344]];
+  const json: Record<string, unknown> = {
+    trip: {
+      legs: [{
+        shape: encodePolyline6(points),
+        summary: { length: 0.48, time: 380 },
+        maneuvers: [
+          { type: 1, length: 0.3 },
+          { type: 15, length: 0.18 },
+          { type: 4, length: 0 }
+        ]
+      }]
+    }
+  };
+  const route = parseValhalla(json);
+  assert.ok(route !== undefined);
+  if (route === undefined) return;
+  assert.equal(route.distanceMeters, 480);
+  assert.equal(route.points.length, 2);
+  assert.equal(route.maneuvers.length, 3);
+  assert.equal(route.maneuvers[0].direction, 'start');
+  assert.equal(route.maneuvers[1].direction, 'left');
+  assert.equal(route.maneuvers[1].label, '左拐');
+  assert.equal(route.maneuvers[1].cumulative, 300, '第二个转向在 300m 处');
+  assert.equal(route.maneuvers[2].direction, 'arrive');
+  assert.equal(parseValhalla({}), undefined);
+  assert.equal(parseValhalla({ trip: { legs: [] } }), undefined);
+});
+
+test('路线：取路线带 10 分钟缓存；失败返回 undefined（不阻塞）', async (): Promise<void> => {
+  const points: number[][] = [[121.4737, 31.2304], [121.4737, 31.2344]];
+  let calls: number = 0;
+  const client = new FakeHttp((): HttpResponse => {
+    calls += 1;
+    return jsonResponse({
+      trip: {
+        legs: [{
+          shape: encodePolyline6(points),
+          summary: { length: 0.48 },
+          maneuvers: [{ type: 1, length: 0.48 }, { type: 4, length: 0 }]
+        }]
+      }
+    });
+  });
+  const from: GeoPoint = geoPoint(31.2304, 121.4737);
+  const to: GeoPoint = geoPoint(31.2344, 121.4737);
+  const now: number = 1700000000000;
+  const first = await fetchWalkingRoute(client, from, to, now);
+  assert.ok(first !== undefined);
+  const second = await fetchWalkingRoute(client, from, to, now + 1000);
+  assert.ok(second !== undefined);
+  assert.equal(calls, 1, '10 分钟内应命中缓存');
+  await fetchWalkingRoute(client, from, to, now + ROUTE_CACHE_TTL_MS + 1);
+  assert.equal(calls, 2, '过期后应重新请求');
+
+  const failing = new FakeHttp((): HttpResponse => ({ status: 500, body: '' }));
+  const failed = await fetchWalkingRoute(failing, geoPoint(30, 120), geoPoint(30.01, 120.01), now);
+  assert.equal(failed, undefined, '路线失败应返回 undefined 让 UI 降级');
+
+  if (first !== undefined) {
+    const polyline = toRoutePolyline(first, now);
+    assert.equal(polyline.distanceMeters, first.distanceMeters);
+    assert.equal(polyline.fetchedAt, now);
+  }
 });
 
 // ============================================================

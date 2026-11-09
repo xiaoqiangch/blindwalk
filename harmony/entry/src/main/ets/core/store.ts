@@ -42,11 +42,14 @@ import {
   BlindWalkStoreApi,
   BuryParams,
   CollectResult,
+  DataSourceStatus,
   DrawResult,
   KeyValueStore,
+  RoutePolyline,
   StoreProvider,
   SurpriseCompareResult
 } from './contract';
+import { SourceReport } from './http';
 import {
   PLACES,
   clonePlace,
@@ -99,13 +102,14 @@ import {
 } from './social';
 import {
   LoadedProfile,
-  PROFILE_KEY,
   SURPRISES_KEY,
   StoreExtras,
   loadProfile,
   loadSurprises,
+  profileFromJson,
   saveProfile,
-  saveSurprises
+  saveSurprises,
+  surprisesFromJson
 } from './persistence';
 
 const DAY_MS: number = 86400000;
@@ -174,6 +178,21 @@ function startOfDay(timestamp: number): number {
   return date.getTime();
 }
 
+/** 空的数据源状态（还没搜索过） */
+function emptyDataSourceStatus(): DataSourceStatus {
+  const status: DataSourceStatus = {
+    keySource: 'none',
+    amapReady: false,
+    baiduReady: false,
+    amapMask: '',
+    baiduMask: '',
+    reports: [],
+    checkedAt: 0,
+    curatedCount: 0
+  };
+  return status;
+}
+
 // ============================================================
 // Store 实现
 // ============================================================
@@ -195,6 +214,8 @@ export class BlindWalkStore implements BlindWalkStoreApi {
   private selectedAreaValue: Area | undefined;
   private lastKnownOriginValue: GeoPoint | undefined;
   private demoModeValue: boolean;
+  private routeValue: RoutePolyline | undefined;
+  private dataSourceValue: DataSourceStatus;
   private drawCounter: number;
   private surpriseCounter: number;
   private seedSurprisesRebased: boolean;
@@ -205,6 +226,8 @@ export class BlindWalkStore implements BlindWalkStoreApi {
     this.selectedDurationValue = WalkDuration.M30;
     this.selectedAreaValue = undefined;
     this.demoModeValue = true;
+    this.routeValue = undefined;
+    this.dataSourceValue = emptyDataSourceStatus();
     this.drawCounter = 0;
     this.surpriseCounter = 0;
     this.seedSurprisesRebased = false;
@@ -366,6 +389,138 @@ export class BlindWalkStore implements BlindWalkStoreApi {
     return result;
   }
 
+  /**
+   * 用已经找到的真实地点开始旅程（真实模式唯一入口）。
+   *
+   * 校验：必须有真实来源 + 真实坐标 —— 这正是「绝不虚构兜底」的闸门。
+   * 返回 undefined 表示上游给了不合规的地点（调用方应显示失败面板，而不是继续走）。
+   */
+  startQuestWithPlace(place: Place, origin: GeoPoint): DrawResult | undefined {
+    if (!isRealPlaceSource(place.source)) return undefined;
+    if (place.coordinate === undefined) return undefined;
+    if (!isFinite(origin.latitude) || !isFinite(origin.longitude)) return undefined;
+
+    const now: number = Date.now();
+    // 真实距离：当前位置 → 目的地；太近会一开盒就到达，所以下限 120 米
+    let meters: number = distanceBetween(origin, place.coordinate);
+    if (meters < 120) meters = 120;
+    const bearingDegrees: number = bearingBetween(origin, place.coordinate);
+
+    const session: QuestSession = createSession(
+      place.id, now, Math.round(meters), place.coordinate, bearingDegrees
+    );
+    this.sessionValue = session;
+    this.currentPlaceValue = clonePlace(place);
+    this.currentCardValue = undefined;
+    this.drawCounter += 1;
+    this.revealSerialValue = serial(now + this.drawCounter);
+    this.demoModeValue = false;
+    this.routeValue = undefined;
+    this.persist(now);
+
+    const result: DrawResult = {
+      place: clonePlace(place),
+      session: cloneSession(session)
+    };
+    return result;
+  }
+
+  /** 记录本次搜索的数据源状态（设置页 / 失败面板展示） */
+  setDataSourceStatus(status: DataSourceStatus): void {
+    this.dataSourceValue = cloneDataSourceStatus(status);
+  }
+
+  /** 当前数据源状态 */
+  dataSourceStatus(): DataSourceStatus {
+    return cloneDataSourceStatus(this.dataSourceValue);
+  }
+
+  /** 设置步行路线（迷雾路径视图用；传 undefined 清除） */
+  setRoute(route?: RoutePolyline): void {
+    if (route === undefined) {
+      this.routeValue = undefined;
+      return;
+    }
+    const points: number[][] = [];
+    for (let i = 0; i < route.points.length; i += 1) {
+      points.push([route.points[i][0], route.points[i][1]]);
+    }
+    this.routeValue = {
+      points: points,
+      distanceMeters: route.distanceMeters,
+      fetchedAt: route.fetchedAt
+    };
+  }
+
+  /** 供账号同步：把运行时 extras 暴露成只读结构（克隆一份，UI 不能改内部状态） */
+  rawExtras(): StoreExtras {
+    const copy: StoreExtras = {
+      totalKm: this.extras.totalKm,
+      boxesOpened: this.extras.boxesOpened,
+      walkArrivalTimes: this.extras.walkArrivalTimes.slice(),
+      togetherCount: this.extras.togetherCount,
+      feed: this.extras.feed.slice(),
+      realPlaces: this.extras.realPlaces.slice(),
+      consolationPaid: this.extras.consolationPaid.slice()
+    };
+    if (this.extras.lastWalkAt !== undefined) copy.lastWalkAt = this.extras.lastWalkAt;
+    return copy;
+  }
+
+  /**
+   * 「从账号恢复」：把云端整包写回本机（覆盖）。
+   *
+   * 只接受结构正确的数据；缺字段保留本机值。
+   * 返回 false = 数据不可用（UI 提示「账号里还没有数据」）。
+   */
+  applyRemotePayload(payload: Record<string, unknown>): boolean {
+    const profileValue: unknown = payload['profile'];
+    if (typeof profileValue !== 'object' || profileValue === null) return false;
+    let envelope: Record<string, unknown> = profileValue as Record<string, unknown>;
+
+    // 兼容两种信封：
+    //   A) Web 版 syncPayload： { profile: { profile: {...}, surprises, settings } }
+    //   B) 扁平版（本端 buildSyncPayload）：{ profile: { xp, cards, extras, ... } }
+    const innerProfile: unknown = envelope['profile'];
+    if (typeof innerProfile === 'object' && innerProfile !== null) {
+      envelope = innerProfile as Record<string, unknown>;
+    }
+
+    const xp: unknown = envelope['xp'];
+    if (typeof xp !== 'number' || !isFinite(xp)) return false;
+
+    const persisted: LoadedProfile | undefined = profileFromJson(JSON.stringify(envelope));
+    if (persisted === undefined) return false;
+
+    this.profile = persisted.profile;
+    this.extras = persisted.extras;
+    const rawSurprises: unknown = envelope['surprises'];
+    if (Array.isArray(rawSurprises)) {
+      const parsed: BuriedSurprise[] | undefined = surprisesFromJson(JSON.stringify(rawSurprises));
+      if (parsed !== undefined) this.surprises = parsed;
+    }
+    this.refreshWeekly(Date.now());
+    syncAchievements(this.achievementContext(), Date.now());
+    this.persist(Date.now());
+    return true;
+  }
+
+  /** 当前路线 */
+  currentRoute(): RoutePolyline | undefined {
+    const route: RoutePolyline | undefined = this.routeValue;
+    if (route === undefined) return undefined;
+    const points: number[][] = [];
+    for (let i = 0; i < route.points.length; i += 1) {
+      points.push([route.points[i][0], route.points[i][1]]);
+    }
+    const copy: RoutePolyline = {
+      points: points,
+      distanceMeters: route.distanceMeters,
+      fetchedAt: route.fetchedAt
+    };
+    return copy;
+  }
+
   private geoOffset(origin: GeoPoint, meters: number, bearingDegrees: number): GeoPoint {
     // 局部引入避免顶部循环依赖（geo 是纯函数模块，这里直接调用）
     const point: GeoPoint = offsetPoint(origin, meters, bearingDegrees);
@@ -462,6 +617,7 @@ export class BlindWalkStore implements BlindWalkStoreApi {
   }
 
   abandonQuest(): void {
+    this.routeValue = undefined;
     this.sessionValue = undefined;
     this.currentPlaceValue = undefined;
     this.currentCardValue = undefined;
@@ -524,7 +680,6 @@ export class BlindWalkStore implements BlindWalkStoreApi {
 
     let seekerXP: number = 0;
     let authorXP: number = 0;
-    let newAchievements: Achievement[] = [];
 
     if (passed) {
       target.found = true;
@@ -532,7 +687,7 @@ export class BlindWalkStore implements BlindWalkStoreApi {
       authorXP = XP_AUTHOR;
       this.profile.xp += seekerXP;
       // 作者不在本机档案里（本地优先、无后端），authorXP 只体现在结算结果中。
-      newAchievements = syncAchievements(this.achievementContext(), now);
+      syncAchievements(this.achievementContext(), now);
     } else if (!this.hasConsolationPaid(surpriseId)) {
       this.extras.consolationPaid.push(surpriseId);
       seekerXP = XP_CONSOLATION;
@@ -631,7 +786,8 @@ export class BlindWalkStore implements BlindWalkStoreApi {
       leaderboard: leaderboard(this.profile).map(
         (entry: LeaderboardEntry): LeaderboardEntry => cloneLeaderboardEntry(entry)
       ),
-      demoMode: this.demoModeValue
+      demoMode: this.demoModeValue,
+      dataSource: cloneDataSourceStatus(this.dataSourceValue)
     };
 
     if (session !== undefined) snapshot.session = cloneSession(session);
@@ -648,6 +804,8 @@ export class BlindWalkStore implements BlindWalkStoreApi {
     if (this.currentCardValue !== undefined) {
       snapshot.currentCard = cloneCard(this.currentCardValue);
     }
+    const route: RoutePolyline | undefined = this.currentRoute();
+    if (route !== undefined) snapshot.route = route;
     return snapshot;
   }
 
@@ -859,6 +1017,38 @@ export class BlindWalkStore implements BlindWalkStoreApi {
   surpriseCount(): number {
     return this.surprises.length;
   }
+}
+
+/** 真实来源白名单：任何不在其中的都必须被拒绝（绝不虚构兜底） */
+export function isRealPlaceSource(source: string): boolean {
+  return source === 'curated' || source === 'amap' || source === 'baidu' ||
+    source === 'osm' || source === 'wiki';
+}
+
+function cloneDataSourceStatus(status: DataSourceStatus): DataSourceStatus {
+  const reports: SourceReport[] = [];
+  for (let i = 0; i < status.reports.length; i += 1) {
+    const report: SourceReport = status.reports[i];
+    const copy: SourceReport = {
+      id: report.id,
+      label: report.label,
+      ok: report.ok,
+      count: report.count,
+      error: report.error
+    };
+    reports.push(copy);
+  }
+  const copy: DataSourceStatus = {
+    keySource: status.keySource,
+    amapReady: status.amapReady,
+    baiduReady: status.baiduReady,
+    amapMask: status.amapMask,
+    baiduMask: status.baiduMask,
+    reports: reports,
+    checkedAt: status.checkedAt,
+    curatedCount: status.curatedCount
+  };
+  return copy;
 }
 
 // ============================================================
