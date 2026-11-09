@@ -699,14 +699,15 @@
   // 真实网络请求
   // ============================================================
 
-  function amapUrl(lat, lon, radius, limit) {
+  function amapUrl(lat, lon, radius, limit, page, keywords) {
     var gcj = wgs84ToGcj02(lat, lon);
     return AMAP_ENDPOINT +
       '?key=' + encodeURIComponent(keys.amap) +
       '&location=' + gcj.lon.toFixed(6) + ',' + gcj.lat.toFixed(6) +
       '&radius=' + Math.round(radius) +
       '&offset=' + clamp(Math.round(limit) || 25, 1, 25) +
-      '&page=1&extensions=all';
+      '&page=' + (page || 1) + '&extensions=all' +
+      (keywords ? ('&keywords=' + encodeURIComponent(keywords)) : '');
   }
 
   function baiduUrl(lat, lon, radius, limit) {
@@ -721,14 +722,50 @@
   }
 
   function fetchAmap(context) {
-    return jsonp(amapUrl(context.lat, context.lon, context.radius, context.limit), JSONP_TIMEOUT)
-      .then(function (data) {
-        if (!data || String(data.status) !== '1') {
-          var info = data && data.info ? String(data.info) : 'unknown';
-          throw new Error('高德返回错误：status=' + (data && data.status) + ' info=' + info);
+    var collected = [];
+    var keywordTask = Promise.resolve();
+    if (context.keywords) {
+      keywordTask = jsonp(
+        amapUrl(context.lat, context.lon, context.radius, 25, 1, context.keywords),
+        JSONP_TIMEOUT
+      ).then(function (data) {
+        if (data && String(data.status) === '1') {
+          collected = collected.concat(parseAmap(data));
         }
-        return parseAmap(data);
-      });
+        return null;
+      }).catch(function () { return null; });
+    }
+    return keywordTask.then(function () { return fetchAmapPages(context, collected); });
+  }
+
+  function fetchAmapPages(context, seedList) {
+    // 高德周边搜索每页最多 25 条、且按距离升序返回。
+    // 密集街区里第 1 页常常全是"楼下 50 米的店"，会挤掉稍远但更适合走过去的点，
+    // 所以按需要翻 2~3 页，扩大可选集合。
+    var pageSize = clamp(Math.round(context.limit) || 25, 1, 25);
+    var pages = Math.min(3, Math.max(1, Math.ceil((context.limit || 25) / pageSize)));
+    var collected = (seedList || []).slice();
+    var chain = Promise.resolve();
+    for (var p = 1; p <= pages; p += 1) {
+      (function (page) {
+        chain = chain.then(function () {
+          return jsonp(amapUrl(context.lat, context.lon, context.radius, pageSize, page), JSONP_TIMEOUT)
+            .then(function (data) {
+              if (!data || String(data.status) !== '1') {
+                var info = data && data.info ? String(data.info) : 'unknown';
+                if (page === 1) throw new Error('高德返回错误：status=' + (data && data.status) + ' info=' + info);
+                return null;   // 后续页失败不影响已有结果
+              }
+              collected = collected.concat(parseAmap(data));
+              return null;
+            });
+        });
+      })(p);
+    }
+    return chain.then(function () {
+      if (!collected.length) throw new Error('高德没有返回结果');
+      return collected;
+    });
   }
 
   function fetchBaidu(context) {
@@ -846,7 +883,13 @@
     var radius = clamp(toNum(opts.radius) || 1200, 100, 50000);
     var limit = clamp(toNum(opts.limit) || 30, 1, 100);
     var sources = normalizeSources(opts.sources);
-    var context = { lat: lat, lon: lon, radius: radius, limit: limit };
+    var context = {
+      lat: lat,
+      lon: lon,
+      radius: radius,
+      limit: limit,
+      keywords: opts.keywords ? String(opts.keywords) : ''
+    };
     var sourceReports = [];
     var tasks = [];
 
@@ -871,7 +914,8 @@
       );
     });
 
-    return Promise.all(tasks).then(function (groups) {
+    var groups = [];
+    function finish() {
       var merged = [];
       groups.forEach(function (list) {
         merged = merged.concat(list);
@@ -879,7 +923,64 @@
       var deduped = dedupe(merged, DEDUPE_METERS);
       var sorted = sortByDistance(deduped, lat, lon, radius);
       report = { at: Date.now(), sources: sourceReports };
-      return sorted.slice(0, limit);
+      return trimDiverse(sorted, limit);
+    }
+
+    /** 截断时保留类别多样性：最近的全是店铺时，别把稍远的公园/博物馆挤掉 */
+    function trimDiverse(sorted, limit) {
+      if (sorted.length <= limit) return sorted;
+      var out = [];
+      var picked = {};
+      var perCat = {};
+      var i;
+      function keyOf(item) { return item && (item.id || item.name + '@' + item.lat + ',' + item.lon); }
+
+      // 第一轮：每种类别最多留 5 个，保证多样性
+      for (i = 0; i < sorted.length && out.length < limit; i += 1) {
+        var item = sorted[i];
+        var cat = item.category || 'plaza';
+        perCat[cat] = perCat[cat] || 0;
+        if (perCat[cat] >= 5) continue;
+        var k = keyOf(item);
+        if (picked[k]) continue;
+        picked[k] = true;
+        perCat[cat] += 1;
+        out.push(item);
+      }
+      // 第二轮：还有空位就按距离补
+      for (i = 0; i < sorted.length && out.length < limit; i += 1) {
+        var k2 = keyOf(sorted[i]);
+        if (picked[k2]) continue;
+        picked[k2] = true;
+        out.push(sorted[i]);
+      }
+      out.sort(function (a, b) { return (a.distance || 0) - (b.distance || 0); });
+      return out;
+    }
+
+    // 每个源一回来就收进 groups（快源不必等慢源）
+    tasks.forEach(function (task, index) {
+      task.then(function (list) {
+        groups[index] = list;
+      });
+    });
+
+    var allDone = Promise.all(tasks).then(finish);
+    var deadlineMs = clamp(toNum(opts.deadlineMs) || 0, 0, 30000);
+    if (!deadlineMs) return allDone;
+
+    // 有 deadline 时：到点就用"已经回来的源"出一版结果，慢源（如 Overpass 超时 8s）不再拖死整体
+    return new Promise(function (resolve) {
+      var timer = setTimeout(function () {
+        resolve(finish());
+      }, deadlineMs);
+      allDone.then(function (list) {
+        clearTimeout(timer);
+        resolve(list);
+      }, function (error) {
+        clearTimeout(timer);
+        resolve(finish());
+      });
     });
   }
 
