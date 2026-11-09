@@ -3542,3 +3542,39 @@ button, .btn {
 
 /* 我的页设置项：字号放大后保证行高舒服 */
 .setting__label { line-height: 1.35; }
+
+/* 搜索失败面板的失败来源清单 */
+.locblock__list {
+  margin: 8px 0 2px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-3, #A69C8C);
+}
+
+.locblock__list li { margin: 1px 0; }
+
+/* 搜索失败面板：在弹层里更醒目，且保证底部按钮可点 */
+.locblock {
+  margin: 6px 0 4px;
+}
+
+.locblock__text { margin-bottom: 2px; }
+
+.locblock__actions {
+  margin-top: 12px;
+}
+
+.locblock__demo {
+  margin-top: 10px;
+}
+
+/* 弹层打开时把 toast 往上抬，避免盖住底部按钮 */
+body[data-sheet="1"] .toast,
+.sheet ~ .toast {
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+@supports not (bottom: env(safe-area-inset-bottom)) {
+  body[data-sheet="1"] .toast { bottom: 112px; }
+}
