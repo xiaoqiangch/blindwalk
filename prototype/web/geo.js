@@ -48,6 +48,12 @@
   ];
 
   var CATEGORY_META = {
+    museum:      { label: '博物馆',   emoji: '🏛️', rarity: 'rare',   moods: ['discover'],
+                   task: '找出展厅里最旧的一件东西，记住它的年代。' },
+    historic:    { label: '老房子',   emoji: '🏮', rarity: 'rare',   moods: ['discover', 'drift'],
+                   task: '抬头看门牌号和窗户，猜它最年轻是哪一年建的。' },
+    venue:       { label: '演出场所', emoji: '🎻', rarity: 'epic',   moods: ['discover'],
+                   task: '找一张演出海报，看看最近一场演的是什么。' },
     cafe:        { label: '咖啡窗口', emoji: '☕️', rarity: 'common', moods: ['lively', 'drift'],
                    task: '点一杯最便宜的，问老板今天的豆子是哪里的。' },
     bookstore:   { label: '书店',     emoji: '📚', rarity: 'rare',   moods: ['discover'],
@@ -80,6 +86,9 @@
 
   /* 三阶线索：只描述「感觉/类别」，绝不出现名称 */
   var HINTS = {
+    museum: ['往安静、门比较高的地方走。', '找一扇比旁边宽的门。', '门口通常有人停下来抬头看。'],
+    historic: ['注意墙面和窗户，越旧的越靠里。', '找一栋比旁边矮一点的楼。', '看门牌号，数字越小越可能是它。'],
+    venue: ['听，有没有音乐或者排练声。', '找一排大字招牌。', '门口通常有海报和台阶。'],
     cafe:        ['风里有一点烘焙的味道。', '跟着这个味道走，会经过一扇开着的窗。'],
     bookstore:   ['前面会安静下来。', '找一扇窗很大、里面堆着纸的地方。'],
     library:     ['往更安静的方向走。', '会看到很多台阶，很多人坐在上面。'],
