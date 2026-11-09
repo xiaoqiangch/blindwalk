@@ -518,7 +518,7 @@ struct JourneyView: View {
                     .foregroundStyle(BWTheme.ink)
             }
 
-            Text("系统设置 → 衣衣歪歪 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
+            Text("系统设置 → 步谜 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
                 .font(BWTheme.caption(12))
                 .foregroundStyle(BWTheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)

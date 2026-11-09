@@ -331,7 +331,7 @@ struct ProfileView: View {
                 BWHairline()
 
                 settingLink {
-                    showToast("衣衣歪歪 0.1 · 不看见终点，才看得见路。", icon: "info.circle")
+                    showToast("步谜 0.1 · 不看见终点，才看得见路。", icon: "info.circle")
                 } label: {
                     Text("关于")
                         .font(.system(size: 13.5))
@@ -377,7 +377,7 @@ struct ProfileView: View {
     // MARK: 版本
 
     private var versionFooter: some View {
-        Text("衣衣歪歪 0.1 · 原型")
+        Text("步谜 0.1 · 原型")
             .font(.system(size: 10.5))
             .tracking(0.5)
             .foregroundStyle(BWTheme.ink3)
