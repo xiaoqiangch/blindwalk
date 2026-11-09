@@ -2761,6 +2761,8 @@ body[data-mode="standalone"] .toast-root {
   background: var(--cream2, #EFE6D6);
 }
 
+.reveal-card__photo[hidden] { display: none; }
+
 .reveal-card__credit {
   margin: 0;
   padding: 6px 10px 7px;

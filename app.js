@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v21';
+  var APP_VERSION = 'v22';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1754,7 +1754,7 @@
               '<p>照片没加载出来</p>' +
               '<button type="button" data-action="retry-photo">重新加载</button>' +
             '</div>' +
-            '<img class="reveal-card__photo" data-photo-img src="' + esc(place.photoUrl) + '" alt="' + esc(place.name) + ' 的实景照片" loading="eager" decoding="async" referrerpolicy="no-referrer">' +
+            '<img class="reveal-card__photo" data-photo-img src="' + esc(place.photoUrl) + '" alt="' + esc(place.name) + ' 的实景照片" loading="eager" decoding="async" referrerpolicy="no-referrer" hidden>' +
             '<figcaption class="reveal-card__credit">图片 · ' + esc(place.photoCredit || 'Wikimedia Commons') + '</figcaption>' +
           '</figure>'
         : '') +
