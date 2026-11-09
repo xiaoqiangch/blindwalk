@@ -358,69 +358,635 @@
   }
 
   /** 主入口：拿到真实地点（带缓存与降级） */
+
+  /* ============================================================
+     Wikipedia / Wikimedia Commons：公开数据里的真实兴趣点 + 图片
+     - 端点公开、无需 API Key、CORS 全开（access-control-allow-origin: *）
+     - 一次请求同时拿到：地标名、真实坐标、简介、代表图片
+     - 图片只用于「到达后揭晓」和图鉴，绝不提前展示（产品保密规则）
+     ============================================================ */
+  var WIKI_ENDPOINT = 'https://zh.wikipedia.org/w/api.php';
+  var WIKI_BUDGET = 4500;
+  var WIKI_FIRST_BUDGET = 3200;   // 只等 Wiki 这么久，拿不到就交给 Overpass
+
+  /** 第 2 个起用 geo 坐标去重，避免同一地标反复出现 */
+  function wikipediaPOIs(location, radiusMeters) {
+    var loc = norm(location);
+    if (!loc) return Promise.resolve([]);
+    var lat = loc.lat, lon = loc.lon;
+    var key = 'bw:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
+    try {
+      var cachedRaw = sessionStorage.getItem(key);
+      if (cachedRaw) {
+        var cachedParsed = JSON.parse(cachedRaw);
+        if (cachedParsed && Date.now() - cachedParsed.t < 6 * 3600 * 1000) {
+          return Promise.resolve(cachedParsed.v || []);
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    var url = WIKI_ENDPOINT +
+      '?action=query&format=json&origin=*' +
+      '&generator=geosearch' +
+      '&ggscoord=' + lat + '%7C' + lon +
+      '&ggsradius=' + Math.min(10000, Math.round(radiusMeters)) +
+      '&ggslimit=20' +
+      '&prop=pageimages%7Ccoordinates%7Cextracts' +
+      '&piprop=thumbnail&pithumbsize=800' +
+      '&exintro=1&explaintext=1&exchars=160';
+
+    return fetchJSON(url, WIKI_BUDGET).then(function (data) {
+      var pages = (data && data.query && data.query.pages) || {};
+      var list = [];
+      Object.keys(pages).forEach(function (id) {
+        var page = pages[id];
+        var coord = page.coordinates && page.coordinates[0];
+        if (!coord) return;
+        var photo = page.thumbnail && page.thumbnail.source;
+        if (!photo) return;
+        // 过滤：行政区、城市、地铁站、道路 —— 这些不是「一个可以走到的地方」
+        if (/[省市县区镇]$/.test(page.title)) return;
+        if (/^(中国|上海|北京|广州|深圳|杭州|成都|南京|武汉|西安|重庆|天津|苏州)$/.test(page.title)) return;
+        if (/站$|站 \(|号线|铁路|高速公路|立交|隧道|大桥工程/.test(page.title)) return;
+        // 去掉维基的括号消歧义后缀：「大世界 (上海市)」→「大世界」
+        var displayName = page.title.replace(/\s*[（(][^）)]*[）)]\s*$/, '').trim();
+        if (!displayName) return;
+        // 只收能正常加载的缩略图域名；原图域名时通时不通，宁可不要
+        if (photo.indexOf('thumb.wikimedia.org') < 0 && photo.indexOf('upload.wikimedia.org') < 0) return;
+        list.push({
+          id: 'wiki-' + (page.pageid || id),
+          name: displayName,
+          lat: coord.lat,
+          lon: coord.lon,
+          photoUrl: photo,
+          credit: 'Wikimedia Commons',
+          summary: (page.extract || '').replace(/\s+/g, ' ').slice(0, 120),
+          category: guessCategoryFromTitle(page.title, page.extract || '')
+        });
+      });
+      // 按距离由近到远
+      list.sort(function (a, b) {
+        return distanceBetween(loc, a) - distanceBetween(loc, b);
+      });
+      try {
+        sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v: list.slice(0, 20) }));
+      } catch (e) { /* ignore */ }
+      return list;
+    }).catch(function () { return []; });
+  }
+
+  /** 从标题/简介里猜类别，用于选 emoji / 任务 / 线索 */
+  function guessCategoryFromTitle(title, extract) {
+    var text = title + ' ' + (extract || '');
+    if (/公园|花园|绿地|植物园/.test(text)) return 'park';
+    if (/广场/.test(text)) return 'plaza';
+    if (/桥/.test(text)) return 'bridge';
+    if (/河|江|湖|滨/.test(text)) return 'river';
+    if (/教堂|寺|庙|会堂|清真/.test(text)) return 'temple';
+    if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
+    if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
+    if (/美术馆|艺术|画廊/.test(text)) return 'art';
+    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂/.test(text)) return 'historic';
+    if (/图书/.test(text)) return 'library';
+    if (/书店/.test(text)) return 'bookstore';
+    if (/咖啡/.test(text)) return 'cafe';
+    if (/商场|百货|市集|市场/.test(text)) return 'market';
+    if (/车站|地铁|站/.test(text)) return 'plaza';
+    if (/楼|旧址|故居|大楼|建筑|弄|里/.test(text)) return 'temple';
+    if (/塔|观景|天台/.test(text)) return 'viewpoint';
+    return 'plaza';
+  }
+
+  function distanceBetween(a, b) {
+    var R = 6371000;
+    var lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLon = (b.lon - a.lon) * Math.PI / 180;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+  }
+
+  /** 带超时的 JSON 请求（CORS JSON 端点） */
+  function fetchJSON(url, budgetMs) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(new Error('timeout'));
+      }, budgetMs || 5000);
+      fetch(url, { mode: 'cors', credentials: 'omit' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          return res.json();
+        })
+        .then(function (json) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(json);
+        })
+        .catch(function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
+
+  /** 把 Wikipedia POI 变成可玩的 Place（含图片） */
+  function makeWikiPlace(poi, origin, mood, startMeters) {
+    var meta = CATEGORY_META[poi.category] || CATEGORY_META.plaza;
+    var geo = mapPointFor(origin, poi, startMeters);
+    var hints = (HINTS[poi.category] || HINTS.plaza).concat(['就在前面。抬手机，慢慢看。']);
+    var shortName = poi.name.slice(0, 2);
+    hints = hints.map(function (h) {
+      return h.split(poi.name).join('那里').split(shortName).join('那里');
+    });
+    var hour = new Date().getHours();
+    var timeWord = hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 15 ? '午后'
+      : hour < 18 ? '傍晚前' : hour < 21 ? '入夜' : '夜里';
+    var moodWord = mood === 'drift' ? '你选了「放空」，这里适合什么都不想。'
+      : mood === 'discover' ? '你选了「发现」，这里不是游客会停下来的地方。'
+      : '你选了「热闹」，这个时间这里不会太冷清。';
+    return {
+      id: poi.id,
+      name: poi.name,
+      area: poi.category === 'river' || poi.category === 'bridge' ? 'river'
+        : (poi.category === 'art' || poi.category === 'temple' || poi.category === 'library' ? 'oldtown' : 'near'),
+      category: meta.label,
+      categoryEmoji: meta.emoji,
+      rarity: meta.rarity,
+      why: moodWord + '\n' + timeWord + '的' + meta.label + '，是这座城市里留下过痕迹的地方。'
+        + (poi.summary ? '\n' + poi.summary : ''),
+      task: meta.task,
+      hints: hints,
+      mapPoint: { x: geo.x, y: geo.y },
+      bearing: geo.bearing,
+      distance: geo.distance,
+      coordinate: { lat: poi.lat, lon: poi.lon },
+      address: null,
+      photoUrl: poi.photoUrl,
+      photoCredit: poi.credit,
+      source: 'wikipedia',
+      collected: false
+    };
+  }
+
   function findRealPlace(rawOrigin, mood, startMeters) {
     var origin = norm(rawOrigin);
     if (!origin) return Promise.resolve({ place: null, reason: 'no-origin' });
+    var radius = Math.max(600, Math.round(startMeters * 1.8));
+    var seed = Math.floor(Date.now() / 1000) % 100000;
+
+    // 真实定位下必须「走得到」：目标不能太近（会一开盒就到达），也不能超出抽盒半径
+    var minDistance = Math.max(110, Math.round(startMeters * 0.35));
+    var maxDistance = Math.round(startMeters * 1.7);
+
+    // 有旧缓存（Overpass POI）且还能挑出合适的，就直接用，省一次网络
     var cached = readCache(origin.lat, origin.lon);
     if (cached && cached.length) {
-      var picked = pick(cached, mood, startMeters, origin);
-      if (picked) {
+      var cachedPick = pick(cached, mood, startMeters, origin);
+      if (cachedPick) {
         return Promise.resolve({
-          place: makePlace(picked, origin, mood, startMeters),
+          place: makePlace(cachedPick, origin, mood, startMeters),
           cached: true,
           poolSize: cached.length
         });
       }
     }
-    var seed = Math.floor(Date.now() / 1000) % 100000;
-    var budgetHit = new Promise(function (resolve) {
-      setTimeout(function () { resolve({ __budget: true }); }, LOOKUP_BUDGET);
+
+    // 公开数据双通道：
+    //   1) Wikipedia 地理搜索 —— 真实地标名 + 代表图片（首选，通常 300~800ms 返回）
+    //   2) Overpass —— 街边小店/长椅等没有维基条目的真实 POI（经常慢到 5s+，不能拖累首选）
+    // 策略：先等 wiki（最多 3.2s），拿到就直接用；没有才继续等 Overpass。
+    var wikiPromise = wikipediaPOIs(origin, radius).catch(function () { return []; });
+    var poiPromise = searchPOIs(origin.lat, origin.lon, radius).catch(function () { return []; });
+    var wikiDeadline = new Promise(function (resolve) {
+      setTimeout(function () { resolve({ timedOut: true }); }, WIKI_FIRST_BUDGET);
     });
 
     return Promise.race([
-      searchPOIs(origin.lat, origin.lon, Math.round(startMeters * 1.6)),
-      budgetHit
-    ]).then(function (result) {
-        if (result && result.__budget) {
-          // 预算用完：直接用真实坐标（已经是真实经纬度，只是没有店名）
-          return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'budget' };
+      wikiPromise.then(function (list) { return { wiki: list || [] }; }),
+      wikiDeadline
+    ]).then(function (first) {
+      if (!first || first.timedOut) {
+        // Wiki 超过 3.2s：不丢弃它，和 Overpass 一起再等最多 2.5s（整体仍在预算内）
+        var lateDeadline = new Promise(function (resolve) {
+          setTimeout(function () { resolve({ wiki: [], poi: [] }); }, 2500);
+        });
+        return Promise.race([
+          Promise.all([wikiPromise, poiPromise]).then(function (pair) {
+            return { wiki: pair[0] || [], poi: pair[1] || [] };
+          }),
+          lateDeadline
+        ]).then(function (pack) {
+          return resolveFromPack(pack.wiki, pack.poi, {
+            mood: mood, startMeters: startMeters, origin: origin,
+            minDistance: minDistance, maxDistance: maxDistance, seed: seed
+          });
+        });
+      }
+      var wikiList = (first && first.wiki) ? first.wiki : [];
+      // wiki 有合适地标就立刻用，不陪 Overpass 等
+      var wikiPick = pickWiki(wikiList, mood, startMeters, origin, minDistance, maxDistance);
+      if (wikiPick) {
+        return {
+          place: makeWikiPlace(wikiPick, origin, mood, startMeters),
+          cached: false,
+          poolSize: wikiList.length,
+          source: 'wikipedia'
+        };
+      }
+      // wiki 没结果/都不合适 → 等 Overpass（整体不超过 LOOKUP_BUDGET）
+      return Promise.race([poiPromise, budgetHit]).then(function (poiList) {
+        if (poiList && poiList.length) {
+          writeCache(origin.lat, origin.lon, poiList);
+          var poiPick = pick(poiList, mood, startMeters, origin);
+          if (poiPick) {
+            return {
+              place: makePlace(poiPick, origin, mood, startMeters),
+              cached: false,
+              poolSize: poiList.length,
+              source: 'osm'
+            };
+          }
         }
-        var list = result;
-        if (!list || !list.length) {
-          return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'no-poi' };
-        }
-        if (!list || !list.length) return { place: null, reason: 'no-poi' };
-        writeCache(origin.lat, origin.lon, list);
-        var picked = pick(list, mood, startMeters, origin);
-        if (!picked) return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'no-pick' };
-        var place = makePlace(picked, origin, mood, startMeters);
-        return { place: place, cached: false, poolSize: list.length };
-      })
-      .catch(function (e) {
-        // 网络失败：还有旧缓存就用旧的（哪怕过期），否则让调用方降级到内置地点
-        var stale = (function () {
-          try {
-            var all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-            var entry = all[gridKey(origin.lat, origin.lon)];
-            return entry ? entry.data : null;
-          } catch (err) { return null; }
-        })();
-        if (stale && stale.length) {
-          var p = pick(stale, mood, startMeters, origin);
-          if (p) return { place: makePlace(p, origin, mood, startMeters), cached: true, stale: true };
-        }
-        // 最终兜底：用真实坐标走，名字靠反查（拿不到就叫「路口的那个角落」）
-        return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'network' };
+        return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'no-pick' };
       });
+    }).catch(function () {
+      return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'network' };
+    });
   }
+
+  /** 从两路候选里按优先级挑：维基地标（有图）> Overpass POI > 真实坐标兜底 */
+  function resolveFromPack(wikiList, poiList, ctx) {
+    var wikiPick = pickWiki(wikiList, ctx.mood, ctx.startMeters, ctx.origin, ctx.minDistance, ctx.maxDistance);
+    if (wikiPick) {
+      return {
+        place: makeWikiPlace(wikiPick, ctx.origin, ctx.mood, ctx.startMeters),
+        cached: false,
+        poolSize: wikiList.length,
+        source: 'wikipedia'
+      };
+    }
+    if (poiList && poiList.length) {
+      writeCache(ctx.origin.lat, ctx.origin.lon, poiList);
+      var poiPick = pick(poiList, ctx.mood, ctx.startMeters, ctx.origin);
+      if (poiPick) {
+        return {
+          place: makePlace(poiPick, ctx.origin, ctx.mood, ctx.startMeters),
+          cached: false,
+          poolSize: poiList.length,
+          source: 'osm'
+        };
+      }
+    }
+    return { place: proceduralPlace(ctx.origin, ctx.mood, ctx.startMeters, ctx.seed), fallback: true, reason: 'no-pick' };
+  }
+
+  /** 从 Wikipedia 地标里挑一个：距离合适 + 类别与心情相容 + 带图片 */
+  function pickWiki(candidates, mood, startMeters, origin, minDistance, maxDistance) {
+    if (!candidates || !candidates.length) return null;
+    var pool = [];
+    for (var i = 0; i < candidates.length; i += 1) {
+      var c = candidates[i];
+      if (!c.photoUrl) continue;
+      var d = distanceBetween(origin, c);
+      if (d < minDistance || d > maxDistance) continue;
+      if (!CATEGORY_META[c.category]) c.category = 'plaza';
+      // 心情亲和：放空偏好安静类，热闹偏好广场/市集
+      var w = 1;
+      if (mood === 'drift' && (c.category === 'park' || c.category === 'river' || c.category === 'temple')) w = 1.6;
+      if (mood === 'discover' && (c.category === 'art' || c.category === 'library' || c.category === 'viewpoint')) w = 1.7;
+      if (mood === 'lively' && (c.category === 'plaza' || c.category === 'market')) w = 1.6;
+      pool.push({ poi: c, weight: w, distance: d });
+    }
+    if (!pool.length) return null;
+    // 加权随机：避免每次都是同一批地标
+    var total = 0;
+    for (var j = 0; j < pool.length; j += 1) total += pool[j].weight;
+    var r = Math.random() * total;
+    for (var k = 0; k < pool.length; k += 1) {
+      r -= pool[k].weight;
+      if (r <= 0) return pool[k].poi;
+    }
+    return pool[pool.length - 1].poi;
+  }
+
+  /** 反查并补上真实街道名（拿到后替换名字） */
+  function enrichWithAddress(place) {
+    if (!place || !place.coordinate) return Promise.resolve(place);
+    return reverseGeocode(place.coordinate.lat, place.coordinate.lon).then(function (info) {
+      if (!info) return place;
+      var street = info.road || info.area;
+      if (!street) return place;
+      place.address = [info.area, info.road].filter(Boolean).join(' · ');
+      if (place.source === 'geo') {
+        place.name = street + '的一段';
+      }
+      return place;
+    }).catch(function () { return place; });
+  }
+
+  /** 反向地理编码：坐标 → 中文地址（失败返回 null，不影响主流程） */
+  function reverseGeocode(lat, lon) {
+    var url = NOMINATIM + '/reverse?format=jsonv2&lat=' + lat + '&lon=' + lon +
+      '&accept-language=zh&zoom=16';
+    return fetchWithTimeout(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var a = d.address || {};
+        var area = a.city_district || a.district || a.suburb || a.city || a.town || '';
+        var road = a.road || a.pedestrian || a.neighbourhood || '';
+        return { area: area, road: road, display: d.display_name || '' };
+      })
+      .catch(function () { return null; });
+  }
+
+  /** 相对起点的方位投影到抽象地图（只用于画示意路线） */
+  function mapPointFor(origin, poi, startMeters) {
+    var R = 6371000;
+    var lat1 = origin.lat * Math.PI / 180, lat2 = poi.lat * Math.PI / 180;
+    var dLon = (poi.lon - origin.lon) * Math.PI / 180;
+    var y = Math.sin(dLon) * Math.cos(lat2);
+    var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    var bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    var dLat = (poi.lat - origin.lat) * Math.PI / 180;
+    var dist = Math.sqrt(dLat * dLat + dLon * dLon * Math.cos(lat1) * Math.cos(lat1)) * R;
+    var norm = Math.min(0.42, dist / Math.max(200, startMeters * 2.2));
+    var rad = bearing * Math.PI / 180;
+    return {
+      x: 0.5 + Math.sin(rad) * norm,
+      y: 0.82 - Math.cos(rad) * norm,
+      bearing: bearing,
+      distance: dist
+    };
+  }
+
+  /** 真实 POI → 盲走 Place（名称到达后才展示；线索不含名称） */
+  function makePlace(poi, origin, mood, startMeters) {
+    var meta = CATEGORY_META[poi.category] || CATEGORY_META.cafe;
+    var geo = mapPointFor(origin, poi, startMeters);
+    var hints = (HINTS[poi.category] || HINTS.cafe).concat(['就在前面。抬手机，慢慢看。']);
+    // 二次保险：线索里不允许出现名称（含前 2 字）
+    var shortName = poi.name.slice(0, 2);
+    hints = hints.map(function (h) {
+      return h.split(poi.name).join('那里').split(shortName).join('那里');
+    });
+
+    var hour = new Date().getHours();
+    var timeWord = hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 15 ? '午后'
+      : hour < 18 ? '傍晚前' : hour < 21 ? '入夜' : '夜里';
+    var moodWord = mood === 'drift' ? '你选了「放空」，这里适合什么都不想。'
+      : mood === 'discover' ? '你选了「发现」，这里通常不是游客会注意到的地方。'
+      : '你选了「热闹」，这个时间这里不会太冷清。';
+
+    return {
+      id: 'real-' + poi.id,
+      name: poi.name,
+      area: poi.category === 'river' || poi.category === 'bridge' ? 'river'
+        : (poi.category === 'bookstore' || poi.category === 'library' || poi.category === 'art' || poi.category === 'temple' ? 'oldtown' : 'near'),
+      category: meta.label,
+      categoryEmoji: meta.emoji,
+      rarity: meta.rarity,
+      why: moodWord + '\n' + timeWord + '的' + meta.label + '，是城市里比较安静的一类角落。',
+      task: meta.task,
+      hints: hints,
+      mapPoint: { x: geo.x, y: geo.y },
+      bearing: geo.bearing,
+      distance: geo.distance,
+      coordinate: { lat: poi.lat, lon: poi.lon },
+      address: poi.address,
+      source: 'osm',
+      collected: false
+    };
+  }
+
+  /** 按心情加权挑一个候选 */
+  function pick(candidates, mood, startMeters, origin) {
+    if (!candidates.length) return null;
+    var pool = candidates.filter(function (c) {
+      var meta = CATEGORY_META[c.category];
+      if (!meta) return false;
+      var d = mapPointFor(origin, c, startMeters).distance;
+      return d >= 80 && d <= startMeters * 1.7;
+    });
+    if (!pool.length) {
+      pool = candidates.filter(function (c) { return CATEGORY_META[c.category]; });
+    }
+    if (!pool.length) return null;
+    var bag = [];
+    pool.forEach(function (c) {
+      var meta = CATEGORY_META[c.category];
+      var w = 10;
+      if (meta.moods.indexOf(mood) >= 0) w += 25;
+      if (meta.rarity === 'hidden') w = Math.round(w * 0.4);
+      if (meta.rarity === 'epic') w = Math.round(w * 0.8);
+      bag.push({ c: c, w: w });
+    });
+    var total = bag.reduce(function (s, e) { return s + e.w; }, 0);
+    var roll = Math.random() * total;
+    for (var i = 0; i < bag.length; i += 1) {
+      roll -= bag[i].w;
+      if (roll <= 0) return bag[i].c;
+    }
+    return bag[bag.length - 1].c;
+  }
+
+  /** 主入口：拿到真实地点（带缓存与降级） */
+
+  /* ============================================================
+     Wikipedia / Wikimedia Commons：公开数据里的真实兴趣点 + 图片
+     - 端点公开、无需 API Key、CORS 全开（access-control-allow-origin: *）
+     - 一次请求同时拿到：地标名、真实坐标、简介、代表图片
+     - 图片只用于「到达后揭晓」和图鉴，绝不提前展示（产品保密规则）
+     ============================================================ */
+  var WIKI_ENDPOINT = 'https://zh.wikipedia.org/w/api.php';
+
+  /** 第 2 个起用 geo 坐标去重，避免同一地标反复出现 */
+  function wikipediaPOIs(location, radiusMeters) {
+    var loc = norm(location);
+    if (!loc) return Promise.resolve([]);
+    var lat = loc.lat, lon = loc.lon;
+    var key = 'bw:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
+    try {
+      var cachedRaw = sessionStorage.getItem(key);
+      if (cachedRaw) {
+        var cachedParsed = JSON.parse(cachedRaw);
+        if (cachedParsed && Date.now() - cachedParsed.t < 6 * 3600 * 1000) {
+          return Promise.resolve(cachedParsed.v || []);
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    var url = WIKI_ENDPOINT +
+      '?action=query&format=json&origin=*' +
+      '&generator=geosearch' +
+      '&ggscoord=' + lat + '%7C' + lon +
+      '&ggsradius=' + Math.min(10000, Math.round(radiusMeters)) +
+      '&ggslimit=20' +
+      '&prop=pageimages%7Ccoordinates%7Cextracts' +
+      '&piprop=thumbnail&pithumbsize=800' +
+      '&exintro=1&explaintext=1&exchars=160';
+
+    return fetchJSON(url, WIKI_BUDGET).then(function (data) {
+      var pages = (data && data.query && data.query.pages) || {};
+      var list = [];
+      Object.keys(pages).forEach(function (id) {
+        var page = pages[id];
+        var coord = page.coordinates && page.coordinates[0];
+        if (!coord) return;
+        var photo = page.thumbnail && page.thumbnail.source;
+        if (!photo) return;
+        // 过滤：行政区、城市、地铁站、道路 —— 这些不是「一个可以走到的地方」
+        if (/[省市县区镇]$/.test(page.title)) return;
+        if (/^(中国|上海|北京|广州|深圳|杭州|成都|南京|武汉|西安|重庆|天津|苏州)$/.test(page.title)) return;
+        if (/站$|站 \(|号线|铁路|高速公路|立交|隧道|大桥工程/.test(page.title)) return;
+        // 去掉维基的括号消歧义后缀：「大世界 (上海市)」→「大世界」
+        var displayName = page.title.replace(/\s*[（(][^）)]*[）)]\s*$/, '').trim();
+        if (!displayName) return;
+        // 只收能正常加载的缩略图域名；原图域名时通时不通，宁可不要
+        if (photo.indexOf('thumb.wikimedia.org') < 0 && photo.indexOf('upload.wikimedia.org') < 0) return;
+        list.push({
+          id: 'wiki-' + (page.pageid || id),
+          name: displayName,
+          lat: coord.lat,
+          lon: coord.lon,
+          photoUrl: photo,
+          credit: 'Wikimedia Commons',
+          summary: (page.extract || '').replace(/\s+/g, ' ').slice(0, 120),
+          category: guessCategoryFromTitle(page.title, page.extract || '')
+        });
+      });
+      // 按距离由近到远
+      list.sort(function (a, b) {
+        return distanceBetween(loc, a) - distanceBetween(loc, b);
+      });
+      try {
+        sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v: list.slice(0, 20) }));
+      } catch (e) { /* ignore */ }
+      return list;
+    }).catch(function () { return []; });
+  }
+
+  /** 从标题/简介里猜类别，用于选 emoji / 任务 / 线索 */
+  function guessCategoryFromTitle(title, extract) {
+    var text = title + ' ' + (extract || '');
+    if (/公园|花园|绿地|植物园/.test(text)) return 'park';
+    if (/广场/.test(text)) return 'plaza';
+    if (/桥/.test(text)) return 'bridge';
+    if (/河|江|湖|滨/.test(text)) return 'river';
+    if (/教堂|寺|庙|会堂|清真/.test(text)) return 'temple';
+    if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
+    if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
+    if (/美术馆|艺术|画廊/.test(text)) return 'art';
+    if (/故居|旧址|会址|公馆|洋房|里弄|弄堂/.test(text)) return 'historic';
+    if (/图书/.test(text)) return 'library';
+    if (/书店/.test(text)) return 'bookstore';
+    if (/咖啡/.test(text)) return 'cafe';
+    if (/商场|百货|市集|市场/.test(text)) return 'market';
+    if (/车站|地铁|站/.test(text)) return 'plaza';
+    if (/楼|旧址|故居|大楼|建筑|弄|里/.test(text)) return 'temple';
+    if (/塔|观景|天台/.test(text)) return 'viewpoint';
+    return 'plaza';
+  }
+
+  function distanceBetween(a, b) {
+    var R = 6371000;
+    var lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLon = (b.lon - a.lon) * Math.PI / 180;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+  }
+
+  /** 带超时的 JSON 请求（CORS JSON 端点） */
+  function fetchJSON(url, budgetMs) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(new Error('timeout'));
+      }, budgetMs || 5000);
+      fetch(url, { mode: 'cors', credentials: 'omit' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          return res.json();
+        })
+        .then(function (json) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(json);
+        })
+        .catch(function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
+
+  /** 把 Wikipedia POI 变成可玩的 Place（含图片） */
+  function makeWikiPlace(poi, origin, mood, startMeters) {
+    var meta = CATEGORY_META[poi.category] || CATEGORY_META.plaza;
+    var geo = mapPointFor(origin, poi, startMeters);
+    var hints = (HINTS[poi.category] || HINTS.plaza).concat(['就在前面。抬手机，慢慢看。']);
+    var shortName = poi.name.slice(0, 2);
+    hints = hints.map(function (h) {
+      return h.split(poi.name).join('那里').split(shortName).join('那里');
+    });
+    var hour = new Date().getHours();
+    var timeWord = hour < 9 ? '清晨' : hour < 12 ? '上午' : hour < 15 ? '午后'
+      : hour < 18 ? '傍晚前' : hour < 21 ? '入夜' : '夜里';
+    var moodWord = mood === 'drift' ? '你选了「放空」，这里适合什么都不想。'
+      : mood === 'discover' ? '你选了「发现」，这里不是游客会停下来的地方。'
+      : '你选了「热闹」，这个时间这里不会太冷清。';
+    return {
+      id: poi.id,
+      name: poi.name,
+      area: poi.category === 'river' || poi.category === 'bridge' ? 'river'
+        : (poi.category === 'art' || poi.category === 'temple' || poi.category === 'library' ? 'oldtown' : 'near'),
+      category: meta.label,
+      categoryEmoji: meta.emoji,
+      rarity: meta.rarity,
+      why: moodWord + '\n' + timeWord + '的' + meta.label + '，是这座城市里留下过痕迹的地方。'
+        + (poi.summary ? '\n' + poi.summary : ''),
+      task: meta.task,
+      hints: hints,
+      mapPoint: { x: geo.x, y: geo.y },
+      bearing: geo.bearing,
+      distance: geo.distance,
+      coordinate: { lat: poi.lat, lon: poi.lon },
+      address: null,
+      photoUrl: poi.photoUrl,
+      photoCredit: poi.credit,
+      source: 'wikipedia',
+      collected: false
+    };
+  }
+
 
   window.BW_GEO = {
     findRealPlace: findRealPlace,
     searchPOIs: searchPOIs,
     proceduralPlace: proceduralPlace,
+    wikipediaPOIs: wikipediaPOIs,
+    makeWikiPlace: makeWikiPlace,
     enrichWithAddress: enrichWithAddress,
     reverseGeocode: reverseGeocode,
     makePlace: makePlace,
+    distanceOf: function (a, b) {
+      var na = norm(a), nb = norm(b);
+      if (!na || !nb) return null;
+      return distanceBetween(na, nb);
+    },
     CATEGORY_META: CATEGORY_META,
     readCache: readCache,
     gridKey: gridKey
