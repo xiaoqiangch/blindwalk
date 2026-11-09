@@ -1,178 +1,183 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — JSON 存储
+ * 盲走 BlindWalk · 兴趣点管理后台 v2 — POI 存储（SQLite）
  *
- * - 原子写：先写 `<file>.tmp` 再 rename
- * - 损坏容错：JSON 解析失败 → 把坏文件备份成 `*.corrupt-<ts>`，从空库启动
- * - 列表 / 查询 / 新建 / 合并更新 / 删除 / 去重 / 统计
+ * 底层从 v1 的 JSON 文件换成 Node 内置 `node:sqlite`（DatabaseSync），
+ * **PoiStore 的公开方法签名保持不变**：load / save / all / get / list /
+ * create / update / remove / findDuplicate / addCandidates / stats / approved。
  *
- * 零依赖：node:fs / node:path
+ * - 首次启动若 admin/data/pois.json 存在且库为空 → 自动全量迁移
+ *   （原文件改名 pois.json.migrated-<ts>，条数必须一致；见 db.mjs）
+ * - 写入依赖 SQLite 事务与 WAL，不再需要手写 .tmp 文件
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
+
 import {
   PoiError,
-  buildPoi,
   buildStats,
+  buildPoi,
   haversineMeters,
-  isPoiShape,
   mergePoi,
   normalizeName,
   nowMs
 } from './poi.mjs';
+import {
+  DB_FILENAME,
+  POI_COLUMNS,
+  countPois,
+  migrateLegacyJson,
+  openDatabase,
+  poiToValues,
+  rowToPoi
+} from './db.mjs';
 
-const FILE_VERSION = 1;
 /** 去重距离阈值：同名或距离 < 30m 视为重复（契约 §4.3） */
 export const DUPLICATE_DISTANCE_METERS = 30;
 
+const INSERT_SQL = 'INSERT INTO pois (' + POI_COLUMNS.join(', ') + ') VALUES (' +
+  POI_COLUMNS.map(() => '?').join(', ') + ')';
+
+const UPDATE_SQL = 'UPDATE pois SET ' +
+  POI_COLUMNS.filter((column) => column !== 'id')
+    .map((column) => column + ' = ?')
+    .join(', ') +
+  ' WHERE id = ?';
+
 export class PoiStore {
   /**
-   * @param {{ dataDir: string, fileName?: string }} options
+   * @param {{ dataDir: string, dbFileName?: string, logger?: object }} options
    */
   constructor(options = {}) {
     if (!options.dataDir) throw new Error('PoiStore 需要 dataDir');
     this.dataDir = path.resolve(options.dataDir);
-    this.fileName = options.fileName || 'pois.json';
-    this.filePath = path.join(this.dataDir, this.fileName);
-    this.items = [];
-    fs.mkdirSync(this.dataDir, { recursive: true });
-    this.load();
+    this.dbFileName = options.dbFileName || DB_FILENAME;
+    this.dbPath = path.join(this.dataDir, this.dbFileName);
+    // 兼容 v1 调用方：filePath 现在指向 SQLite 文件
+    this.filePath = this.dbPath;
+    this.jsonPath = path.join(this.dataDir, 'pois.json');
+    this.logger = options.logger || console;
+    this.migration = { migrated: false, count: 0 };
+
+    this.db = openDatabase(this.dbPath);
+    this.migration = migrateLegacyJson({
+      db: this.db,
+      dataDir: this.dataDir,
+      logger: this.logger
+    });
   }
 
-  // ---------- 读取 / 写入 ----------
+  // ---------- 基础 ----------
 
+  /** 与 v1 保持同名（返回当前库内全部条目） */
   load() {
-    let raw;
-    try {
-      raw = fs.readFileSync(this.filePath, 'utf8');
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        this.items = [];
-        return { items: [], recovered: false };
-      }
-      throw error;
-    }
-
-    try {
-      const parsed = JSON.parse(raw);
-      let list;
-      if (Array.isArray(parsed)) list = parsed;
-      else if (parsed && Array.isArray(parsed.items)) list = parsed.items;
-      else throw new Error('数据结构不是 { version, items }');
-
-      const valid = list.filter(isPoiShape);
-      this.items = valid;
-      if (valid.length !== list.length) {
-        // 部分条目损坏：保留能用的并写回，避免每次启动都报同一处坏数据
-        this.save();
-      }
-      return { items: valid, recovered: valid.length !== list.length };
-    } catch (error) {
-      this.backupCorruptFile();
-      this.items = [];
-      this.save();
-      return { items: [], recovered: true };
-    }
+    return { items: this.all(), migration: this.migration };
   }
 
-  /** 坏文件备份，绝不覆盖用户数据 */
-  backupCorruptFile() {
-    const stamp = String(nowMs());
-    const backupPath = this.filePath + '.corrupt-' + stamp;
-    try {
-      fs.renameSync(this.filePath, backupPath);
-      return backupPath;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  /** 原子写：tmp + rename */
+  /** SQLite 自动持久化；保留此方法以兼容旧调用方（返回数据库路径） */
   save() {
-    const payload = {
-      version: FILE_VERSION,
-      updatedAt: nowMs(),
-      items: this.items
-    };
-    const text = JSON.stringify(payload, null, 2);
-    const tmpPath = this.filePath + '.tmp';
-    fs.writeFileSync(tmpPath, text, 'utf8');
-    fs.renameSync(tmpPath, this.filePath);
-    return this.filePath;
+    return this.dbPath;
+  }
+
+  close() {
+    try {
+      this.db.close();
+    } catch (error) {
+      // ignore
+    }
+  }
+
+  count() {
+    return countPois(this.db);
   }
 
   // ---------- 查询 ----------
 
   all() {
-    return this.items.slice();
+    const rows = this.db.prepare('SELECT * FROM pois ORDER BY rowid ASC').all();
+    return rows.map((row) => rowToPoi(row)).filter((poi) => poi !== null);
   }
 
   get(id) {
-    return this.items.find((poi) => poi.id === id) || null;
+    const row = this.db.prepare('SELECT * FROM pois WHERE id = ?').get(id);
+    return row ? rowToPoi(row) : null;
   }
 
   /**
    * 列表：status / q / category / hasPhoto / limit / offset，按 updatedAt 倒序
    */
   list(query = {}) {
-    const status = query.status;
-    const category = query.category;
+    const where = [];
+    const params = [];
+
+    if (query.status) {
+      where.push('status = ?');
+      params.push(query.status);
+    }
+    if (query.category) {
+      where.push('category = ?');
+      params.push(query.category);
+    }
+    if (query.hasPhoto === true) {
+      where.push("photoUrl IS NOT NULL AND photoUrl <> ''");
+    } else if (query.hasPhoto === false) {
+      where.push("(photoUrl IS NULL OR photoUrl = '')");
+    }
     const q = String(query.q || '').trim().toLowerCase();
-    const hasPhoto = query.hasPhoto;
+    if (q) {
+      const like = '%' + q + '%';
+      where.push(
+        '(LOWER(COALESCE(name, \'\')) LIKE ? OR LOWER(COALESCE(summary, \'\')) LIKE ? OR LOWER(COALESCE(tags, \'\')) LIKE ?)'
+      );
+      params.push(like, like, like);
+    }
 
-    let filtered = this.items.filter((poi) => {
-      if (status && poi.status !== status) return false;
-      if (category && poi.category !== category) return false;
-      if (hasPhoto === true && !poi.photoUrl) return false;
-      if (hasPhoto === false && poi.photoUrl) return false;
-      if (q) {
-        const haystack = [
-          poi.name,
-          poi.summary,
-          Array.isArray(poi.tags) ? poi.tags.join(' ') : ''
-        ].join(' ').toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
+    const whereSql = where.length > 0 ? ' WHERE ' + where.join(' AND ') : '';
+    const totalRow = this.db.prepare('SELECT count(*) AS c FROM pois' + whereSql).get(...params);
+    const total = totalRow ? Number(totalRow.c) : 0;
 
-    filtered = filtered.sort((a, b) => {
-      const diff = (b.updatedAt || 0) - (a.updatedAt || 0);
-      return diff !== 0 ? diff : String(a.id).localeCompare(String(b.id));
-    });
-
-    const total = filtered.length;
     const rawLimit = Number(query.limit);
     const rawOffset = Number(query.offset);
     const limit = Number.isFinite(rawLimit) ? Math.min(500, Math.max(1, Math.floor(rawLimit))) : 100;
     const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0;
-    const items = filtered.slice(offset, offset + limit);
-    return { total, items };
+
+    const rows = this.db.prepare(
+      'SELECT * FROM pois' + whereSql + ' ORDER BY updatedAt DESC, id ASC LIMIT ? OFFSET ?'
+    ).all(...params, limit, offset);
+
+    return { total, items: rows.map((row) => rowToPoi(row)).filter((poi) => poi !== null) };
   }
 
   // ---------- 写入 ----------
 
   create(input) {
     const poi = buildPoi(input);
-    this.items.push(poi);
-    this.save();
+    this.db.prepare(INSERT_SQL).run(...poiToValues(poi));
     return poi;
   }
 
   update(id, input) {
-    const index = this.items.findIndex((poi) => poi.id === id);
-    if (index < 0) throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
-    const merged = mergePoi(this.items[index], input);
-    this.items[index] = merged;
-    this.save();
+    const existing = this.get(id);
+    if (!existing) throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
+    const merged = mergePoi(existing, input);
+    const values = poiToValues(merged);
+    // UPDATE 参数顺序：除 id 外所有字段，最后是 WHERE id
+    const updateValues = POI_COLUMNS
+      .map((column, index) => ({ column, value: values[index] }))
+      .filter((entry) => entry.column !== 'id')
+      .map((entry) => entry.value);
+    updateValues.push(id);
+    const result = this.db.prepare(UPDATE_SQL).run(...updateValues);
+    if (Number(result.changes) === 0) {
+      throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
+    }
     return merged;
   }
 
   remove(id) {
-    const index = this.items.findIndex((poi) => poi.id === id);
-    if (index < 0) throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
-    this.items.splice(index, 1);
-    this.save();
+    const result = this.db.prepare('DELETE FROM pois WHERE id = ?').run(id);
+    if (Number(result.changes) === 0) {
+      throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
+    }
     return true;
   }
 
@@ -181,13 +186,11 @@ export class PoiStore {
   /** 同名或距离 < 30m 视为重复 */
   findDuplicate(candidate, excludeId) {
     const name = normalizeName(candidate.name);
-    for (const poi of this.items) {
+    const all = this.all();
+    for (const poi of all) {
       if (excludeId && poi.id === excludeId) continue;
       if (name && normalizeName(poi.name) === name) return poi;
-      if (
-        typeof candidate.lat === 'number' &&
-        typeof candidate.lon === 'number'
-      ) {
+      if (typeof candidate.lat === 'number' && typeof candidate.lon === 'number') {
         const meters = haversineMeters(
           { lat: candidate.lat, lon: candidate.lon },
           { lat: poi.lat, lon: poi.lon }
@@ -200,15 +203,15 @@ export class PoiStore {
 
   /**
    * 批量导入候选：去重（库内 + 本批内），新建的默认 draft。
-   * @returns {{ added: number, skipped: number, items: object[] }}
+   * 单条不合格不拖垮整批；全部写入走一个事务。
    */
   addCandidates(candidates) {
     const added = [];
     let skipped = 0;
     const pending = [];
+    const insert = this.db.prepare(INSERT_SQL);
 
     for (const candidate of candidates || []) {
-      // 本批内去重
       const inBatch = pending.find((item) => {
         if (normalizeName(item.name) === normalizeName(candidate.name)) return true;
         return haversineMeters(
@@ -220,8 +223,7 @@ export class PoiStore {
         skipped += 1;
         continue;
       }
-      const existing = this.findDuplicate(candidate);
-      if (existing) {
+      if (this.findDuplicate(candidate)) {
         skipped += 1;
         continue;
       }
@@ -230,14 +232,21 @@ export class PoiStore {
         pending.push(poi);
         added.push(poi);
       } catch (error) {
-        // 单条数据不合格不拖垮整批
         skipped += 1;
       }
     }
 
     if (added.length > 0) {
-      this.items.push(...added);
-      this.save();
+      this.db.exec('BEGIN');
+      try {
+        for (const poi of added) {
+          insert.run(...poiToValues(poi));
+        }
+        this.db.exec('COMMIT');
+      } catch (error) {
+        this.db.exec('ROLLBACK');
+        throw error;
+      }
     }
     return { added: added.length, skipped, items: added };
   }
@@ -245,10 +254,24 @@ export class PoiStore {
   // ---------- 统计 / 导出 ----------
 
   stats() {
-    return buildStats(this.items);
+    return buildStats(this.all());
   }
 
   approved() {
-    return this.items.filter((poi) => poi.status === 'approved');
+    const rows = this.db.prepare(
+      "SELECT * FROM pois WHERE status = 'approved' ORDER BY updatedAt ASC, id ASC"
+    ).all();
+    return rows.map((row) => rowToPoi(row)).filter((poi) => poi !== null);
+  }
+
+  /** 迁移信息（便于启动日志 / 测试断言） */
+  migrationInfo() {
+    return this.migration;
+  }
+
+  /** 插入一条完整 POI（测试用，不做校验） */
+  insertRaw(poi) {
+    this.db.prepare(INSERT_SQL).run(...poiToValues(poi));
+    return nowMs();
   }
 }

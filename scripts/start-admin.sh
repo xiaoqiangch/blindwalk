@@ -12,9 +12,12 @@ fi
 echo "═══════════════════════════════════════════════"
 echo " 盲走 BlindWalk · 兴趣点管理后台"
 echo "═══════════════════════════════════════════════"
-echo " 管理界面:  http://127.0.0.1:${PORT:-8802}/admin"
+echo " 管理界面:  http://127.0.0.1:${PORT:-8802}/admin  （v2 起需要登录）"
 echo " 接口状态:  http://127.0.0.1:${PORT:-8802}/api/llm/status"
 echo
+if [ -z "${BW_ADMIN_PASSWORD:-}" ]; then
+  echo " 🔑 未设置 BW_ADMIN_PASSWORD → 首次启动会生成随机密码，看下面的启动日志"
+fi
 if [ -z "${BW_LLM_API_KEY:-}" ]; then
   echo " ⚠️  未配置 BW_LLM_API_KEY → 大模型将降级为「离线规则模式」"
   echo "    配置方法见 admin/docs/SETUP-LLM.md"

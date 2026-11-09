@@ -34,3 +34,11 @@ prototype/web/pois.json
       ↓
    App（PWA）启动时读取，优先于自动抓取
 ```
+
+## v2 新增
+
+| 项 | 说明 |
+|---|---|
+| **登录** | 必须登录才能访问；`BW_ADMIN_PASSWORD` 或首次启动自动生成随机密码（见 [docs/SECURITY.md](docs/SECURITY.md)） |
+| **SQLite** | 存储从 JSON 改为 `node:sqlite`（仍零 npm 依赖），启动自动迁移旧数据 |
+| **安全分级** | 每条 POI 有 `safety.day / night / nightVerdict`，用于判断「夜里安不安全」；导出到 App 时一并带上 |

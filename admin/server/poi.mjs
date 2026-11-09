@@ -6,6 +6,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
+import { completeSafety, exportSafety } from './safety.mjs';
 
 // ============================================================
 // 类别表（与契约 §3 一致，勿自造）
@@ -327,20 +328,46 @@ export function normalizeSafety(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new PoiError('safety 必须是对象', 'BAD_REQUEST');
   }
-  const score = Number(input.score);
+  const score = Number(input.score !== undefined ? input.score : input.day);
   if (!assertFiniteNumber(score) || score < 1 || score > 5) {
-    throw new PoiError('safety.score 必须是 1–5 的数字', 'BAD_REQUEST');
+    throw new PoiError('safety.score（或 safety.day）必须是 1–5 的数字', 'BAD_REQUEST');
   }
   const crowded = input.crowded === undefined ? 'medium' : String(input.crowded);
   if (!['low', 'medium', 'high'].includes(crowded)) {
-    throw new PoiError("safety.crowded 必须是 low | medium | high", 'BAD_REQUEST');
+    throw new PoiError('safety.crowded 必须是 low | medium | high', 'BAD_REQUEST');
   }
-  return {
+  const result = {
     score: Math.round(score),
     walkable: input.walkable === undefined ? true : Boolean(input.walkable),
     crowded,
     notes: clipText(input.notes, 160)
   };
+  if (input.day !== undefined) {
+    const day = Number(input.day);
+    if (!assertFiniteNumber(day) || day < 1 || day > 5) {
+      throw new PoiError('safety.day 必须是 1–5 的数字', 'BAD_REQUEST');
+    }
+    result.day = Math.round(day);
+  }
+  if (input.night !== undefined) {
+    const night = Number(input.night);
+    if (!assertFiniteNumber(night) || night < 1 || night > 5) {
+      throw new PoiError('safety.night 必须是 1–5 的数字', 'BAD_REQUEST');
+    }
+    result.night = Math.round(night);
+  }
+  if (input.nightVerdict !== undefined) {
+    const verdict = String(input.nightVerdict);
+    if (!['avoid', 'caution', 'ok'].includes(verdict)) {
+      throw new PoiError('safety.nightVerdict 必须是 avoid | caution | ok', 'BAD_REQUEST');
+    }
+    result.nightVerdict = verdict;
+  }
+  if (input.reasons !== undefined) {
+    if (!Array.isArray(input.reasons)) throw new PoiError('safety.reasons 必须是字符串数组', 'BAD_REQUEST');
+    result.reasons = input.reasons.map((reason) => clipText(reason, 80)).filter((reason) => reason.length > 0);
+  }
+  return result;
 }
 
 export function normalizeLlm(input) {
@@ -363,9 +390,6 @@ export function buildPoi(input, options = {}) {
   const now = options.now === undefined ? nowMs() : options.now;
   const patch = normalizePoiPatch(input, { partial: false });
   const category = patch.category;
-  const safety = patch.safety === undefined
-    ? { score: 3, walkable: true, crowded: 'medium', notes: '' }
-    : patch.safety;
   const poi = {
     id: options.id || makePoiId(),
     name: patch.name,
@@ -383,7 +407,7 @@ export function buildPoi(input, options = {}) {
     task: patch.task === undefined ? '' : patch.task,
     hints: patch.hints === undefined ? [] : patch.hints,
     tags: patch.tags === undefined ? [] : patch.tags,
-    safety,
+    safety: { score: 3, walkable: true, crowded: 'medium', notes: '', day: 3, night: 3, nightVerdict: 'caution', reasons: [] },
     llm: patch.llm === undefined
       ? { normalizedAt: 0, analyzedAt: 0, model: '', mode: 'offline' }
       : patch.llm,
@@ -392,6 +416,7 @@ export function buildPoi(input, options = {}) {
     createdAt: now,
     updatedAt: now
   };
+  poi.safety = completeSafety(poi, patch.safety);
   assertHintsSafe(poi.hints, poi.name);
   if (poi.photoUrl && !poi.photoCredit) {
     throw new PoiError('有 photoUrl 时 photoCredit 必填', 'BAD_REQUEST');
@@ -426,6 +451,7 @@ export function mergePoi(existing, patch, options = {}) {
     throw new PoiError('有 photoUrl 时 photoCredit 必填', 'BAD_REQUEST');
   }
   merged.hints = Array.isArray(merged.hints) ? merged.hints : [];
+  merged.safety = completeSafety(merged, patch.safety !== undefined ? patch.safety : merged.safety);
   assertHintsSafe(merged.hints, merged.name);
   return merged;
 }
@@ -451,13 +477,14 @@ const EXPORT_FIELDS = [
   'address', 'photoUrl', 'photoCredit', 'summary', 'why', 'task', 'hints'
 ];
 
-/** 导出字段裁剪：只保留 App 消费的字段 */
+/** 导出字段裁剪：只保留 App 消费的字段（v2 增加 safety.day/night/nightVerdict） */
 export function toExportPoi(poi) {
   const out = {};
   for (const field of EXPORT_FIELDS) {
     out[field] = poi[field] === undefined ? null : poi[field];
   }
   if (!Array.isArray(out.hints)) out.hints = [];
+  out.safety = exportSafety(poi);
   return out;
 }
 

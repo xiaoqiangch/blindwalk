@@ -245,7 +245,7 @@
         '</div>' +
       '</div>' +
       '<div class="filter-foot">' +
-        '<code>admin/data/pois.json</code><br>' +
+        '<code>admin/data/blindwalk.db</code><br>' +
         '上次刷新 ' + UI.formatTime(Date.now()) +
       '</div>';
 
@@ -1561,7 +1561,24 @@
     }, 250);
   }
 
+  /** 提前确认登录态：v2 服务端才有 /api/auth/status；老版本 404 时按已登录处理 */
+  async function ensureAuthenticated() {
+    try {
+      const status = await BWAPI.request('GET', '/api/auth/status');
+      if (status && status.authenticated === false) {
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.replace('/admin/login?next=' + next);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      // 404/网络错误：老服务端或暂时不可用，交给后续请求去报错
+      return true;
+    }
+  }
+
   async function boot() {
+    if (!(await ensureAuthenticated())) return;
     renderTopActions();
     bindTopActions();
     renderLlmBadge();

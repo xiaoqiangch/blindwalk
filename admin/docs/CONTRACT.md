@@ -37,11 +37,15 @@
   "task": "找一张演出海报…",          // 1 分钟小任务
   "hints": ["…", "…", "…"],        // 三阶线索，**绝不能含地名**
   "tags": ["历史建筑", "音乐"],
-  "safety": {                       // 大模型分析产出
-    "score": 4,                     // 1–5，越高越安全
+  "safety": {                       // 大模型 / 规则产出
+    "score": 4,                     // 1–5，综合安全分（白天口径，保留向后兼容）
     "walkable": true,               // 是否适合步行到达
-    "crowded": "medium",            // low | medium | high
-    "notes": "主干道旁，人行道宽"
+    "crowded": "low|medium|high",
+    "notes": "主干道旁，人行道宽",
+    "day": 4,                       // 白天安全分 1–5
+    "night": 2,                     // 夜间安全分 1–5（没有街灯/人流依据时按类别保守给分）
+    "nightVerdict": "avoid|caution|ok",  // 夜间是否推荐：avoid 不建议夜间去 / caution 结伴 / ok 可以
+    "reasons": ["类别：博物馆", "有实景照片", "人流：medium"]  // 打分依据（便于人工复核）
   },
   "llm": {
     "normalizedAt": 1731030000000,  // 毫秒时间戳；0 = 未做过
@@ -84,6 +88,36 @@
 | market | 市集 | 🛒 | common |
 
 ---
+
+## 3.1 认证（v2 新增）
+
+后台默认**必须登录**才能访问 `/admin` 与 `/api/*`（`/api/auth/*` 除外）。
+
+| 端点 | 说明 |
+|---|---|
+| `GET /api/auth/status` | `{ "authenticated": bool, "passwordSet": bool }`，无鉴权可访问 |
+| `POST /api/auth/login` | body `{ "password": "…" }`；成功设置 HttpOnly 会话 Cookie，返回 `{ "ok": true }`；失败 401 `BAD_PASSWORD` |
+| `POST /api/auth/logout` | 清除会话，返回 `{ "ok": true }` |
+
+规则：
+- 密码来源：环境变量 `BW_ADMIN_PASSWORD`；未设置时**首次启动**生成随机密码写入 `admin/data/admin.secret.json`（文件权限 0600）并在启动日志打印一次
+- 密码哈希：`node:crypto` 的 `scrypt`，每个密码独立 salt；**不存明文**
+- 会话：随机 32 字节 token，`HttpOnly; SameSite=Strict; Path=/`，有效期 12 小时；持久化到 `admin/data/sessions.json`（重启不丢）
+- 本地 http 调试时 Cookie **不加 `Secure`**；部署到 HTTPS 时应在反代或代码里补 `Secure`（见 docs/SECURITY.md）
+- 登录失败限流：同一 IP 10 分钟内失败 5 次；**前 5 次返回 401，第 6 次起返回 429**；
+  计数在进程内存里（重启清零，够用即可）
+- 未登录访问 `/api/*` → 401 `UNAUTHENTICATED`；访问 `/admin` → 302 到 `/admin/login`
+- `/admin/login` 由服务端内置一个极简登录页（不依赖前端打包）
+
+## 3.2 存储（v2 改为 SQLite）
+
+- 使用 **Node 内置 `node:sqlite`**（`DatabaseSync`），仍然零 npm 依赖
+- 文件：`admin/data/blindwalk.db`；`PRAGMA journal_mode=WAL`
+- 表：`pois`（字段同 §2，`tags`/`safety`/`llm` 用 JSON 文本列）、`meta`（schema 版本）、`sessions`（预留，v2 未使用）
+- **会话权威存储是 `admin/data/sessions.json`**（§3.1）；SQLite 的 `sessions` 表只是预留，不要写它
+- **自动迁移**：首次启动若存在 `admin/data/pois.json` 且库为空 → 全量导入并备份为 `pois.json.migrated-<ts>`
+- 旧数据只有 `safety.score` 时：**score 视为 day 保留**，`night/nightVerdict/reasons` 用规则补齐
+- `PoiStore` 的公开方法签名保持不变（`load/save/all/get/list/create/update/remove/findDuplicate/addCandidates/stats/approved`），只换底层实现
 
 ## 4. HTTP API
 
@@ -164,7 +198,8 @@ POST /api/export
       "category": "venue", "emoji": "🎻", "rarity": "epic", "area": "near",
       "address": "黄浦区 · 延安东路",
       "photoUrl": "https://…", "photoCredit": "Wikimedia Commons",
-      "summary": "…", "why": "…", "task": "…", "hints": ["…","…","…"]
+      "summary": "…", "why": "…", "task": "…", "hints": ["…","…","…"],
+      "safety": { "day": 4, "night": 2, "nightVerdict": "caution" }
     }
   ]
 }

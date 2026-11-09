@@ -32,7 +32,13 @@ import {
   normalizePoi,
   resolveConfig
 } from './llm.mjs';
-import { serveStatic } from './static.mjs';
+import { renderLoginPage, serveStatic } from './static.mjs';
+import {
+  AuthManager,
+  SESSION_TTL_MS,
+  clearSessionCookie,
+  sessionCookie
+} from './auth.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const SERVER_DIR = path.dirname(__filename);
@@ -55,6 +61,35 @@ function sendJson(res, status, payload) {
     'Access-Control-Allow-Origin': '*'
   });
   res.end(body);
+}
+
+function sendHtml(res, status, html) {
+  const body = Buffer.from(html, 'utf8');
+  res.writeHead(status, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': body.length,
+    'Cache-Control': 'no-store'
+  });
+  res.end(body);
+}
+
+function sendJsonWithHeaders(res, status, payload, headers) {
+  const body = Buffer.from(JSON.stringify(payload), 'utf8');
+  const merged = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': body.length,
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*'
+  };
+  const keys = Object.keys(headers || {});
+  for (const key of keys) merged[key] = headers[key];
+  res.writeHead(status, merged);
+  res.end(body);
+}
+
+function redirect(res, location) {
+  res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' });
+  res.end();
 }
 
 function sendError(res, error) {
@@ -189,6 +224,11 @@ export function createServer(options = {}) {
   const ingestCandidates = options.ingestCandidates || fetchCandidates;
   const fetchImpl = options.fetchImpl;
   const llmEnv = options.llmEnv || process.env;
+  const auth = options.auth || new AuthManager({
+    dataDir: dataDir,
+    env: options.authEnv || process.env
+  });
+  auth.startPruneTimer();
 
   async function handleApi(req, res, pathname, searchParams) {
     const method = req.method || 'GET';
@@ -368,18 +408,63 @@ export function createServer(options = {}) {
     }
     const pathname = parsedUrl.pathname;
 
+    // ---------- 认证端点（无需登录） ----------
+    if (pathname === '/api/auth/status' && method === 'GET') {
+      sendJson(res, 200, auth.status(req));
+      return;
+    }
+    if (pathname === '/api/auth/login' && method === 'POST') {
+      readBody(req).then((body) => {
+        const token = auth.login(body.password, req);
+        sendJsonWithHeaders(res, 200, { ok: true }, {
+          'Set-Cookie': sessionCookie(token, Math.floor(SESSION_TTL_MS / 1000))
+        });
+      }).catch((error) => sendError(res, error));
+      return;
+    }
+    if (pathname === '/api/auth/logout' && method === 'POST') {
+      auth.logout(req);
+      sendJsonWithHeaders(res, 200, { ok: true }, {
+        'Set-Cookie': clearSessionCookie()
+      });
+      return;
+    }
+    if (pathname.startsWith('/api/auth/')) {
+      sendJson(res, 404, { error: '接口不存在', code: 'NOT_FOUND' });
+      return;
+    }
+
+    // ---------- /api 必须登录 ----------
     if (pathname.startsWith('/api/') || pathname === '/api') {
+      if (!auth.isAuthenticated(req)) {
+        sendJson(res, 401, { error: '未登录或会话已过期', code: 'UNAUTHENTICATED' });
+        return;
+      }
       handleApi(req, res, pathname, parsedUrl.searchParams).catch((error) => sendError(res, error));
       return;
     }
 
+    // ---------- 内置登录页 ----------
+    if (pathname === '/admin/login' || pathname === '/admin/login/') {
+      if (auth.isAuthenticated(req)) {
+        redirect(res, '/admin/');
+        return;
+      }
+      sendHtml(res, 200, renderLoginPage());
+      return;
+    }
+
+    // ---------- 管理界面 ----------
     if (pathname === '/' || pathname === '/admin') {
-      res.writeHead(302, { Location: '/admin/' });
-      res.end();
+      redirect(res, auth.isAuthenticated(req) ? '/admin/' : '/admin/login');
       return;
     }
 
     if (pathname.startsWith('/admin/')) {
+      if (!auth.isAuthenticated(req)) {
+        redirect(res, '/admin/login');
+        return;
+      }
       const relative = pathname.slice('/admin'.length) || '/';
       serveStatic(req, res, publicDir, relative);
       return;
@@ -398,7 +483,12 @@ export function createServer(options = {}) {
   });
 
   server.store = store;
-  server.paths = { dataDir, publicDir, exportPath, backupPath };
+  server.auth = auth;
+  server.paths = { dataDir, dbPath: store.dbPath, publicDir, exportPath, backupPath };
+  server.on('close', () => {
+    auth.stopPruneTimer();
+    store.close();
+  });
   return server;
 }
 
@@ -412,10 +502,23 @@ export function startServer(options = {}) {
   const server = createServer(options);
   server.listen(port, host, () => {
     const status = llmStatus(process.env);
-    console.log('盲走 BlindWalk · 兴趣点管理后台');
+    console.log('盲走 BlindWalk · 兴趣点管理后台 v2（SQLite + 登录）');
     console.log('  管理界面  http://' + host + ':' + port + '/admin');
+    console.log('  登录入口  http://' + host + ':' + port + '/admin/login');
     console.log('  数据目录  ' + server.paths.dataDir);
+    console.log('  数据库    ' + server.paths.dbPath);
     console.log('  导出路径  ' + server.paths.exportPath);
+    if (server.store.migration && server.store.migration.migrated) {
+      console.log('  迁移      v1 pois.json → SQLite：' + server.store.migration.count + ' 条');
+    }
+    const auth = server.auth;
+    if (auth.passwordSource === 'generated') {
+      console.log('  ' + auth.getExitWarning());
+    } else if (auth.passwordSource === 'env') {
+      console.log('  登录密码  来自环境变量 BW_ADMIN_PASSWORD');
+    } else {
+      console.log('  登录密码  来自 admin/data/admin.secret.json（未打印）');
+    }
     console.log(
       '  AI 模式   ' + status.mode + '（' + (status.mode === 'offline'
         ? '未配置 BW_LLM_API_KEY，使用离线规则'

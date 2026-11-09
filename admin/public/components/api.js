@@ -28,6 +28,16 @@
       try { payload = await response.text(); } catch (_) { payload = null; }
     }
 
+    // 会话失效统一跳登录页（服务端 v2 提供 /admin/login）
+    if (response.status === 401) {
+      const isAuthCall = path.indexOf('/api/auth/') === 0;
+      if (!isAuthCall && !window.__BW_LOGIN_REDIRECT__) {
+        window.__BW_LOGIN_REDIRECT__ = true;
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.replace('/admin/login?next=' + next);
+      }
+    }
+
     if (!response.ok) {
       const message = payload && payload.error ? payload.error : ('请求失败（HTTP ' + response.status + '）');
       const err = new Error(message);

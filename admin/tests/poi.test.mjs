@@ -63,7 +63,14 @@ test('buildPoi：默认值 / id / 时间戳 / 必填校验', () => {
   assert.equal(poi.createdAt, 1000);
   assert.equal(poi.updatedAt, 1000);
   assert.deepEqual(poi.hints, []);
-  assert.deepEqual(poi.safety, { score: 3, walkable: true, crowded: 'medium', notes: '' });
+  // v2 safety：score 保持为白天分，并带 day/night/nightVerdict/reasons
+  assert.equal(typeof poi.safety.score, 'number');
+  assert.equal(poi.safety.score, poi.safety.day);
+  assert.ok(poi.safety.day >= 1 && poi.safety.day <= 5);
+  assert.ok(poi.safety.night >= 1 && poi.safety.night <= 5);
+  assert.ok(['avoid', 'caution', 'ok'].includes(poi.safety.nightVerdict));
+  assert.ok(Array.isArray(poi.safety.reasons));
+  assert.equal(typeof poi.safety.walkable, 'boolean');
   assert.equal(poi.llm.mode, 'offline');
 
   throwsCode(() => buildPoi(sampleInput({ name: '' })), 'BAD_REQUEST');
@@ -137,14 +144,18 @@ test('导出：只含 approved、字段裁剪正确、count/version 正确', () 
   const exported = doc.pois[0];
   const expectedKeys = [
     'id', 'name', 'lat', 'lon', 'category', 'emoji', 'rarity', 'area',
-    'address', 'photoUrl', 'photoCredit', 'summary', 'why', 'task', 'hints'
+    'address', 'photoUrl', 'photoCredit', 'summary', 'why', 'task', 'hints', 'safety'
   ];
   assert.deepEqual(Object.keys(exported).sort(), expectedKeys.slice().sort());
   assert.equal(exported.name, '上海音乐厅');
   assert.equal(exported.status, undefined);
   assert.equal(exported.source, undefined);
-  assert.equal(exported.safety, undefined);
   assert.equal(exported.llm, undefined);
+  // v2：导出 safety 只保留 day / night / nightVerdict
+  assert.deepEqual(Object.keys(exported.safety).sort(), ['day', 'night', 'nightVerdict'].sort());
+  assert.ok(exported.safety.day >= 1 && exported.safety.day <= 5);
+  assert.ok(exported.safety.night >= 1 && exported.safety.night <= 5);
+  assert.ok(['avoid', 'caution', 'ok'].includes(exported.safety.nightVerdict));
   assert.equal(toExportPoi(draft).status, undefined);
 });
 

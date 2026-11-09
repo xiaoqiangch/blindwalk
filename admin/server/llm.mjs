@@ -16,10 +16,10 @@ import {
   categoryMeta,
   categoryTask,
   clipText,
-  leaksName,
   normalizeSafety,
   scrubHints
 } from './poi.mjs';
+import { completeSafety, scoreSafety } from './safety.mjs';
 
 export const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1';
 export const DEFAULT_MODEL = 'deepseek-chat';
@@ -258,55 +258,48 @@ export function offlineNormalize(poi, now = Date.now()) {
   return updated;
 }
 
-/** 离线 analyze：规则打分（契约 §6） */
+/**
+ * 离线 analyze：用 v2 安全分级（白天/夜间/夜间建议）打分。
+ * 语义保守：公园/河岸/老房子夜间扣分，博物馆/演出场所/便利店白天加分；
+ * 夜间建议 avoid 时，白天再高也最多给 risky。
+ */
 export function offlineAnalyze(poi, now = Date.now()) {
-  const meta = categoryMeta(poi.category);
-  const reasons = [];
-  let score = 3;
+  const scored = scoreSafety(poi, { crowded: poi.safety && poi.safety.crowded });
+  const safety = {
+    score: scored.day,
+    walkable: scored.walkable,
+    crowded: scored.crowded,
+    notes: scored.reasons.join('；'),
+    day: scored.day,
+    night: scored.night,
+    nightVerdict: scored.nightVerdict,
+    reasons: scored.reasons
+  };
 
-  if (poi.photoUrl) {
-    score += 1;
-    reasons.push('有图片 +1');
-  }
-  if (['park', 'river', 'garden'].includes(poi.category)) {
-    score += 1;
-    reasons.push('公园/河岸/花园 +1');
-  }
-  for (const hint of poi.hints || []) {
-    if (leaksName(hint, poi.name)) {
-      score -= 3;
-      reasons.push('线索含地名 -3');
-      break;
-    }
-  }
-  if (!poi.why) {
-    score -= 1;
-    reasons.push('缺 why -1');
-  }
-  if (!poi.task) {
-    score -= 1;
-    reasons.push('缺 task -1');
-  }
-  const finalScore = Math.max(1, Math.min(5, score));
+  let verdict = 'reject';
+  if (scored.day >= 4) verdict = 'good';
+  else if (scored.day >= 2) verdict = 'risky';
+  if (scored.nightVerdict === 'avoid' && verdict === 'good') verdict = 'risky';
 
-  let crowded = 'medium';
-  if (['market', 'plaza', 'venue', 'museum'].includes(poi.category)) crowded = 'high';
-  else if (['park', 'river', 'library', 'garden', 'bench'].includes(poi.category)) crowded = 'low';
-
-  const verdict = finalScore >= 4 ? 'good' : finalScore >= 2 ? 'risky' : 'reject';
-  const suggestion = verdict === 'good'
-    ? '可以上架：' + meta.label + '，' + (reasons.length ? reasons.join('，') : '无明显风险') + '。'
-    : verdict === 'risky'
-      ? '建议人工复核：' + (reasons.length ? reasons.join('，') : '信息不足') + '，补充线索与任务后再上架。'
-      : '暂不建议上架：' + (reasons.length ? reasons.join('，') : '风险较高') + '，建议换一个地点。';
+  const nightText = scored.nightVerdict === 'avoid'
+    ? '夜间不建议去'
+    : scored.nightVerdict === 'caution'
+      ? '夜间建议结伴'
+      : '夜间可以去';
+  let suggestion = '';
+  if (verdict === 'good') {
+    suggestion = '可以上架：白天分 ' + scored.day + '，' + nightText +
+      '（夜间分 ' + scored.night + '）。';
+  } else if (verdict === 'risky') {
+    suggestion = '建议人工复核：白天分 ' + scored.day + '，' + nightText +
+      '（夜间分 ' + scored.night + '），补充线索与任务后再上架。';
+  } else {
+    suggestion = '暂不建议上架：白天分 ' + scored.day + '，' + nightText +
+      '（夜间分 ' + scored.night + '），建议换一个地点。';
+  }
 
   return {
-    safety: {
-      score: finalScore,
-      walkable: finalScore >= 2,
-      crowded,
-      notes: '离线规则：' + (reasons.length ? reasons.join('，') : '无额外风险') + '。'
-    },
+    safety,
     verdict,
     suggestion,
     mode: 'offline',
@@ -450,7 +443,8 @@ export async function analyzePoi(poi, options = {}) {
     try {
       const result = await callLlmJson(buildAnalyzeMessages(poi), { ...options, config });
       const data = result.data || {};
-      const safety = normalizeSafety(data.safety);
+      // 模型可以覆盖 score/notes/crowded；缺失的 day/night/nightVerdict 用规则补齐（契约 §2）
+      const safety = completeSafety(poi, normalizeSafety(data.safety));
       const verdict = ['good', 'risky', 'reject'].includes(data.verdict) ? data.verdict : 'risky';
       analysis = {
         safety,

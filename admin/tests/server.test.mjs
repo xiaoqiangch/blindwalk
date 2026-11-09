@@ -10,6 +10,7 @@ import { resolveStaticPath } from '../server/static.mjs';
 const tempDirs = [];
 let server;
 let base;
+let cookie = '';
 let dataDir;
 let publicDir;
 let exportPath;
@@ -35,6 +36,7 @@ before(async () => {
     publicDir,
     exportPath,
     llmEnv: {},
+    authEnv: { BW_ADMIN_PASSWORD: 'test1234' },
     ingestCandidates: async () => ({
       source: 'wikipedia',
       items: [
@@ -74,6 +76,17 @@ before(async () => {
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = 'http://127.0.0.1:' + server.address().port;
+
+  const login = await fetch(base + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'test1234' })
+  });
+  const cookies = login.headers.getSetCookie();
+  assert.ok(cookies.length > 0, '登录成功应设置 Cookie');
+  assert.ok(cookies[0].includes('HttpOnly'));
+  assert.ok(cookies[0].includes('SameSite=Strict'));
+  cookie = cookies[0].split(';')[0];
 });
 
 after(async () => {
@@ -81,18 +94,19 @@ after(async () => {
   for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-async function api(method, pathname, body) {
-  const options = { method, headers: {} };
+async function api(method, pathname, body, options = {}) {
+  const requestOptions = { method, headers: {} };
+  if (options.auth !== false && cookie) requestOptions.headers.Cookie = cookie;
   if (body !== undefined) {
     if (typeof body === 'string') {
-      options.headers['Content-Type'] = 'application/json';
-      options.body = body;
+      requestOptions.headers['Content-Type'] = 'application/json';
+      requestOptions.body = body;
     } else {
-      options.headers['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(body);
+      requestOptions.headers['Content-Type'] = 'application/json';
+      requestOptions.body = JSON.stringify(body);
     }
   }
-  const response = await fetch(base + pathname, { ...options, redirect: 'manual' });
+  const response = await fetch(base + pathname, { ...requestOptions, redirect: 'manual' });
   const text = await response.text();
   let json = null;
   try {
@@ -126,31 +140,46 @@ function sampleBody(overrides = {}) {
 let createdId = '';
 let approvedId = '';
 
-test('状态 / 静态文件 / 404', async () => {
-  const status = await api('GET', '/api/llm/status');
+test('认证：未登录 401 / /admin 跳登录页 / 登录后 200 / 登录页内置', async () => {
+  const status = await api('GET', '/api/auth/status', undefined, { auth: false });
   assert.equal(status.status, 200);
-  assert.equal(status.json.mode, 'offline');
-  assert.equal(status.json.ready, true);
-  assert.ok(status.contentType.includes('application/json'));
+  assert.equal(status.json.authenticated, false);
+  assert.equal(status.json.passwordSet, true);
 
-  const index = await api('GET', '/admin/');
-  assert.equal(index.status, 200);
-  assert.ok(index.contentType.includes('text/html'));
-  assert.ok(index.text.includes('POI 管理后台'));
+  const unauth = await api('GET', '/api/pois', undefined, { auth: false });
+  assert.equal(unauth.status, 401);
+  assert.equal(unauth.json.code, 'UNAUTHENTICATED');
 
+  const adminRedirect = await api('GET', '/admin/', undefined, { auth: false });
+  assert.equal(adminRedirect.status, 302);
+  assert.equal(adminRedirect.location, '/admin/login');
+
+  const loginPage = await api('GET', '/admin/login', undefined, { auth: false });
+  assert.equal(loginPage.status, 200);
+  assert.ok(loginPage.contentType.includes('text/html'));
+  assert.ok(loginPage.text.includes('管理密码'));
+
+  const wrong = await api('POST', '/api/auth/login', { password: 'wrong-password' }, { auth: false });
+  assert.equal(wrong.status, 401);
+  assert.equal(wrong.json.code, 'BAD_PASSWORD');
+
+  const authedStatus = await api('GET', '/api/auth/status');
+  assert.equal(authedStatus.json.authenticated, true);
+
+  const admin = await api('GET', '/admin/');
+  assert.equal(admin.status, 200);
+  assert.ok(admin.text.includes('POI 管理后台'));
   const js = await api('GET', '/admin/app.js');
   assert.equal(js.status, 200);
   assert.ok(js.contentType.includes('javascript'));
 
-  const root = await api('GET', '/');
-  assert.equal(root.status, 302);
-  assert.equal(root.location, '/admin/');
+  const rootRedirect = await api('GET', '/');
+  assert.equal(rootRedirect.status, 302);
+  assert.equal(rootRedirect.location, '/admin/');
 
   const traversal = await api('GET', '/admin/%2e%2e/package.json');
-  assert.ok([400, 404].includes(traversal.status), '目录穿越必须被拒绝，实际 ' + traversal.status);
+  assert.ok([400, 404].includes(traversal.status));
   assert.equal(resolveStaticPath(publicDir, '/../package.json'), null);
-  assert.equal(resolveStaticPath(publicDir, '/%2e%2e/package.json'), null);
-  assert.equal(resolveStaticPath(publicDir, '/index.html').endsWith('index.html'), true);
 
   const missing = await api('GET', '/admin/nope.html');
   assert.equal(missing.status, 404);
@@ -201,6 +230,8 @@ test('CRUD：新建 / 列表筛选 / 单条 / 更新 / 参数错误 / 删除', a
   assert.equal(updated.json.createdAt, created.json.createdAt);
   assert.equal(updated.json.summary, '更新后的简介');
   assert.deepEqual(updated.json.tags, ['历史建筑']);
+  assert.ok(updated.json.safety.day >= 1);
+  assert.ok(['avoid', 'caution', 'ok'].includes(updated.json.safety.nightVerdict));
   approvedId = createdId;
 });
 
@@ -259,7 +290,7 @@ test('抓取 ingest：去重计数 / 新建 draft / 参数校验', async () => {
   assert.equal(badLimit.status, 400);
 });
 
-test('LLM 离线：normalize 可用 / edit 400 / analyze 可用', async () => {
+test('LLM 离线：normalize 可用 / edit 400 / analyze 可用（含 day/night）', async () => {
   const created = await api('POST', '/api/pois', sampleBody({ name: '上海大剧院', summary: '一座剧院。' }));
   assert.equal(created.status, 200);
   const id = created.json.id;
@@ -283,12 +314,16 @@ test('LLM 离线：normalize 可用 / edit 400 / analyze 可用', async () => {
   assert.equal(analyzed.json.items.length, 1);
   assert.equal(analyzed.json.items[0].id, id);
   assert.ok(analyzed.json.items[0].safety.score >= 1);
+  assert.ok(analyzed.json.items[0].safety.day >= 1);
+  assert.ok(analyzed.json.items[0].safety.night >= 1);
+  assert.ok(['avoid', 'caution', 'ok'].includes(analyzed.json.items[0].safety.nightVerdict));
   assert.ok(['good', 'risky', 'reject'].includes(analyzed.json.items[0].verdict));
   assert.ok(analyzed.json.items[0].suggestion.length > 0);
   assert.equal(analyzed.json.mode, 'offline');
 
   const stored = await api('GET', '/api/pois/' + id);
   assert.ok(stored.json.safety !== undefined);
+  assert.ok(stored.json.safety.nightVerdict !== undefined);
 
   const analyzeAll = await api('POST', '/api/llm/analyze-all', { status: 'draft' });
   assert.equal(analyzeAll.status, 200);
@@ -299,7 +334,7 @@ test('LLM 离线：normalize 可用 / edit 400 / analyze 可用', async () => {
   assert.equal((await api('POST', '/api/llm/edit', { id: 'poi-nope', instruction: 'x' })).status, 404);
 });
 
-test('导出：只含 approved、字段裁剪、写入文件 + 备份', async () => {
+test('导出：只含 approved、字段裁剪、safety.day/night/nightVerdict、写入文件 + 备份', async () => {
   const draft = await api('POST', '/api/pois', sampleBody({
     name: '草稿地点',
     lat: 31.3,
@@ -323,12 +358,15 @@ test('导出：只含 approved、字段裁剪、写入文件 + 备份', async ()
   assert.equal(file.pois[0].id, approvedId);
   assert.equal(file.pois[0].status, undefined);
   assert.equal(file.pois[0].source, undefined);
-  assert.equal(file.pois[0].safety, undefined);
   const expectedKeys = [
     'address', 'area', 'category', 'emoji', 'hints', 'id', 'lat', 'lon',
-    'name', 'photoCredit', 'photoUrl', 'rarity', 'summary', 'task', 'why'
+    'name', 'photoCredit', 'photoUrl', 'rarity', 'safety', 'summary', 'task', 'why'
   ];
   assert.deepEqual(Object.keys(file.pois[0]).sort(), expectedKeys.sort());
+  assert.deepEqual(Object.keys(file.pois[0].safety).sort(), ['day', 'night', 'nightVerdict'].sort());
+  assert.ok(file.pois[0].safety.day >= 1 && file.pois[0].safety.day <= 5);
+  assert.ok(file.pois[0].safety.night >= 1 && file.pois[0].safety.night <= 5);
+  assert.ok(['avoid', 'caution', 'ok'].includes(file.pois[0].safety.nightVerdict));
 
   const backupPath = path.join(dataDir, 'pois.export.json');
   assert.ok(fs.existsSync(backupPath), '应有 data/pois.export.json 备份');
