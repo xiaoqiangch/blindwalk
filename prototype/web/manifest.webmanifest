@@ -1,6 +1,6 @@
 {
-  "name": "盲走 BlindWalk",
-  "short_name": "盲走",
+  "name": "衣衣歪歪",
+  "short_name": "衣衣歪歪",
   "description": "散步盲盒：不告诉你目的地，到了才揭晓一座城市的惊喜。",
   "start_url": "./index.html?demo=1#/home",
   "scope": "./",

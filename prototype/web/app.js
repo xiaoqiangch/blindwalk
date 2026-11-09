@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v26';
+  var APP_VERSION = 'v27';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1042,7 +1042,7 @@
       '<circle cx="45" cy="40" r="26" fill="#E89B4C" opacity=".13"/>' +
       '<rect x="22" y="32" width="46" height="32" rx="5" fill="#FFFBF3" stroke="#A69C8C" stroke-width="1.4" stroke-dasharray="4 4"/>' +
       '<rect x="19" y="24" width="52" height="12" rx="3.5" fill="#FFFBF3" stroke="#A69C8C" stroke-width="1.4" stroke-dasharray="4 4"/>' +
-      '<text x="45" y="55" text-anchor="middle" font-size="16" font-weight="700" fill="#A69C8C" font-family="inherit">?</text>' +
+      '<text x="45" y="55" text-anchor="middle" font-size="18" font-weight="700" fill="#A69C8C" font-family="inherit">?</text>' +
       '</svg>';
   }
 
@@ -1139,7 +1139,7 @@
   function resumeChip() {
     var session = state.session;
     if (!session || (session.phase !== 'walking' && session.phase !== 'arrived')) return '';
-    return '<button class="boxcard__resume" data-action="resume" aria-label="继续这趟盲走">继续 · ' +
+    return '<button class="boxcard__resume" data-action="resume" aria-label="继续这趟散步">继续 · ' +
       esc(session.remainingMeters) + ' m ›</button>';
   }
 
@@ -1641,7 +1641,7 @@
       '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
       '</div>' +
       '<div class="journey__status">' + realStatusHTML() + '</div>' +
-      pathViewHTML() +
+      (isRealSession(session) ? pathViewHTML() : '') +
       navCardHTML(session) +
       '<div class="journey__side">' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
@@ -1778,7 +1778,7 @@
       '<path d="M 0 -9 L 4 0 L 0 -2 L -4 0 Z" fill="#D25C3A"/>' +
       '<path d="M 0 9 L 4 0 L 0 2 L -4 0 Z" fill="#C9C0B2"/>' +
       '</g>' +
-      '<text x="0" y="-18" text-anchor="middle" font-size="9" fill="#A69C8C">北</text>' +
+      '<text x="0" y="-18" text-anchor="middle" font-size="11" fill="#A69C8C">北</text>' +
       '</g>' +
       '</svg>' +
       '<p class="pathview__cap" data-path-cap>迷雾模式 · 只看见前后一段</p>' +
@@ -1832,7 +1832,12 @@
     var cap = host.querySelector('[data-path-cap]');
 
 
-    if (!session || !isRealSession(session) || !state.route || !state.route.points || state.route.points.length < 2) {
+    if (!session || !isRealSession(session)) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    if (!state.route || !state.route.points || state.route.points.length < 2) {
       host.classList.add('pathview--empty');
       line.setAttribute('d', '');
       chevrons.innerHTML = '';
@@ -2709,14 +2714,14 @@
   function openAboutModal() {
     var inner = '<div class="modal__top"><span class="micro">关于</span>' +
       '<button type="button" class="modal__close" data-action="close-modal" aria-label="关闭">' + ICON.close + '</button></div>' +
-      '<h3>盲走 BlindWalk</h3>' +
+      '<h3>衣衣歪歪</h3>' +
       '<div class="modal__body" style="margin-top:8px">' +
       '<p>不看见终点，才看得见路。</p>' +
       '<p>打开一个散步盲盒，它只带你走，不告诉你去哪；到了，才揭晓这个地方藏着的小惊喜。</p>' +
       '<p style="color:var(--ink-3);font-size:11px">原型 0.1 · 所有地点为虚构演示数据 · 数据只存在本机</p>' +
       '</div>' +
       '<div class="modal__actions"><button type="button" class="btn btn--primary" data-action="close-modal">好</button></div>';
-    dom.overlayRoot.innerHTML = modalShell(inner, '关于盲走');
+    dom.overlayRoot.innerHTML = modalShell(inner, '关于衣衣歪歪');
   }
 
   function openPrivacyModal() {
