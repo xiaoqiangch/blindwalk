@@ -463,7 +463,10 @@
     { id: 'streak_7', name: '七日不断', icon: '🔥', detail: '连续 7 天开盒', target: 7 },
     { id: 'together_1', name: '同频共振', icon: '📡', detail: '完成 1 次同频散步', target: 1 },
     { id: 'share_3', name: '分享欲', icon: '📣', detail: '发布 3 条动态', target: 3 },
-    { id: 'km_100', name: '盲走百公里', icon: '🧭', detail: '累计 100 km', target: 100 }
+    { id: 'km_100', name: '盲走百公里', icon: '🧭', detail: '累计 100 km', target: 100 },
+    { id: 'bury_1', name: '埋下一颗', icon: '🌱', detail: '第一次给别人埋下惊喜', target: 1 },
+    { id: 'seek_3', name: '寻光者', icon: '🔎', detail: '找到 3 个别人埋的惊喜', target: 3 },
+    { id: 'found_5', name: '被找到的人', icon: '💌', detail: '你埋的惊喜被找到 5 次', target: 5 }
   ];
 
   /* MARK: - 圈子 mock（SocialFeed.swift） */
@@ -595,6 +598,77 @@
     minePosts: DEMO_MINE_POSTS
   };
 
+  /* MARK: - 埋惊喜 / 寻惊喜（Surprise.swift 的 web 镜像）
+   * 演示坐标围绕人民广场铺开；真实使用时用 navigator.geolocation。
+   * 照片用 dataURL（真实使用时由用户拍摄，这里用占位）。
+   */
+  var SURPRISE_ORIGIN = { lat: 31.2304, lng: 121.4737 };
+
+  /* 把「相对原点的米数 + 方位角」换算成经纬度（与 GeoMath.offset 同思路） */
+  function geoOffset(meters, bearingDeg) {
+    var R = 6371000;
+    var ang = meters / R;
+    var brg = bearingDeg * Math.PI / 180;
+    var lat1 = SURPRISE_ORIGIN.lat * Math.PI / 180;
+    var lon1 = SURPRISE_ORIGIN.lng * Math.PI / 180;
+    var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(brg));
+    var lon2 = lon1 + Math.atan2(Math.sin(brg) * Math.sin(ang) * Math.cos(lat1),
+                                 Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2));
+    return { lat: lat2 * 180 / Math.PI, lng: lon2 * 180 / Math.PI };
+  }
+
+  var DEMO_SURPRISES = [
+    {
+      id: 'surprise-seed-1',
+      authorName: '小满', authorEmoji: '🐱',
+      photoData: null,  /* null = 演示占位，走「演示匹配」 */
+      message: '这张是我在等一杯咖啡时拍的。柜台后面那盏灯，晚上会有很软的一圈光。',
+      location: geoOffset(320, 24),
+      areaLabel: '静安 · 街角',
+      clues: ['有人在这里放下了一张照片。先走近一点。', '往灯最暖的那扇窗走。', '就是这儿。抬手机，拍一张和 TA 一样的。'],
+      radiusMeters: 60, seekerPoints: 80, authorPoints: 40,
+      createdAt: Date.now() - 3 * 86400000,
+      status: 'waiting'
+    },
+    {
+      id: 'surprise-seed-2',
+      authorName: '阿岛', authorEmoji: '🎧',
+      photoData: null,
+      message: '桥洞下的那面墙，早上七点没有人，光会斜着打进来。',
+      location: geoOffset(540, 118),
+      areaLabel: '河岸 · 桥洞',
+      clues: ['有人在这里放下了一张照片。先走近一点。', '找一块回声很大的地方。', '就是这儿。抬手机，拍一张和 TA 一样的。'],
+      radiusMeters: 60, seekerPoints: 80, authorPoints: 40,
+      createdAt: Date.now() - 5 * 86400000,
+      status: 'waiting'
+    },
+    {
+      id: 'surprise-seed-3',
+      authorName: '77', authorEmoji: '🌙',
+      photoData: null,
+      message: '二十四小时的洗衣店，凌晨两点最像宇宙飞船。我拍了它转起来的那个瞬间。',
+      location: geoOffset(760, 300),
+      areaLabel: '附近 · 街口',
+      clues: ['有人在这里放下了一张照片。先走近一点。', '找一块很亮的玻璃，里面在转。', '就是这儿。抬手机，拍一张和 TA 一样的。'],
+      radiusMeters: 60, seekerPoints: 80, authorPoints: 40,
+      createdAt: Date.now() - 8 * 86400000,
+      status: 'waiting'
+    },
+    {
+      id: 'surprise-seed-4',
+      authorName: '老陈', authorEmoji: '🍜',
+      photoData: null,
+      message: '第三张塑料凳，腿短一截。老板故意留的。',
+      location: geoOffset(210, 200),
+      areaLabel: '老城区 · 街口',
+      clues: ['有人在这里放下了一张照片。先走近一点。', '闻，有热汤的味道。', '就是这儿。抬手机，拍一张和 TA 一样的。'],
+      radiusMeters: 60, seekerPoints: 80, authorPoints: 40,
+      createdAt: Date.now() - 11 * 86400000,
+      status: 'found',
+      finderName: '小满', foundAt: Date.now() - 9 * 86400000, matchScore: 0.78
+    }
+  ];
+
   window.BW_DATA = {
     PLACES: PLACES,
     PLACE_MAP: PLACES.reduce(function (map, place) {
@@ -602,6 +676,9 @@
       return map;
     }, {}),
     DEMO_ORDER: DEMO_ORDER,
+    DEMO_SURPRISES: DEMO_SURPRISES,
+    SURPRISE_ORIGIN: SURPRISE_ORIGIN,
+    geoOffset: geoOffset,
     RARITY: RARITY,
     MOODS: MOODS,
     DURATIONS: DURATIONS,

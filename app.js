@@ -7,7 +7,8 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/achievements', '/watch'];
+  var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile',
+    '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises'];
   var TAB_ROUTES = ['/home', '/cards', '/social', '/profile'];
   var LEVEL_NAMES = ['出门新手', '街角观察员', '城市漫游者', '惊喜收藏家', '迷雾探险家',
     '黄昏猎人', '夜路诗人', '盲走大师', '城市传说', '盲盒之神'];
@@ -26,7 +27,13 @@
     revealPhase: null,
     arriving: false,
     shaking: false,
-    boardOpen: false
+    boardOpen: false,
+    /* 埋惊喜 / 寻惊喜 */
+    myLocation: null,
+    buryLocation: null,
+    seekShot: null,
+    demoArrived: false,
+    seekID: null
   };
   var timers = { journey: null, reveal: [] };
 
@@ -109,6 +116,7 @@
         session: state.session,
         reveal: state.reveal,
         feed: state.feed,
+        surprises: state.surprises,
         settings: state.settings
       }));
     } catch (err) { /* file:// 隐私模式等场景忽略 */ }
@@ -120,6 +128,8 @@
       if (!raw) return null;
       var data = JSON.parse(raw);
       if (!data || data.v !== 1 || !data.profile) return null;
+      // 向后兼容：旧数据没有 surprises 字段
+      if (!Array.isArray(data.surprises)) data.surprises = [];
       return data;
     } catch (err) { return null; }
   }
@@ -197,6 +207,9 @@
       case 'together_1': return p.togetherCount;
       case 'share_3': return myPostCount();
       case 'km_100': return Math.floor(p.totalKm);
+      case 'bury_1': return myBuryCount();
+      case 'seek_3': return myFoundCount();
+      case 'found_5': return mySurprisesFoundCount();
       default: return 0;
     }
   }
@@ -261,6 +274,9 @@
       session: null,
       reveal: null,
       feed: [],
+      surprises: [],
+      pendingBury: null,
+      pendingSeek: null,
       settings: { sound: true, haptic: true }
     };
   }
@@ -303,6 +319,11 @@
       return base.getTime();
     });
     state.profile.lastWalkAt = state.profile.walkArrivalTimes[0];
+
+    /* 埋惊喜演示数据：合并预置的「别人埋的」，以及「自己已埋过的」统计 */
+    state.surprises = D.DEMO_SURPRISES.map(function (item) {
+      return Object.assign({}, item, { createdAt: item.createdAt });
+    });
 
     state.session = {
       placeID: D.DEMO.session.placeID,
@@ -855,6 +876,7 @@
       '<p class="friends__copy"><b>3 个朋友</b>今晚也在散步</p>' +
       '</div>' +
       lastPart +
+      surpriseHubHTML() +
       '</section>';
   }
 
@@ -1438,6 +1460,545 @@
   }
 
   /* ============================================================
+     埋惊喜 / 寻惊喜（与 apple/Shared/Core/Surprise.swift 对齐）
+     ============================================================ */
+
+  /* ---- dHash 感知哈希：9×8 灰度差分 → 64 位字符串 ---- */
+  var DHASH_W = 9, DHASH_H = 8;
+  var MATCH_PASS = 0.45;
+
+  function photoToGray(image) {
+    var canvas = document.createElement('canvas');
+    canvas.width = DHASH_W;
+    canvas.height = DHASH_H;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0, DHASH_W, DHASH_H);
+    var data = ctx.getImageData(0, 0, DHASH_W, DHASH_H).data;
+    var gray = [];
+    for (var i = 0; i < data.length; i += 4) {
+      gray.push(Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]));
+    }
+    return gray;
+  }
+
+  function dHashFromGray(gray) {
+    var bits = '';
+    for (var row = 0; row < DHASH_H; row += 1) {
+      for (var col = 0; col < DHASH_W - 1; col += 1) {
+        var left = gray[row * DHASH_W + col];
+        var right = gray[row * DHASH_W + col + 1];
+        bits += (left < right ? '1' : '0');
+      }
+    }
+    return bits;
+  }
+
+  function hammingDistance(a, b) {
+    if (!a || !b || a.length !== b.length) return 64;
+    var d = 0;
+    for (var i = 0; i < a.length; i += 1) if (a[i] !== b[i]) d += 1;
+    return d;
+  }
+
+  function photoSimilarity(hashA, hashB) {
+    return Math.max(0, 1 - hammingDistance(hashA, hashB) / 32);
+  }
+
+  function matchVerdict(similarity) {
+    if (similarity >= 0.85) return '几乎一模一样。你找到了 TA 的视角。';
+    if (similarity >= 0.65) return '很像。你站的位置差不多就是那个点。';
+    if (similarity >= 0.45) return '有点像。再往那边挪两步会更接近。';
+    return '画面不太一样。不过这张也有你自己的意思。';
+  }
+
+  function hashDataURL(dataURL) {
+    return new Promise(function (resolve) {
+      if (!dataURL) { resolve(null); return; }
+      var img = new Image();
+      img.onload = function () { resolve(dHashFromGray(photoToGray(img))); };
+      img.onerror = function () { resolve(null); };
+      img.src = dataURL;
+    });
+  }
+
+  function compressImageToDataURL(file, callback) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var maxSide = 900;
+        var ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
+        var w = Math.round(img.width * ratio);
+        var h = Math.round(img.height * ratio);
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = function () { callback(null); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { callback(null); };
+    reader.readAsDataURL(file);
+  }
+
+  /* ---- 定位：失败降级到演示坐标，并明确标注 ---- */
+  function currentLocation(callback) {
+    var fallback = { lat: D.SURPRISE_ORIGIN.lat, lng: D.SURPRISE_ORIGIN.lng, demo: true };
+    if (!navigator.geolocation) { callback(fallback); return; }
+    var done = false;
+    var timer = window.setTimeout(function () {
+      if (done) return;
+      done = true;
+      callback(fallback);
+    }, 6000);
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        callback({ lat: pos.coords.latitude, lng: pos.coords.longitude, demo: false });
+      },
+      function () {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        callback(fallback);
+      },
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+    );
+  }
+
+  function geoDistance(a, b) {
+    if (!a || !b) return Infinity;
+    var R = 6371000;
+    var lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLon = (b.lng - a.lng) * Math.PI / 180;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+  }
+
+  /* ---- 惊喜集合派生 ---- */
+  function allSurprises() { return state.surprises || []; }
+
+  function waitingSurprises() {
+    return allSurprises().filter(function (s) { return s.status === 'waiting'; });
+  }
+
+  function myBuryCount() {
+    return allSurprises().filter(function (s) { return s.authorName === state.profile.displayName; }).length;
+  }
+
+  function myFoundCount() {
+    return allSurprises().filter(function (s) {
+      return s.status === 'found' && s.finderName === state.profile.displayName;
+    }).length;
+  }
+
+  function mySurprisesFoundCount() {
+    return allSurprises().filter(function (s) {
+      return s.status === 'found' && s.authorName === state.profile.displayName;
+    }).length;
+  }
+
+  function explorableSurprises() {
+    var me = state.profile.displayName;
+    return waitingSurprises().filter(function (s) { return s.authorName !== me; });
+  }
+
+  function surpriseByID(id) {
+    var list = allSurprises();
+    for (var i = 0; i < list.length; i += 1) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function distanceToSurprise(s) {
+    if (!ui.myLocation) return null;
+    return geoDistance(ui.myLocation, s.location);
+  }
+
+  function formatDistance(meters) {
+    if (meters === null || meters === undefined || !isFinite(meters)) return '很远';
+    if (meters < 1000) return Math.round(meters) + ' m';
+    return (meters / 1000).toFixed(1) + ' km';
+  }
+
+  /* ---- 埋下一个惊喜 ---- */
+  function burySurprise(payload) {
+    var item = {
+      id: 'surprise-' + Date.now() + '-' + Math.floor(Math.random() * 999),
+      authorName: state.profile.displayName,
+      authorEmoji: '🫥',
+      photoData: payload.photoData || null,
+      photoHash: payload.photoHash || null,
+      message: payload.message,
+      location: payload.location,
+      areaLabel: payload.areaLabel,
+      clues: [
+        '有人在这里放下了一张照片。先走近一点。',
+        payload.hint || '找到能把眼前的画面装进取景框的位置。',
+        '就是这儿。抬手机，拍一张和 TA 一样的。'
+      ],
+      radiusMeters: 60,
+      seekerPoints: 80,
+      authorPoints: 40,
+      createdAt: Date.now(),
+      status: 'waiting'
+    };
+    state.surprises = state.surprises || [];
+    state.surprises.unshift(item);
+    state.profile.xp = (state.profile.xp || 0) + 30;
+    var newly = syncAchievements();
+    save();
+    return { surprise: item, achievements: newly };
+  }
+
+  /* ---- 完成一次「找到并复刻」 ---- */
+  function completeSurpriseFind(id, photoData, photoHash, similarity) {
+    var item = surpriseByID(id);
+    if (!item || item.status !== 'waiting') return null;
+    var passed = similarity >= MATCH_PASS;
+    if (passed) {
+      item.status = 'found';
+      item.finderName = state.profile.displayName;
+      item.foundAt = Date.now();
+      item.finderPhotoData = photoData;
+      item.finderPhotoHash = photoHash;
+      item.matchScore = similarity;
+      state.profile.xp = (state.profile.xp || 0) + item.seekerPoints;
+      state.profile.surprisesSeeked = (state.profile.surprisesSeeked || 0) + 1;
+    } else {
+      state.profile.xp = (state.profile.xp || 0) + 10;
+    }
+    var newly = syncAchievements();
+    save();
+    return {
+      passed: passed,
+      seekerPoints: passed ? item.seekerPoints : 10,
+      authorPoints: passed ? item.authorPoints : 0,
+      similarity: similarity,
+      verdict: matchVerdict(similarity),
+      achievements: newly,
+      surprise: item
+    };
+  }
+
+  /* ---- 首页入口卡 ---- */
+  function surpriseHubHTML() {
+    var waiting = explorableSurprises().length;
+    var buried = myBuryCount();
+    var found = myFoundCount();
+    return '<section class="hub" aria-label="惊喜社区">' +
+      '<div class="hub__top"><span class="micro">惊喜社区</span>' +
+      '<span class="hub__meta">我埋了 ' + buried + ' · 找到 ' + found + '</span></div>' +
+      '<p class="hub__copy">留一张照片给陌生人，或者去找到别人的。</p>' +
+      '<div class="hub__actions">' +
+      '<button class="btn btn--primary hub__btn" data-action="go-bury" aria-label="埋下一个惊喜">埋下一个 ▲</button>' +
+      '<button class="btn btn--ghost hub__btn" data-action="go-seek" aria-label="去寻宝">去寻宝 · ' + waiting + ' 个在等你</button>' +
+      '</div></section>';
+  }
+
+  /* ---- 埋惊喜页 ---- */
+  function buryHTML() {
+    var pending = state.pendingBury || {};
+    var loc = ui.buryLocation;
+    var locText = loc
+      ? (loc.demo ? '📍 演示位置 · 静安' : '📍 已定位 · 真实位置')
+      : '📍 正在获取位置…';
+    var photoPart = pending.photoData
+      ? '<div class="shotwrap"><div class="shot__preview"><img src="' + pending.photoData +
+        '" alt="你要埋下的照片" /><button class="btn btn--quiet shot__retake" data-action="pick-bury-photo">重选一张</button></div></div>'
+      : '<button class="shot" data-action="pick-bury-photo" aria-label="拍一张或从相册选">' +
+        '<span class="shot__icon" aria-hidden="true">📷</span>' +
+        '<span class="shot__label">拍一张 / 从相册选</span>' +
+        '<span class="shot__hint">这张会留在原地，等一个人来找到它。</span></button>';
+
+    return '<section class="page">' +
+      '<div class="page__bar"><button class="iconbtn" data-action="back-home" aria-label="返回">' + ICON.back + '</button></div>' +
+      '<header class="page__hero"><h2>埋下一张照片</h2><p>它留在这里，等一个人来找到。</p></header>' +
+      photoPart +
+      '<div class="field"><span class="field__label">写一句话：为什么埋在这里</span>' +
+      '<textarea id="bury-message" class="ta" maxlength="60" placeholder="比如：这张是我在等一杯咖啡时拍的。" aria-label="为什么埋在这里">' +
+      esc(pending.message || '') + '</textarea>' +
+      '<span class="field__count" id="bury-message-count">' + (pending.message || '').length + '/60</span></div>' +
+      '<div class="field"><span class="field__label">（可选）给找它的人一句提示</span>' +
+      '<textarea id="bury-hint" class="ta ta--short" maxlength="40" placeholder="不能直接说答案哦。" aria-label="给找它的人一句提示">' +
+      esc(pending.hint || '') + '</textarea></div>' +
+      '<div class="locline">' + esc(locText) + '</div>' +
+      '<button class="btn btn--primary btn--block" data-action="submit-bury" aria-label="埋在这里">埋在这里</button>' +
+      '<p class="page__note">埋下即得神秘值 +30。有人找到并拍出同款时，你还会再得 +40。</p>' +
+      '</section>';
+  }
+
+  /* ---- 寻惊喜列表 ---- */
+  function seekHTML() {
+    var list = explorableSurprises();
+    var items = list.map(function (s) {
+      var dist = distanceToSurprise(s);
+      return '<button class="scard" data-action="open-surprise" data-id="' + esc(s.id) +
+        '" aria-label="查看' + esc(s.authorName) + '埋下的惊喜">' +
+        '<span class="scard__emoji" aria-hidden="true">' + s.authorEmoji + '</span>' +
+        '<span class="scard__body">' +
+        '<span class="scard__who">' + esc(s.authorName) + ' 埋在 · ' + esc(s.areaLabel) + '</span>' +
+        '<span class="scard__copy">一张照片，在某处等你。</span></span>' +
+        '<span class="scard__dist">' + esc(formatDistance(dist)) + '</span>' +
+        '<span class="scard__arrow" aria-hidden="true">' + ICON.chevron + '</span></button>';
+    }).join('');
+
+    var empty = '<div class="empty"><span class="empty__art" aria-hidden="true">🔍</span>' +
+      '<p>这附近还没有人埋下惊喜。</p><p>要不要先埋一个？</p>' +
+      '<button class="btn btn--primary" data-action="go-bury">埋下一个</button></div>';
+
+    return '<section class="page">' +
+      '<div class="page__bar"><button class="iconbtn" data-action="back-home" aria-label="返回">' + ICON.back + '</button></div>' +
+      '<header class="page__hero"><h2>附近的惊喜</h2><p>' + list.length + ' 张照片在某个角落等你。</p></header>' +
+      (list.length ? '<div class="slist">' + items + '</div>' : empty) +
+      '<p class="page__note">找到后要拍一张同款才算数。先别急着看原图。</p>' +
+      '</section>';
+  }
+
+  /* ---- 寻惊喜详情 ---- */
+  function seekDetailHTML() {
+    var item = state.pendingSeek || (ui.seekID ? surpriseByID(ui.seekID) : null) || explorableSurprises()[0] || null;
+    state.pendingSeek = item;
+    if (!item) {
+      return '<section class="page"><div class="page__bar">' +
+        '<button class="iconbtn" data-action="go-seek" aria-label="返回">' + ICON.back + '</button></div>' +
+        '<div class="empty"><p>这个惊喜已经不在了。</p></div></section>';
+    }
+    var dist = distanceToSurprise(item);
+    var inRange = dist !== null && dist <= item.radiusMeters;
+    var inRangeDemo = !!ui.demoArrived;
+
+    var unlocked = 1;
+    if (dist !== null) {
+      if (dist <= item.radiusMeters * 3) unlocked = 2;
+      if (dist <= item.radiusMeters) unlocked = 3;
+    }
+    if (inRangeDemo) unlocked = 3;
+
+    var clues = item.clues.map(function (text, index) {
+      var on = index < unlocked;
+      return '<div class="clue ' + (on ? '' : 'clue--locked') + '">' +
+        '<span class="clue__mark" aria-hidden="true">' + (on ? '✓' : '🔒') + '</span>' +
+        '<span class="clue__text">' + (on ? esc(text) : '再走近一点…') + '</span></div>';
+    }).join('');
+
+    var stage;
+    if (ui.seekShot) {
+      stage = seekCompareHTML(item);
+    } else if (inRange || inRangeDemo) {
+      stage = '<div class="shotwrap">' +
+        '<p class="shotwrap__lead">你到了。抬手机，找到 TA 的角度。</p>' +
+        '<button class="shot" data-action="pick-seek-photo" aria-label="这样拍一张">' +
+        '<span class="shot__icon" aria-hidden="true">📷</span>' +
+        '<span class="shot__label">这样拍一张</span>' +
+        '<span class="shot__hint">先别急着看，找到你的角度。</span></button>' +
+        (inRangeDemo ? '<p class="demo-tag">演示：已当作你走到了这里</p>' : '') +
+        '</div>';
+    } else {
+      stage = '<div class="shotwrap">' +
+        '<p class="shotwrap__lead">再走近 ' + esc(formatDistance(dist !== null ? dist - item.radiusMeters : null)) + '。</p>' +
+        '<button class="btn btn--ghost btn--block" data-action="demo-arrive">当作到了（演示）</button>' +
+        '</div>';
+    }
+
+    var mine = item.authorName === state.profile.displayName;
+    var footer = mine
+      ? '<p class="page__note">这是你自己埋下的惊喜，等别人来找到它。</p>'
+      : '';
+
+    return '<section class="page">' +
+      '<div class="page__bar"><button class="iconbtn" data-action="go-seek" aria-label="返回">' + ICON.back + '</button></div>' +
+      '<header class="authorbar">' +
+      '<span class="authorbar__emoji" aria-hidden="true">' + item.authorEmoji + '</span>' +
+      '<span class="authorbar__body"><span class="authorbar__who">' + esc(item.authorName) + ' 埋在 · ' + esc(item.areaLabel) + '</span>' +
+      '<span class="authorbar__when">' + esc(relativeDay(item.createdAt)) + '</span></span>' +
+      '<span class="authorbar__dist">' + esc(formatDistance(dist)) + '</span></header>' +
+      '<div class="cluelist">' + clues + '</div>' +
+      stage +
+      footer +
+      '</section>';
+  }
+
+  /* ---- 拍完之后的对比 ---- */
+  function seekCompareHTML(item) {
+    var shot = ui.seekShot;
+    var similarity = shot.similarity;
+    var percent = Math.round(similarity * 100);
+    var passed = shot.passed;
+    var authorPart = item.photoData
+      ? '<div class="cmp__cell"><img src="' + item.photoData + '" alt="TA 拍的照片" /></div>'
+      : '<div class="cmp__cell cmp__cell--demo"><span aria-hidden="true">🖼️</span><em>演示照片</em></div>';
+
+    var resultBlock = passed
+      ? '<div class="result result--pass">' +
+        '<div class="result__big">找到 · 探索值 +' + shot.seekerPoints + '</div>' +
+        '<p class="result__sub">作者 +' + shot.authorPoints + ' · 相似度 ' + percent + '%</div>' +
+        '<p class="result__verdict">' + esc(shot.verdict) + '</p>' +
+        '<button class="btn btn--primary btn--block" data-action="go-seek" aria-label="继续找别的">继续找别的</button>'
+      : '<div class="result result--soft">' +
+        '<div class="result__big">' + esc(shot.verdict) + '</div>' +
+        '<p class="result__sub">相似度 ' + percent + '% · 给了 +10 辛苦分，惊喜继续等别人</p>' +
+        '<div class="result__actions">' +
+        '<button class="btn btn--primary result__btn" data-action="retake-seek-photo">重拍一张</button>' +
+        '<button class="btn btn--ghost result__btn" data-action="go-seek">先走</button></div></div>';
+
+    return '<div class="cmp">' +
+      '<div class="cmp__row">' +
+      '<div class="cmp__col"><span class="cmp__cap">TA 的</span>' + authorPart + '</div>' +
+      '<div class="cmp__col"><span class="cmp__cap">你的</span>' +
+      '<div class="cmp__cell"><img src="' + shot.dataURL + '" alt="你拍的照片" /></div></div>' +
+      '</div>' +
+      '<div class="cmp__score"><span class="badge ' + (passed ? 'badge--rare' : 'badge--common') + '">' +
+      percent + '% 像</span>' + (item.photoData ? '' : '<span class="demo-tag">演示匹配 · 原图不在本机</span>') + '</div>' +
+      resultBlock +
+      '</div>';
+  }
+
+  /* ---- 我的惊喜页 ---- */
+  function surprisesHTML() {
+    var mine = allSurprises().filter(function (s) { return s.authorName === state.profile.displayName; });
+    var found = allSurprises().filter(function (s) {
+      return s.finderName === state.profile.displayName;
+    });
+
+    var mineRows = mine.map(function (s) {
+      var state1 = s.status === 'found'
+        ? '<span class="mine__state mine__state--on">被 ' + esc(s.finderName) + ' 找到 · ' + Math.round((s.matchScore || 0) * 100) + '%</span>'
+        : '<span class="mine__state">等待被找到</span>';
+      return '<div class="mine">' +
+        '<span class="mine__emoji" aria-hidden="true">' + (s.photoData ? '🖼️' : '📷') + '</span>' +
+        '<span class="mine__body"><span class="mine__msg">' + esc(s.message) + '</span>' + state1 + '</span></div>';
+    }).join('');
+
+    var foundRows = found.map(function (s) {
+      return '<div class="mine">' +
+        '<span class="mine__emoji" aria-hidden="true">' + s.authorEmoji + '</span>' +
+        '<span class="mine__body"><span class="mine__msg">' + esc(s.authorName) + ' 埋的 · ' + esc(s.areaLabel) + '</span>' +
+        '<span class="mine__state mine__state--on">相似度 ' + Math.round((s.matchScore || 0) * 100) + '%</span></span></div>';
+    }).join('');
+
+    var mineEmpty = '<div class="empty"><p>你还没埋过惊喜。</p><button class="btn btn--primary" data-action="go-bury">埋下一个</button></div>';
+    var foundEmpty = '<div class="empty"><p>还没找到别人的惊喜。</p><button class="btn btn--ghost" data-action="go-seek">去寻宝</button></div>';
+
+    return '<section class="page">' +
+      '<div class="page__bar"><button class="iconbtn" data-action="back-home" aria-label="返回">' + ICON.back + '</button></div>' +
+      '<header class="page__hero"><h2>我的惊喜</h2><p>你埋下的，和你找到的。</p></header>' +
+      '<div class="section-head"><h2>我埋的</h2><span class="micro">' + mine.length + ' 个</span></div>' +
+      (mine.length ? '<div class="minelist">' + mineRows + '</div>' : mineEmpty) +
+      '<div class="section-head"><h2>我找到的</h2><span class="micro">' + found.length + ' 个</span></div>' +
+      (found.length ? '<div class="minelist">' + foundRows + '</div>' : foundEmpty) +
+      '</section>';
+  }
+
+  /* ---- 埋/寻 的交互流程 ---- */
+  function pickPhoto(callback) {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('capture', 'environment');
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    document.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      compressImageToDataURL(file, function (dataURL) {
+        if (!dataURL) { showToast('这张图读不出来，换一张试试', '⚠️'); return; }
+        hashDataURL(dataURL).then(function (hash) { callback(dataURL, hash); });
+      });
+    });
+    input.click();
+  }
+
+  function ensureBuryLocation() {
+    if (ui.buryLocation) return;
+    currentLocation(function (loc) {
+      ui.buryLocation = loc;
+      if (currentRoute() === '/bury') render();
+    });
+  }
+
+  function submitBury() {
+    var msgEl = $('#bury-message');
+    var hintEl = $('#bury-hint');
+    var message = msgEl ? msgEl.value.trim() : '';
+    var hint = hintEl ? hintEl.value.trim() : '';
+    var pending = state.pendingBury || {};
+    if (!pending.photoData) { showToast('先拍一张照片', '📷'); return; }
+    if (!message) { showToast('写一句话，为什么埋在这里', '✍️'); msgEl && msgEl.focus(); return; }
+
+    var loc = ui.buryLocation || { lat: D.SURPRISE_ORIGIN.lat, lng: D.SURPRISE_ORIGIN.lng, demo: true };
+    var result = burySurprise({
+      photoData: pending.photoData,
+      photoHash: pending.photoHash,
+      message: message,
+      hint: hint,
+      location: { lat: loc.lat, lng: loc.lng },
+      areaLabel: loc.demo ? '演示位置 · 静安' : '当前位置'
+    });
+
+    state.pendingBury = null;
+    ui.buryLocation = null;
+    showToast('已埋下 · 神秘值 +30', '🌱');
+    result.achievements.forEach(function (def, index) {
+      showToast('成就解锁 · ' + def.name, '🏅', { variant: 'amber', delay: 600 + index * 600 });
+    });
+    navigate('/surprises');
+  }
+
+  function openSurprise(id) {
+    var item = surpriseByID(id);
+    if (!item) { showToast('找不到这个惊喜', '⚠️'); return; }
+    state.pendingSeek = item;
+    ui.seekID = id;
+    ui.seekShot = null;
+    ui.demoArrived = false;
+    navigate('/seek-detail');
+  }
+
+  /* 演示二选一：真实 dHash（两张都有像素）或明确标注的演示匹配 */
+  function computeSeekSimilarity(item, myDataURL, myHash) {
+    return hashDataURL(item.photoData).then(function (authorHash) {
+      if (authorHash && myHash) {
+        return { similarity: photoSimilarity(authorHash, myHash), demo: false };
+      }
+      /* 演示数据没有真实像素：给一个稳定的「演示」分数（标注清楚，不假装） */
+      var seed = (item.id || '').split('').reduce(function (acc, ch) { return acc + ch.charCodeAt(0); }, 0);
+      var pseudo = 0.62 + ((seed % 26) / 100);
+      return { similarity: pseudo, demo: true };
+    });
+  }
+
+  function onSeekShotChosen(dataURL, hash) {
+    var item = state.pendingSeek;
+    if (!item) return;
+    computeSeekSimilarity(item, dataURL, hash).then(function (outcome) {
+      var result = completeSurpriseFind(item.id, dataURL, hash, outcome.similarity);
+      if (!result) { showToast('这个惊喜已经不在了', '⚠️'); return; }
+      ui.seekShot = {
+        dataURL: dataURL,
+        similarity: outcome.similarity,
+        passed: result.passed,
+        seekerPoints: result.seekerPoints,
+        authorPoints: result.authorPoints,
+        verdict: result.verdict,
+        demo: outcome.demo
+      };
+      render();
+      showToast(result.passed ? '找到 · 探索值 +' + result.seekerPoints : '再看一眼，还能更接近', result.passed ? '🎉' : '🔎', { variant: result.passed ? 'amber' : undefined });
+      result.achievements.forEach(function (def, index) {
+        showToast('成就解锁 · ' + def.name, '🏅', { variant: 'amber', delay: 700 + index * 600 });
+      });
+    });
+  }
+
+  /* ============================================================
      渲染 / 路由
      ============================================================ */
   function currentRoute() {
@@ -1480,6 +2041,14 @@
     dom.tabbar.hidden = TAB_ROUTES.indexOf(route) === -1;
     setActiveTab(route);
 
+    /* 埋/寻相关页面：确保拿到定位（失败降级演示坐标） */
+    if ((route === '/bury' || route === '/seek' || route === '/seek-detail') && !ui.myLocation) {
+      currentLocation(function (loc) {
+        ui.myLocation = loc;
+        if (currentRoute() === route) render();
+      });
+    }
+
     var html = '';
     switch (route) {
       case '/home':
@@ -1507,6 +2076,19 @@
         break;
       case '/achievements':
         html = achievementsHTML();
+        break;
+      case '/bury':
+        html = buryHTML();
+        if (!ui.buryLocation) ensureBuryLocation();
+        break;
+      case '/seek':
+        html = seekHTML();
+        break;
+      case '/seek-detail':
+        html = seekDetailHTML();
+        break;
+      case '/surprises':
+        html = surprisesHTML();
         break;
       case '/watch':
         html = watchPreviewHTML();
@@ -1620,6 +2202,11 @@
     ui.boardOpen = false;
     ui.newHint = -1;
     ui.revealPhase = null;
+    ui.seekShot = null;
+    ui.demoArrived = false;
+    ui.buryLocation = null;
+    state.pendingBury = null;
+    state.pendingSeek = null;
     if (location.hash !== '#/home') navigate('/home');
     else render();
     showToast('演示数据已清除', '🧹');
@@ -1725,10 +2312,101 @@
       case 'confirm-clear':
         clearData();
         break;
+      /* ---- 埋惊喜 / 寻惊喜 ---- */
+      case 'go-bury':
+        state.pendingBury = null;
+        ui.buryLocation = null;
+        navigate('/bury');
+        ensureBuryLocation();
+        break;
+      case 'go-seek':
+        ui.seekShot = null;
+        ui.demoArrived = false;
+        navigate('/seek');
+        break;
+      case 'pick-bury-photo':
+        pickPhoto(function (dataURL, hash) {
+          var msgEl = $('#bury-message');
+          var hintEl = $('#bury-hint');
+          state.pendingBury = {
+            photoData: dataURL,
+            photoHash: hash,
+            message: msgEl ? msgEl.value : '',
+            hint: hintEl ? hintEl.value : ''
+          };
+          render();
+          showToast('照片已选好', '🖼️');
+        });
+        break;
+      case 'submit-bury':
+        submitBury();
+        break;
+      case 'open-surprise':
+        openSurprise(target.getAttribute('data-id'));
+        break;
+      case 'pick-seek-photo':
+      case 'retake-seek-photo':
+        ui.seekShot = null;
+        pickPhoto(onSeekShotChosen);
+        render();
+        break;
+      case 'demo-arrive':
+        ui.demoArrived = true;
+        render();
+        showToast('已当作你走到了这里（演示）', '📍');
+        break;
+      case 'go-surprises':
+        navigate('/surprises');
+        break;
       default:
         break;
     }
   }
+
+
+  /* ============================================================
+     自动化测试 / 演示钩子
+     用途：让 Playwright/CDP 直接驱动「选照片 → 埋下 → 拍摄 → 对比」，
+     绕开 headless 下不稳定的系统文件选择器。正常使用不会走到这里。
+     ============================================================ */
+  window.__bw = {
+    /** 注入埋惊喜用照片（dataURL） */
+    setBuryPhoto: function (dataURL) {
+      return hashDataURL(dataURL).then(function (hash) {
+        var msgEl = $('#bury-message');
+        var hintEl = $('#bury-hint');
+        state.pendingBury = {
+          photoData: dataURL,
+          photoHash: hash,
+          message: msgEl ? msgEl.value : '',
+          hint: hintEl ? hintEl.value : ''
+        };
+        render();
+        return hash;
+      });
+    },
+    /** 注入寻惊喜的拍摄结果（会走真实 dHash 对比） */
+    setSeekPhoto: function (dataURL) {
+      return hashDataURL(dataURL).then(function (hash) {
+        onSeekShotChosen(dataURL, hash);
+        return hash;
+      });
+    },
+    /** 等价于点击「当作到了（演示）」 */
+    demoArrive: function () { ui.demoArrived = true; render(); },
+    /** 读取当前关键状态，便于断言 */
+    snapshot: function () {
+      return {
+        route: currentRoute(),
+        xp: state.profile.xp,
+        surprises: allSurprises().map(function (s) {
+          return { id: s.id, status: s.status, author: s.authorName, finder: s.finderName || null, score: s.matchScore || null };
+        }),
+        pendingSeek: state.pendingSeek ? state.pendingSeek.id : null,
+        seekShot: ui.seekShot ? { similarity: ui.seekShot.similarity, passed: ui.seekShot.passed } : null
+      };
+    }
+  };
 
   /* ============================================================
      启动
