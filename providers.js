@@ -723,19 +723,29 @@
 
   function fetchAmap(context) {
     var collected = [];
-    var keywordTask = Promise.resolve();
-    if (context.keywords) {
-      keywordTask = jsonp(
-        amapUrl(context.lat, context.lon, context.radius, 25, 1, context.keywords),
-        JSONP_TIMEOUT
-      ).then(function (data) {
-        if (data && String(data.status) === '1') {
-          collected = collected.concat(parseAmap(data));
+    // 注意：高德不接受 "公园|博物馆|…" 这种整串关键字（会返回 status=1 但 count=0 的静默空结果），
+    // 必须一个词查一次；为兼顾 QPS 限制，只查前 3 个。
+    var keywords = (context.keywords || '').split('|').filter(function (k) { return k && k.trim(); }).slice(0, 2);
+    var chain = Promise.resolve();
+    keywords.forEach(function (kw, index) {
+      chain = chain.then(function () {
+        // 控制 QPS：每次调用间隔 120ms，避免高德 CUQPS_HAS_EXCEEDED_THE_LIMIT
+        if (index > 0) return new Promise(function (r) { setTimeout(r, 120); }).then(function () { return doQuery(); });
+        return doQuery();
+        function doQuery() {
+        return jsonp(
+          amapUrl(context.lat, context.lon, context.radius, 25, 1, kw.trim()),
+          JSONP_TIMEOUT
+        ).then(function (data) {
+          if (data && String(data.status) === '1' && Array.isArray(data.pois)) {
+            collected = collected.concat(parseAmap(data));
+          }
+          return null;
+        }).catch(function () { return null; });
         }
-        return null;
-      }).catch(function () { return null; });
-    }
-    return keywordTask.then(function () { return fetchAmapPages(context, collected); });
+      });
+    });
+    return chain.then(function () { return fetchAmapPages(context, collected); });
   }
 
   function fetchAmapPages(context, seedList) {
@@ -743,7 +753,7 @@
     // 密集街区里第 1 页常常全是"楼下 50 米的店"，会挤掉稍远但更适合走过去的点，
     // 所以按需要翻 2~3 页，扩大可选集合。
     var pageSize = clamp(Math.round(context.limit) || 25, 1, 25);
-    var pages = Math.min(3, Math.max(1, Math.ceil((context.limit || 25) / pageSize)));
+    var pages = Math.min(context.keywords ? 2 : 3, Math.max(1, Math.ceil((context.limit || 25) / pageSize)));
     var collected = (seedList || []).slice();
     var chain = Promise.resolve();
     for (var p = 1; p <= pages; p += 1) {
