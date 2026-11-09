@@ -518,7 +518,13 @@
   /* 真实定位：把「到目标的真实距离」作为剩余里程的唯一依据。
      旧实现用 advanceSession(prev - d) + Math.abs()，当 d > prev 时会反向外推，
      连续回调把剩余里程推到 0 —— 用户没动也会自动到达。这里彻底改掉。 */
-  function applyRealDistance(distanceMeters, accuracy) {
+  /**
+   * 推进真实旅程。
+   * @param distanceMeters 显示用的剩余里程（有路线时是「沿路线剩余」，否则是直线距离）
+   * @param accuracy 定位精度
+   * @param straightMeters 到目的地的直线距离（只用于「到达」判定，避免路线绕远时误判）
+   */
+  function applyRealDistance(distanceMeters, accuracy, straightMeters) {
     var session = state.session;
     if (!session || session.phase !== 'walking') return [];
     var d = Math.round(distanceMeters);
@@ -543,9 +549,11 @@
       } else break;
     }
 
-    // 到达判定：必须「精度够 + 连续两次读数都在圈内」，避免一次漂移就开盒
+    // 到达判定：用「直线距离」而不是路线里程，且要求精度够 + 连续两次在圈内
     var accurate = (typeof accuracy !== 'number') || (accuracy >= 0 && accuracy <= 80);
-    if (next <= D.ARRIVE_THRESHOLD && accurate) {
+    var straight = typeof straightMeters === 'number' ? Math.round(straightMeters) : d;
+    session.straightMeters = straight;
+    if (straight <= D.ARRIVE_THRESHOLD && accurate) {
       session.arriveHits = (session.arriveHits || 0) + 1;
       if (session.arriveHits >= 2) {
         session.phase = 'arrived';
@@ -571,15 +579,17 @@
     if (!origin) return;
     state.routePlaceID = session.placeID;
     state.routeManeuversStart = { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) };
+    state.routeState = 'loading';
     window.BW_GEO.fetchRoute(
       { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) },
       session.coordinate
     ).then(function (route) {
-      if (!route) return;
+      if (!route) { state.routeState = 'failed'; patchNav(state.session); return; }
       state.route = route;
+      state.routeState = 'ready';
       state.routeWalkedMeters = 0;
       if (currentRoute() === '/journey') renderJourney(true);
-    }).catch(function () { /* 静默降级 */ });
+    }).catch(function () { state.routeState = 'failed'; patchNav(state.session); });
   }
 
   /** 把当前位置投影到路线上，得到沿线已走距离与偏离距离 */
@@ -622,9 +632,20 @@
     ui.lastHeading = (heading === null || isNaN(heading)) ? null : heading;
     if (!state.route) ensureRoute(session);
     updateRouteProgress(session, here);
+
+    // 统一口径：有路线时「剩余里程」= 沿路线剩余；没有路线才用直线距离。
+    // 到达判定永远用直线距离（路线可能绕远，不能因为绕路而错过到达）。
+    var displayRemaining = d;
+    if (state.route && typeof state.routeWalkedMeters === 'number') {
+      displayRemaining = Math.max(0, state.route.distanceMeters - state.routeWalkedMeters);
+      // 路线剩余不应大于直线距离太多（数据异常时保护）
+      if (displayRemaining > d + 300) displayRemaining = d;
+    }
+
     var prev = session.remainingMeters;
-    var events = applyRealDistance(d, pos.coords.accuracy);
-    if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
+    var events = applyRealDistance(displayRemaining, pos.coords.accuracy, d);
+    // 不再整页重渲染：只原地刷新导航文本（节流在 patchNav 里）
+    patchNav(session);
     for (var i = 0; i < events.length; i += 1) {
       if (events[i].type === 'hint') {
         ui.newHint = events[i].index;
@@ -1265,7 +1286,8 @@
     var lockedText = index === 1
       ? '再走 ' + Math.max(0, remaining - D.HINT_THRESHOLDS[1]) + ' 米，解锁第二条线索'
       : '到了你就知道';
-    return '<div class="clue clue--locked"><span class="clue__mark" aria-hidden="true">🔒</span><span>' + esc(lockedText) + '</span></div>';
+    var lockAttr = index === 1 ? ' data-clue-locked-index="1"' : (index === 2 ? ' data-clue-locked-index="2"' : '');
+    return '<div class="clue clue--locked"><span class="clue__mark" aria-hidden="true">🔒</span><span' + lockAttr + '>' + esc(lockedText) + '</span></div>';
   }
 
   function journeyHTML() {
@@ -1307,12 +1329,8 @@
       '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
       '</div>' +
       '<div class="journey__status">' + realStatusHTML() + '</div>' +
-      navPanelHTML(session) +
+      navCardHTML(session) +
       '<div class="journey__side">' +
-      '<div class="journey__distance">' +
-      '<div><span class="journey__digits">' + remaining + '</span><span class="journey__unit">米</span></div>' +
-      '<div class="journey__bearing"><b aria-hidden="true">' + realBearingSymbol(session, remaining) + '</b><span>' + esc(realWalkCopy(session, walkCopy)) + '</span></div>' +
-      '</div>' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
       navUpcomingHTML(session) +
       '</div>' +
@@ -1327,74 +1345,258 @@
       '</div>';
   }
 
-  /** 导航面板：不画地图，只给「还有多少米 + 再过多少米往哪拐」 */
-  function navPanelHTML(session) {
-    var remaining = session.remainingMeters;
-    var guidance = null;
-
-    if (isRealSession(session) && state.route && typeof state.routeWalkedMeters === 'number') {
-      guidance = window.BW_GEO.guidanceFor(state.route, state.routeWalkedMeters);
-    }
-
-    // 没有路线数据（首次还没取到 / 无网 / 演示）：退回方向 + 距离
-    if (!guidance) {
-      var compass = '';
-      if (isRealSession(session) && typeof session.bearing === 'number') {
-        var dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
-        compass = dirs[Math.round(((session.bearing % 360) + 360) % 360 / 45) % 8];
+  /* ============================================================
+     统一导航状态机
+     原则（解决用户反馈的「混乱」）：
+     1. 全页只有一个「剩余距离」数字，口径统一（有路线=沿路线剩余）
+     2. 全页只有一个箭头，含义固定 = 下一步动作
+     3. 转向提示有滞回，不会在阈值附近来回跳
+     ============================================================ */
+  function computeNav(session) {
+    var result = {
+      arrow: '↑',
+      main: '继续走',
+      sub: '',
+      remaining: session.remainingMeters,
+      minutes: Math.max(1, Math.round(session.remainingMeters / 75)),
+      hasRoute: false
+    };
+    if (!isRealSession(session) || !state.route) {
+      // 没有路线：不猜方向、不画箭头（避免指错），只给距离
+      if (isRealSession(session) && state.routeState === 'loading') {
+        result.arrow = '…';
+        result.main = '正在规划步行路线';
+        result.sub = '马上就好';
+      } else {
+        result.arrow = '·';
+        result.main = session.remainingMeters > 0 ? '按提示方向走过去' : '就在附近';
+        result.sub = '网络不通时只显示直线距离';
       }
-      guidance = {
-        kind: 'fallback',
-        main: isRealSession(session) ? (compass ? '往' + compass + '走' : '继续走') : '继续走',
-        sub: '还有 ' + remaining + ' 米',
-        turnInMeters: null,
-        direction: 'straight',
-        emphasis: false
-      };
+      return result;
     }
 
-    var arrow = guidance.kind === 'fallback'
-      ? realBearingSymbol(session, remaining)
-      : window.BW_GEO.directionArrow(guidance.direction);
-
-
-    return '<div class="navpanel' + (guidance.emphasis ? ' navpanel--now' : '') + '" role="status" aria-live="polite">' +
-      '<div class="navpanel__arrow" aria-hidden="true">' + arrow + '</div>' +
-      '<div class="navpanel__body">' +
-      '<p class="navpanel__main">' + esc(guidance.main) + '</p>' +
-      '<p class="navpanel__sub">' + esc(guidance.sub || '') + '</p>' +
-
-      '</div>' +
-      '</div>';
-  }
-
-  /** 接下来的几步转向（提前量：不只提示下一步，还能看到后面两步） */
-  function navUpcomingHTML(session) {
-    if (!isRealSession(session) || !state.route || !window.BW_GEO.routeProgress) return '';
     var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
-    if (!progress) return '';
+    var walked = progress ? progress.walked : (state.routeWalkedMeters || 0);
+    var routeRemaining = Math.max(0, Math.round(state.route.distanceMeters - walked));
+    result.hasRoute = true;
+    result.remaining = routeRemaining;
+    result.minutes = Math.max(1, Math.round(routeRemaining / 75));
+
     var ms = state.route.maneuvers || [];
-    var walked = progress.walked;
-    // 找到「当前所在路段」的下标，和面板主文案保持一致
     var current = 0;
     while (current + 1 < ms.length && walked >= ms[current + 1].cumulative - 4) current += 1;
-    var rows = [];
-    // 从「下一步的再下一步」开始列，避免和面板重复
+    var next = ms[current + 1] || null;
+
+    if (!next) {
+      result.arrow = '◉';
+      result.main = routeRemaining <= 25 ? '就在前面' : '再走 ' + routeRemaining + ' 米';
+      result.sub = routeRemaining <= 25 ? '抬头看看周围' : '沿着这条路一直走';
+      return result;
+    }
+
+    var turnIn = Math.max(0, Math.round(next.cumulative - walked));
+    var direction = next.direction;
+    var label = next.label;
+
+    // 到达点
+    if (direction === 'arrive') {
+      result.arrow = '◉';
+      result.main = turnIn <= 25 ? '就在前面' : '再走 ' + turnIn + ' 米就到了';
+      result.sub = turnIn <= 25 ? '抬头看看周围' : '不用再拐弯';
+      return result;
+    }
+
+    var straight = (direction === 'straight' || direction === 'slight-left' || direction === 'slight-right');
+    if (straight) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = turnIn > 120 ? '继续直行' : '继续直行 ' + turnIn + ' 米';
+      result.sub = '保持在同一条路上';
+      return result;
+    }
+
+    // 转弯：≤12 米就是「现在」，12~45 米给提前量，>45 米先直行
+    // 滞回：一旦喊过「现在左拐」，直到真的走过这个转向点才换回
+    var lock = state.navTurnLock;
+    if (lock && lock.index === current + 1 && walked < next.cumulative + 8) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = '现在' + label;
+      result.sub = '拐过去继续走';
+      return result;
+    }
+    if (turnIn <= 12) {
+      state.navTurnLock = { index: current + 1 };
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = '现在' + label;
+      result.sub = '拐过去继续走';
+      return result;
+    }
+    if (turnIn <= 45) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = turnIn + ' 米后' + label;
+      result.sub = '注意路口';
+      return result;
+    }
+    result.arrow = '↑';
+    result.main = '继续直行';
+    result.sub = turnIn + ' 米后' + label;
+    return result;
+  }
+
+  /** 导航卡（整页唯一的距离数字与箭头都在这里） */
+  function navCardHTML(session) {
+    var nav = computeNav(session);
+    state.navSnapshot = nav;
+    state.clueSnapshot = session.unlockedHintCount;
+    return '<section class="navcard" data-nav="1">' +
+      '<div class="navcard__top">' +
+      '<div class="navcard__arrow" data-nav-arrow aria-hidden="true">' + nav.arrow + '</div>' +
+      '<div class="navcard__text">' +
+      '<p class="navcard__main" data-nav-main>' + esc(nav.main) + '</p>' +
+      '<p class="navcard__sub" data-nav-sub>' + esc(nav.sub) + '</p>' +
+      '</div>' +
+      '</div>' +
+      '<div class="navcard__foot">' +
+      '<span class="navcard__left">还剩 <b data-nav-remaining>' + nav.remaining + '</b> 米</span>' +
+      '<span class="navcard__time" data-nav-time>约 ' + nav.minutes + ' 分钟</span>' +
+      '</div>' +
+      '</section>';
+  }
+
+  /** 原地刷新导航（不做整页重渲染，节流 600ms，内容不变就不动 DOM） */
+  function patchNav(session) {
+    if (!session) return;
+    // 线索解锁 / 到达等结构变化：必须重渲染，不能只改文字
+    if (state.clueSnapshot !== session.unlockedHintCount) {
+      var first = state.clueSnapshot === undefined;
+      state.clueSnapshot = session.unlockedHintCount;
+      if (!first) {
+        ui.navPatchAt = 0;
+        renderJourney(true);
+        return;
+      }
+    }
+    var now = Date.now();
+    if (ui.navPatchAt && now - ui.navPatchAt < 600) {
+      if (!ui.navPatchTimer) {
+        ui.navPatchTimer = window.setTimeout(function () {
+          ui.navPatchTimer = null;
+          patchNav(state.session);
+        }, 620);
+      }
+      return;
+    }
+    ui.navPatchAt = now;
+
+    var card = document.querySelector('[data-nav]');
+    if (!card) return;
+    var nav = computeNav(session);
+    var prev = state.navSnapshot || {};
+    state.navSnapshot = nav;
+
+    if (prev.main !== nav.main) {
+      var mainEl = card.querySelector('[data-nav-main]');
+      if (mainEl) mainEl.textContent = nav.main;
+    }
+    if (prev.sub !== nav.sub) {
+      var subEl = card.querySelector('[data-nav-sub]');
+      if (subEl) subEl.textContent = nav.sub;
+    }
+    if (prev.arrow !== nav.arrow) {
+      var arrowEl = card.querySelector('[data-nav-arrow]');
+      if (arrowEl) arrowEl.textContent = nav.arrow;
+    }
+    if (prev.remaining !== nav.remaining) {
+      var remEl = card.querySelector('[data-nav-remaining]');
+      if (remEl) remEl.textContent = nav.remaining;
+      var timeEl = card.querySelector('[data-nav-time]');
+      if (timeEl) timeEl.textContent = '约 ' + nav.minutes + ' 分钟';
+      // 大数字区同步（如果存在）
+      var bigEl = document.querySelector('[data-big-remaining]');
+      if (bigEl) bigEl.textContent = nav.remaining;
+    }
+    // 强调态
+    card.classList.toggle('navcard--now', /^现在/.test(nav.main));
+
+    // 「接下来」列表：走一段后距离会变，必须跟着刷，否则显示的是旧数字
+    var list = computeUpcoming(session);
+    var key = upcomingKey(list);
+    var box = document.querySelector('[data-upcoming]');
+    if (key !== state.upcomingSnapshot) {
+      state.upcomingSnapshot = key;
+      if (!list.length) {
+        if (box) box.parentNode.removeChild(box);
+      } else if (box) {
+        box.innerHTML = '<p class="upcoming__title">接下来</p>' + list.map(function (x) {
+          return '<div class="upcoming__row">' +
+            '<span class="upcoming__arrow" aria-hidden="true">' + x.arrow + '</span>' +
+            '<span class="upcoming__label">' + esc(x.label) + '</span>' +
+            (x.distance === null ? '' : '<span class="upcoming__dist">' + x.distance + ' 米</span>') +
+            '</div>';
+        }).join('');
+      }
+    }
+
+    // 线索里的「再走 X 米」也要跟着走，不然三处数字互相打架
+    var locked = document.querySelectorAll('[data-clue-locked-index]');
+    for (var i = 0; i < locked.length; i += 1) {
+      var idx = parseInt(locked[i].getAttribute('data-clue-locked-index'), 10);
+      var threshold = D.HINT_THRESHOLDS[idx];
+      locked[i].textContent = threshold === undefined ? '到了你就知道'
+        : '再走 ' + Math.max(0, nav.remaining - threshold) + ' 米，解锁' +
+          (idx === 1 ? '第二条' : '第三条') + '线索';
+    }
+  }
+
+  /** 「接下来」的数据（渲染与局部刷新共用，保证两处数字同源） */
+  function computeUpcoming(session) {
+    if (!isRealSession(session) || !state.route || !window.BW_GEO.routeProgress) return [];
+    var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
+    if (!progress) return [];
+    var ms = state.route.maneuvers || [];
+    var walked = progress.walked;
+    var current = 0;
+    while (current + 1 < ms.length && walked >= ms[current + 1].cumulative - 4) current += 1;
+    var list = [];
     for (var i = current + 2; i < ms.length; i += 1) {
       var m = ms[i];
       if (m.direction === 'start' || m.direction === 'straight' || m.direction === 'arrive') continue;
       var at = Math.round(m.cumulative - walked);
       if (at < 3) continue;
-      if (rows.length >= 3) break;
-      rows.push('<div class="upcoming__row">' +
-        '<span class="upcoming__arrow" aria-hidden="true">' + window.BW_GEO.directionArrow(m.direction) + '</span>' +
-        '<span class="upcoming__label">' + esc(m.label) + '</span>' +
-        '<span class="upcoming__dist">' + at + ' 米</span>' +
-        '</div>');
+      if (list.length >= 3) break;
+      list.push({
+        arrow: window.BW_GEO.directionArrow(m.direction),
+        label: m.label,
+        distance: at
+      });
     }
-    if (!rows.length) return '';
-    return '<section class="upcoming" aria-label="接下来的路线">' +
-      '<p class="upcoming__title">接下来</p>' + rows.join('') + '</section>';
+    // 后面没有转弯了：明确告诉「一条道走到目的地」，别让列表凭空消失
+    if (!list.length) {
+      var left = Math.max(0, Math.round(state.route.distanceMeters - walked));
+      if (left > 20) {
+        list.push({ arrow: '◉', label: '一路直走到目的地', distance: null });
+      }
+    }
+    return list;
+  }
+
+  function upcomingKey(list) {
+    return list.map(function (x) { return x.label + x.distance; }).join('|');
+  }
+
+  function navUpcomingHTML(session) {
+    var list = computeUpcoming(session);
+    state.upcomingSnapshot = upcomingKey(list);
+    if (!list.length) return '';
+    return '<section class="upcoming" data-upcoming="1" aria-label="接下来的路线">' +
+      '<p class="upcoming__title">接下来</p>' +
+      list.map(function (x) {
+        return '<div class="upcoming__row">' +
+          '<span class="upcoming__arrow" aria-hidden="true">' + x.arrow + '</span>' +
+          '<span class="upcoming__label">' + esc(x.label) + '</span>' +
+          (x.distance === null ? '' : '<span class="upcoming__dist">' + x.distance + ' 米</span>') +
+          '</div>';
+      }).join('') +
+      '</section>';
   }
 
   /** 真实来源：OSM POI / 维基百科地标 / 仅真实坐标，都算「真的在城市里走」 */
@@ -3097,6 +3299,31 @@
         history.replaceState(null, '', clean);
       } catch (e) { /* ignore */ }
     }
+
+    // 自动化测试 / 诊断用：只暴露路线几何与进度，不含目的地名称
+    window.__bwDebug = function () {
+      return {
+        session: state.session ? {
+          phase: state.session.phase,
+          source: state.session.source,
+          remaining: state.session.remainingMeters,
+          straight: state.session.straightMeters,
+          total: state.session.totalMeters,
+          hints: state.session.unlockedHintCount
+        } : null,
+        route: state.route ? {
+          points: state.route.points,
+          distance: state.route.distanceMeters,
+          maneuvers: state.route.maneuvers.map(function (m) {
+            return { direction: m.direction, label: m.label, cumulative: m.cumulative };
+          })
+        } : null,
+        walked: state.routeWalkedMeters,
+        offRoute: state.routeOffRoute,
+        routeState: state.routeState,
+        nav: state.navSnapshot || null
+      };
+    };
 
     bindEvents();
     render();
