@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>折叠屏预览 · 盲走 BlindWalk</title>
+<style>
+  :root {
+    --ink: #171410;
+    --ink2: #6B6357;
+    --ink3: #A69C8C;
+    --cream: #F5EEE2;
+    --paper: #FFFBF3;
+    --line: #E4D9C6;
+    --amber: #E89B4C;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    padding: 28px 24px 40px;
+    background:
+      radial-gradient(80% 50% at 50% 0%, #FBF6EC 0%, transparent 60%),
+      var(--cream);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+  }
+  header { max-width: 1180px; margin: 0 auto 8px; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; }
+  .sub { margin: 0; color: var(--ink2); font-size: 13.5px; }
+  .sub b { color: var(--ink); }
+
+  .bar {
+    max-width: 1180px;
+    margin: 16px auto 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .bar__label { font-size: 12px; color: var(--ink3); letter-spacing: .08em; }
+  .chip {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .bar__hint { margin-left: auto; font-size: 12px; color: var(--ink3); }
+
+  .stage {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .device-wrap { text-align: center; }
+  .device {
+    position: relative;
+    margin: 0 auto;
+    background: #16120E;
+    border-radius: 34px;
+    padding: 10px;
+    box-shadow: 0 30px 60px rgba(23, 20, 16, .22), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .device iframe {
+    display: block;
+    border: 0;
+    border-radius: 26px;
+    background: var(--cream);
+    width: 466px;
+    height: 678px;
+  }
+  /* 展开态：669×951，按 0.72 缩放到同屏（zoom 会改变布局尺寸，保证并排） */
+  .device--unfolded { zoom: .72; }
+  .device--unfolded iframe { width: 669px; height: 951px; }
+
+  .cap {
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    line-height: 1.5;
+  }
+  .cap b { color: var(--ink); }
+  .cap span { display: block; color: var(--ink3); font-size: 11.5px; }
+
+  .notes {
+    max-width: 1180px;
+    margin: 8px auto 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    font-size: 13px;
+    color: var(--ink2);
+    line-height: 1.7;
+  }
+  .notes code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(23,20,16,.06);
+    font-size: 12px;
+  }
+  .notes b { color: var(--ink); }
+
+  @media (max-width: 1100px) {
+    .device--unfolded { transform: none; }
+    .stage { gap: 22px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>折叠屏预览 · 盲走</h1>
+  <p class="sub">
+    同一份数据、两套尺寸并排看：<b>折叠 466 × 678</b> 与 <b>展开 669 × 951</b>。
+    右侧 iframe 里是真实运行的应用（不是截图）。
+  </p>
+</header>
+
+<div class="bar">
+  <span class="bar__label">页面</span>
+  <button class="chip" data-route="/home" aria-pressed="true">首页</button>
+  <button class="chip" data-route="/setup" aria-pressed="false">抽盒</button>
+  <button class="chip" data-route="/journey" aria-pressed="false">旅程</button>
+  <button class="chip" data-route="/cards" aria-pressed="false">图鉴</button>
+  <button class="chip" data-route="/profile" aria-pressed="false">我的</button>
+  <span class="bar__hint">切换页面后两边同步跳转</span>
+</div>
+
+<div class="stage">
+  <div class="device-wrap">
+    <div class="device">
+      <iframe id="folded" title="折叠态 466×678" src="index.html?demo=1#/home"></iframe>
+    </div>
+    <p class="cap"><b>折叠态</b> 466 × 678pt<span>外屏，高度紧凑：地图已去掉，导航+线索+按钮同屏</span></p>
+  </div>
+
+  <div class="device-wrap">
+    <div class="device device--unfolded">
+      <iframe id="unfolded" title="展开态 669×951" src="index.html?demo=1#/home"></iframe>
+    </div>
+    <p class="cap"><b>展开态</b> 669 × 951pt<span>内屏，双列布局（首页/旅程）+ 图鉴 5 列</span></p>
+  </div>
+</div>
+
+<div class="notes">
+  <p style="margin:0 0 6px"><b>怎么在真机上看</b></p>
+  在 iPhone Duo 的浏览器里直接打开 <code>https://xiaoqiangch.github.io/blindwalk/</code>，
+  折叠 / 展开时会自动切换布局（Service Worker 有缓存，新版需要下拉刷新一次）。<br>
+  <b>怎么在 Mac 上模拟</b>：Chrome → DevTools（⌥⌘I）→ 左上角设备图标（⌘⇧M）→
+  选 “Responsive” → 把宽度高度改成 <code>466 × 678</code> 或 <code>669 × 951</code>，
+  页面会按触摸设备处理（不是桌面预览框）。<br>
+  <b>iOS 原生版</b>：Xcode 27 用 DeviceHub 里的 iPhone Duo 模拟器；
+  折叠/展开开关在 DeviceHub 的设备控制里，需要在图形界面手动切换（命令行无法唤醒外屏）。
+</div>
+
+<script>
+  (function () {
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.chip'));
+    var frames = [document.getElementById('folded'), document.getElementById('unfolded')];
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c === chip)); });
+        var route = chip.getAttribute('data-route');
+        frames.forEach(function (frame) {
+          if (!frame) return;
+          frame.src = 'index.html?demo=1#' + route;
+        });
+      });
+    });
+  })();
+</script>
+</body>
+</html>
