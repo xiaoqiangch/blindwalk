@@ -1351,20 +1351,13 @@
       ? realBearingSymbol(session, remaining)
       : window.BW_GEO.directionArrow(guidance.direction);
 
-    var nextHint = '';
-    if (isRealSession(session) && state.route && guidance.kind !== 'arrive') {
-      var next2 = window.BW_GEO.guidanceFor(state.route, state.routeWalkedMeters + 25);
-      if (next2 && next2.main && next2.main !== guidance.main) {
-        nextHint = '前面准备：' + next2.main;
-      }
-    }
 
     return '<div class="navpanel' + (guidance.emphasis ? ' navpanel--now' : '') + '" role="status" aria-live="polite">' +
       '<div class="navpanel__arrow" aria-hidden="true">' + arrow + '</div>' +
       '<div class="navpanel__body">' +
       '<p class="navpanel__main">' + esc(guidance.main) + '</p>' +
       '<p class="navpanel__sub">' + esc(guidance.sub || '') + '</p>' +
-      (nextHint ? '<p class="navpanel__next">' + esc(nextHint) + '</p>' : '') +
+
       '</div>' +
       '</div>';
   }
@@ -1376,20 +1369,24 @@
     if (!progress) return '';
     var ms = state.route.maneuvers || [];
     var walked = progress.walked;
+    // 找到「当前所在路段」的下标，和面板主文案保持一致
+    var current = 0;
+    while (current + 1 < ms.length && walked >= ms[current + 1].cumulative - 4) current += 1;
     var rows = [];
-    for (var i = 0; i < ms.length; i += 1) {
+    // 从「下一步的再下一步」开始列，避免和面板重复
+    for (var i = current + 2; i < ms.length; i += 1) {
       var m = ms[i];
-      if (m.direction === 'start' || m.direction === 'arrive') continue;
-      var at = m.cumulative - walked;
-      if (at < -5) continue;
+      if (m.direction === 'start' || m.direction === 'straight' || m.direction === 'arrive') continue;
+      var at = Math.round(m.cumulative - walked);
+      if (at < 3) continue;
       if (rows.length >= 3) break;
       rows.push('<div class="upcoming__row">' +
         '<span class="upcoming__arrow" aria-hidden="true">' + window.BW_GEO.directionArrow(m.direction) + '</span>' +
         '<span class="upcoming__label">' + esc(m.label) + '</span>' +
-        '<span class="upcoming__dist">' + Math.max(0, Math.round(at)) + ' 米</span>' +
+        '<span class="upcoming__dist">' + at + ' 米</span>' +
         '</div>');
     }
-    if (rows.length < 2) return '';
+    if (!rows.length) return '';
     return '<section class="upcoming" aria-label="接下来的路线">' +
       '<p class="upcoming__title">接下来</p>' + rows.join('') + '</section>';
   }
