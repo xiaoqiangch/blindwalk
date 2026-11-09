@@ -55,12 +55,12 @@ iPhone 用 **Safari** 打开该地址 → 分享 → **添加到主屏幕** → 
 | 访问 | 看到什么 |
 |---|---|
 | `index.html#/home` | 首页（默认展示「正在走第 3 个盲盒」的丰富演示态） |
-| `index.html?demo=1#/home` | 预置完整演示数据（18 张卡 / 12 天连续 / Lv.6） |
-| `index.html?demo=1#/journey` | 旅程页：点 **「模拟步行 +50m」** 推进，线索依次解锁，≤30m 自动开盒 |
-| `index.html?demo=1#/reveal` | 直接看揭晓卡（旧码头边的石阶） |
-| `index.html?demo=1#/cards` | 回忆册 / 图鉴 |
-| `index.html?demo=1#/social` | 圈子：同频码、周榜、动态流（可点赞、可发布） |
-| `index.html?demo=1#/achievements` | 10 个成就 |
+| `index.html` | 预置完整演示数据（18 张卡 / 12 天连续 / Lv.6） |
+| `index.html#/journey` | 旅程页：点 **「模拟步行 +50m」** 推进，线索依次解锁，≤30m 自动开盒 |
+| `index.html#/reveal` | 直接看揭晓卡（旧码头边的石阶） |
+| `index.html#/cards` | 回忆册 / 图鉴 |
+| `index.html#/social` | 圈子：同频码、周榜、动态流（可点赞、可发布） |
+| `index.html#/achievements` | 10 个成就 |
 | `watch.html` | Apple Watch 三块表盘（进度 / 线索 / 揭晓） |
 | `index.html?fresh=1` | 清空本地数据，从新用户开始玩 |
 

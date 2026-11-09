@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile',
+  var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
     '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises'];
   var TAB_ROUTES = ['/home', '/cards', '/social', '/profile'];
   var LEVEL_NAMES = ['出门新手', '街角观察员', '城市漫游者', '惊喜收藏家', '迷雾探险家',
@@ -126,7 +126,8 @@
         feed: state.feed,
         surprises: state.surprises,
         realPlaces: state.realPlaces,
-        settings: state.settings
+        settings: state.settings,
+        demoSeeded: !!state.demoSeeded
       }));
     } catch (err) { /* file:// 隐私模式等场景忽略 */ }
   }
@@ -140,6 +141,7 @@
       // 向后兼容：旧数据没有 surprises 字段
       if (!Array.isArray(data.surprises)) data.surprises = [];
       if (!data.realPlaces || typeof data.realPlaces !== 'object') data.realPlaces = {};
+      data.demoSeeded = !!data.demoSeeded;
       return data;
     } catch (err) { return null; }
   }
@@ -281,6 +283,8 @@
      状态种子 / 持久化
      ============================================================ */
   function freshState() {
+    // 说明：demoSeeded 标记本机数据是否来自「演示种子」，
+    // 用于在界面上诚实提示，并提供一键切回真实定位的出口。
     return {
       profile: {
         displayName: '阿澈',
@@ -312,6 +316,7 @@
 
   function seedDemo() {
     state = freshState();
+    state.demoSeeded = true;
     var now = Date.now();
     state.profile.xp = D.DEMO.xp;
     state.profile.streakDays = D.DEMO.streakDays;
@@ -400,6 +405,7 @@
       feed: Array.isArray(saved.feed) ? saved.feed : [],
       realPlaces: (saved.realPlaces && typeof saved.realPlaces === 'object') ? saved.realPlaces : {},
       surprises: Array.isArray(saved.surprises) ? saved.surprises : [],
+      demoSeeded: !!saved.demoSeeded,
       pendingBury: null,
       pendingSeek: null,
       settings: Object.assign(base.settings, saved.settings || {})
@@ -1037,6 +1043,70 @@
       esc(session.remainingMeters) + ' m ›</button>';
   }
 
+  /** 诊断页：把「为什么两边显示不一样」需要的信息一次列出来 */
+  function debugHTML() {
+    var session = state.session;
+    var place = session ? placeOf(session.placeID) : null;
+    var rows = [
+      ['页面地址', location.origin + location.pathname],
+      ['启动模式', state.bootMode === 'demo' ? '演示种子（URL 带 demo=1）'
+        : state.bootMode === 'fresh' ? '全新用户' : '读取本机存档'],
+      ['是否演示数据', state.demoSeeded ? '是（可在「我的 → 退出演示」或旅程页按钮切换）' : '否'],
+      ['当前盲盒', session ? (session.phase + ' · ' + (session.demo ? '演示' : '真实')) : '没有进行中的盲盒'],
+      ['地点来源', (function () {
+        if (!place) return '—';
+        var src = place.source || 'catalog';
+        var label = src === 'curated' ? '后台策展（编辑精选）'
+          : src === 'wikipedia' ? '维基百科真实地标'
+          : src === 'osm' ? 'OpenStreetMap 真实地点'
+          : src === 'geo' ? '仅真实坐标（无名称）'
+          : '内置虚构地点（演示）';
+        return src + ' · ' + label;
+      })()],
+      ['地点名称', session && session.phase === 'walking' ? '（保密中）' : (place ? place.name : '—')],
+      ['是否真实定位', isRealSession(session) ? '是' : '否'],
+      ['定位权限', ui.geoPermission || '未请求 / 未知'],
+      ['最近定位精度', ui.lastFix && typeof ui.lastFix.accuracy === 'number' ? Math.round(ui.lastFix.accuracy) + ' 米' : '还没有定位读数'],
+      ['策划数据条数', state.curatedCount === undefined ? '加载中' : String(state.curatedCount)],
+      ['窗口尺寸', window.innerWidth + ' × ' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x'],
+      ['触摸设备', document.documentElement.classList.contains('is-touch') ? '是' : '否（桌面）'],
+      ['是否独立启动', (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ? '是（已加到桌面）' : '否（浏览器标签页）'],
+      ['网络', navigator.onLine ? '在线' : '离线'],
+      ['Service Worker', window.__bwSWVersion || '未注册 / 未知'],
+      ['本机存档 xp', state.profile ? String(state.profile.xp) : '—'],
+      ['本机卡片数', state.profile ? String(state.profile.cards.length) : '—']
+    ].map(function (row) {
+      return '<div class="dbg__row"><span class="dbg__k">' + esc(row[0]) + '</span>' +
+        '<span class="dbg__v">' + esc(row[1]) + '</span></div>';
+    }).join('');
+
+    return '<div class="page dbg">' +
+      '<header class="pagehead"><div><h2 class="pagehead__title">诊断</h2>' +
+      '<p class="pagehead__sub">两边显示不一致时，把这一页截图发给开发者最快</p></div>' +
+      '<button type="button" class="iconbtn" data-action="back-home" aria-label="返回首页">' + ICON.back + '</button>' +
+      '</header>' +
+      '<section class="dbg__card">' + rows + '</section>' +
+      '<section class="dbg__card dbg__actions">' +
+      '<p class="dbg__hint">想让两边完全一致：都用同一个地址打开、并且都不要带 <code>?demo=1</code>。</p>' +
+      '<button type="button" class="btn btn--primary btn--block" data-action="retry-real">清掉演示数据，用真实定位重开</button>' +
+      '<button type="button" class="btn btn--ghost btn--block" data-action="reset-demo">重置为演示数据（对比用）</button>' +
+      '</section>' +
+      '</div>';
+  }
+
+  /** 演示数据提示条：只在「本机数据来自演示种子」时出现，避免误以为是真实体验 */
+  function demoNoticeHTML() {
+    if (!state.demoSeeded) return '';
+    return '<div class="demonotice" role="status">' +
+      '<span class="demonotice__icon" aria-hidden="true">🧪</span>' +
+      '<div class="demonotice__body">' +
+      '<p class="demonotice__title">现在看到的是演示数据</p>' +
+      '<p class="demonotice__text">内置的虚构地点，不是你在的城市。要用真实地点，点右边。</p>' +
+      '</div>' +
+      '<button type="button" class="demonotice__btn" data-action="retry-real">用真实定位</button>' +
+      '</div>';
+  }
+
   function homeHTML() {
     var profile = state.profile;
     var pass = latestCard();
@@ -1060,6 +1130,7 @@
       : '<div class="firsthint"><p class="firsthint__title">第一盒还没开。</p><p class="firsthint__sub">城市已经准备好了。</p></div>';
 
     return '<section class="home">' +
+      demoNoticeHTML() +
       '<header class="home__top">' +
       '<h1 class="home__greet">' + esc(greeting()) + '，' + esc(profile.displayName) + '</h1>' +
       '<span class="chip chip--streak">🔥 ' + profile.streakDays + ' 天</span>' +
@@ -1207,6 +1278,25 @@
   }
 
   /** 真实来源：OSM POI / 维基百科地标 / 仅真实坐标，都算「真的在城市里走」 */
+  /** 当前盲盒的「数据来源」标签：让人一眼看出是真地点还是演示 */
+  function sourceBadgeHTML(place) {
+    if (!place) return '';
+    var source = place.source || 'catalog';
+    if (source === 'curated') {
+      return '<span class="srcbadge srcbadge--curated">编辑精选</span>';
+    }
+    if (source === 'wikipedia') {
+      return '<span class="srcbadge srcbadge--real">真实地标</span>';
+    }
+    if (source === 'osm') {
+      return '<span class="srcbadge srcbadge--real">真实地点</span>';
+    }
+    if (source === 'geo') {
+      return '<span class="srcbadge srcbadge--real">真实坐标</span>';
+    }
+    return '<span class="srcbadge srcbadge--demo">演示地点</span>';
+  }
+
   function isRealSource(source) {
     return source === 'osm' || source === 'geo' || source === 'wikipedia' || source === 'curated';
   }
@@ -1219,12 +1309,17 @@
   function realStatusHTML() {
     var session = state.session;
     if (!session) return '';
+    var place = placeOf(session.placeID);
+    var badge = sourceBadgeHTML(place);
     if (isRealSource(session.source)) {
       var realLabel = session.source === 'geo' ? '实时定位 · 真实坐标' : '实时定位 · 真实地点';
       return '<span class="geo-pill geo-pill--live"><i aria-hidden="true"></i>' + realLabel + '</span>' +
-        '<span class="geo-pill geo-pill--gps">GPS</span>';
+        '<span class="geo-pill geo-pill--gps">GPS</span>' + badge;
     }
-    return '<span class="geo-pill"><i aria-hidden="true"></i>演示模式 · 内置地点</span>';
+    // 演示模式：明确告诉用户为什么，并给一个「要用真定位」的出口
+    return '<span class="geo-pill geo-pill--demo"><i aria-hidden="true"></i>演示模式 · 内置地点</span>' +
+      badge +
+      '<button type="button" class="geo-pill geo-pill--action" data-action="retry-real">用真实定位重开</button>';
   }
 
   /* 真实方位：如有手机朝向则相对朝向显示 */
@@ -1559,8 +1654,8 @@
       '<span class="setting__label">清除演示数据</span>' +
       '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
       '</button>' +
-      '<button type="button" class="setting" data-action="about" aria-label="关于盲走">' +
-      '<span class="setting__label">关于</span>' +
+      '<button type="button" class="setting" data-action="open-debug" aria-label="打开诊断信息">' +
+      '<span class="setting__label">诊断（数据来源 / 定位状态）</span>' +
       '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
       '</button>' +
       '</div>';
@@ -2376,8 +2471,15 @@
       case '/watch':
         html = watchPreviewHTML();
         break;
+      case '/debug':
+        html = debugHTML();
+        break;
       default:
         html = homeHTML();
+    }
+
+    if (route === '/debug') {
+      html = debugHTML();
     }
 
     dom.main.innerHTML = html;
@@ -2709,6 +2811,35 @@
         pickPhoto(onSeekShotChosen);
         render();
         break;
+      case 'open-debug': {
+        navigate('/debug');
+        break;
+      }
+      case 'retry-real': {
+        // 从演示模式切回真实定位：清掉演示会话，重新走一次「取定位 → 抽真实地点」
+        ui.myLocation = null;
+        ui.geoErrorShown = false;
+        ui.geoErrorCount = 0;
+        ui.lastFix = null;
+        state.session = null;
+        state.reveal = null;
+        state.demoSeeded = false;
+        save();
+        navigate('/setup');
+        showToast('正在重新获取定位…', '📡', { duration: 1600 });
+        timers.reveal.push(setTimeout(function () {
+          var btn = document.querySelector('[data-action="shake"]');
+          if (btn) btn.click();
+        }, 500));
+        break;
+      }
+      case 'reset-demo': {
+        seedDemo();
+        save();
+        navigate('/home');
+        showToast('已重置为演示数据', '🧪', { duration: 1800 });
+        break;
+      }
       case 'demo-arrive':
         ui.demoArrived = true;
         render();
@@ -2829,8 +2960,27 @@
       else seedFresh();
     }
 
+    // state 在 seedDemo/seedFresh/hydrate 里才创建，所以标记放在这之后
+    state.bootMode = fresh ? 'fresh' : demo ? 'demo' : 'saved';
+
+    // demo / fresh 只是「这次打开」的开关，用完从 URL 去掉，
+    // 否则用户把它加到桌面或分享出去，会永远是演示数据。
+    if (demo || fresh) {
+      try {
+        var clean = location.pathname + (location.hash || '');
+        history.replaceState(null, '', clean);
+      } catch (e) { /* ignore */ }
+    }
+
     bindEvents();
     render();
+
+    // 记录 SW 版本，诊断页展示用
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+      navigator.serviceWorker.getRegistration().then(function (reg) {
+        if (reg && reg.active) window.__bwSWVersion = 'active';
+      }).catch(function () {});
+    }
   }
 
   if (document.readyState === 'loading') {

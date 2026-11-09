@@ -25,6 +25,7 @@
     draft: null,
     dirty: false,
     booted: false,
+    statsError: '',
     mock: !!window.__BW_MOCK__
   };
 
@@ -207,7 +208,7 @@
     const total = state.stats ? state.stats.total : 0;
     const statLine = state.stats
       ? '有图 ' + withPhoto + ' · 无图 ' + Math.max(0, total - withPhoto) + ' · 线索齐全 ' + (state.stats.withHints || 0)
-      : '统计加载中…';
+      : (state.statsError ? '统计读取失败：' + UI.escapeHtml(state.statsError) : '统计加载中…');
 
     els.filters.innerHTML =
       '<div class="pane__head">' +
@@ -335,7 +336,7 @@
         '<div class="empty__title">' + (filtered ? '没有符合筛选条件的兴趣点' : '还没有兴趣点') + '</div>' +
         '<div class="empty__sub">' + (filtered
           ? '换个状态或类别试试；清空关键词也能看到全部。'
-          : '点右上角「抓取附近」从公开数据生成一批草稿。') + '</div>' +
+          : '点右上角『抓取附近』从公开数据生成一批草稿。') + '</div>' +
         (filtered
           ? '<button type="button" class="btn" data-action="reset-filters">清空筛选</button>'
           : '<button type="button" class="btn btn--primary" data-action="ingest">' + UI.icon('capture') + '抓取附近</button>') +
@@ -956,6 +957,7 @@
       state.stats = await API.stats();
     } catch (error) {
       state.stats = null;
+      state.statsError = errorText(error);
     }
     renderFilters();
     if (!state.current) renderEditorEmpty();
@@ -1097,11 +1099,7 @@
     await withBusy(button, '保存中…', async function () {
       try {
         const updated = await API.update(state.current.id, buildPayload());
-        state.current = updated;
-        state.draft = deepCopy(updated);
-        state.dirty = false;
-        renderEditor();
-        renderList();
+        applyServerPoi(updated);
         fetchStats();
         UI.toast('已保存 · ' + updated.name, 'success', 2400);
       } catch (error) {
@@ -1173,9 +1171,9 @@
         }
       }
       state.selection.clear();
-      renderList();
+      await fetchList();
       fetchStats();
-      UI.toast('已' + label + ' ' + success + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''), failed ? 'info' : 'success', 3200);
+      UI.toast(label + ' ' + success + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''), failed ? 'info' : 'success', 3200);
     });
   }
 
@@ -1210,7 +1208,7 @@
         renderEditor();
       }
       state.selection.clear();
-      renderList();
+      await fetchList();
       fetchStats();
       UI.toast('已删除 ' + success + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''), failed ? 'info' : 'success', 3200);
     });
@@ -1224,12 +1222,22 @@
     }
   }
 
-  function refreshCurrentFrom(poi) {
-    if (!state.current || !poi || state.current.id !== poi.id) return;
-    state.current = poi;
-    state.draft = deepCopy(poi);
-    state.dirty = false;
-    renderEditor();
+  /** 操作成功后以服务端返回的 POI 为准更新列表与编辑面板（不做乐观更新） */
+  function applyServerPoi(poi) {
+    if (!poi) return;
+    for (let i = 0; i < state.list.items.length; i += 1) {
+      if (state.list.items[i].id === poi.id) {
+        state.list.items[i] = poi;
+        break;
+      }
+    }
+    if (state.current && state.current.id === poi.id) {
+      state.current = poi;
+      state.draft = deepCopy(poi);
+      state.dirty = false;
+      renderEditor();
+    }
+    renderList();
   }
 
   // ============================================================
@@ -1328,10 +1336,7 @@
           failed += 1;
         }
       }
-      if (lastPoi && state.current && lastPoi.id === state.current.id) {
-        refreshCurrentFrom(lastPoi);
-      }
-      renderList();
+      if (lastPoi) applyServerPoi(lastPoi);
       fetchStats();
       const usedOffline = responseMode ? responseMode === 'offline' : offline;
       const modeLabel = usedOffline ? '离线规则' : '模型输出';
@@ -1378,8 +1383,7 @@
         try {
           const result = await API.llmEdit(state.current.id, instruction);
           handle.close();
-          if (result && result.poi) refreshCurrentFrom(result.poi);
-          renderList();
+          if (result && result.poi) applyServerPoi(result.poi);
           fetchStats();
           UI.toast('已改写（' + ((result && result.changed) || []).join('、') + '）· 模型输出', 'success', 3800);
         } catch (error) {
@@ -1460,13 +1464,8 @@
           analyzeResultsHTML(items);
         if (state.current) {
           const refreshed = await safeFetchPoi(state.current.id);
-          if (refreshed) {
-            state.current = refreshed;
-            state.draft = deepCopy(refreshed);
-            renderEditor();
-          }
+          if (refreshed) applyServerPoi(refreshed);
         }
-        renderList();
         fetchStats();
         UI.toast('已分析 ' + items.length + ' 条 · ' + (usedOffline ? '离线规则' : '模型输出'), 'success', 3200);
       } catch (error) {
@@ -1501,11 +1500,7 @@
         });
         handle.foot.querySelector('[data-act="close"]').addEventListener('click', function () { handle.close(); });
         const refreshed = state.current ? await safeFetchPoi(state.current.id) : null;
-        if (refreshed) {
-          state.current = refreshed;
-          state.draft = deepCopy(refreshed);
-          renderEditor();
-        }
+        if (refreshed) applyServerPoi(refreshed);
         UI.toast('已分析 ' + (result.analyzed || 0) + ' 条 · ' + (usedOffline ? '离线规则' : '模型输出'), 'success', 3200);
       } catch (error) {
         toastError('批量分析失败', error);
