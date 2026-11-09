@@ -1991,7 +1991,10 @@
         demo: outcome.demo
       };
       render();
-      showToast(result.passed ? '找到 · 探索值 +' + result.seekerPoints : '再看一眼，还能更接近', result.passed ? '🎉' : '🔎', { variant: result.passed ? 'amber' : undefined });
+      // 结算卡已经写明点数，不再重复弹 toast（避免盖住评价文案）；只提示未达标
+      if (!result.passed) {
+        showToast('再看一眼，还能更接近', '🔎');
+      }
       result.achievements.forEach(function (def, index) {
         showToast('成就解锁 · ' + def.name, '🏅', { variant: 'amber', delay: 700 + index * 600 });
       });
