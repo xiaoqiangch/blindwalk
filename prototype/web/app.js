@@ -47,7 +47,9 @@
     routePlaceID: null,
     routeWalkedMeters: 0,
     routeManeuversStart: null,
-    routeOffRoute: 0
+    routeOffRoute: 0,
+    locationBlocked: false,
+    locationReason: ''
   };
   var timers = { journey: null, reveal: [] };
 
@@ -426,6 +428,12 @@
   /* ============================================================
      抽盒引擎（本地规则，镜像 BlindBoxEngine 的意图）
      ============================================================ */
+  /** 程序化触发一次摇盒（复用 autoShake 流程） */
+  function bwShakeNow() {
+    ui.autoShake = true;
+    render();
+  }
+
   function drawPlace() {
     var duration = D.DURATIONS.filter(function (d) { return d.id === ui.duration; })[0] || D.DURATIONS[1];
     var pool = D.PLACES.filter(function (place) { return place.area === ui.area; });
@@ -762,8 +770,22 @@
     }
   }
 
+  /** 到达前预热目的地照片，避免揭晓时空白 */
+  function preloadPlacePhoto() {
+    try {
+      var place = state.session ? placeOf(state.session.placeID) : null;
+      var url = place && place.photoUrl;
+      if (!url) return;
+      var img = new Image();
+      img.decoding = 'async';
+      img.src = url;
+      ui.photoPreload = img;
+    } catch (e) { /* ignore */ }
+  }
+
   function beginArrival() {
     if (!state.session || ui.arriving || state.reveal) return;
+    preloadPlacePhoto();
     ui.arriving = true;
     state.session.phase = 'arrived';
     state.session.remainingMeters = Math.min(state.session.remainingMeters, D.ARRIVE_THRESHOLD);
@@ -1233,6 +1255,25 @@
       '</section>';
   }
 
+  /** 定位受阻提示：只有「真实地点」或「明确选演示」两条路 */
+  function locationBlockedHTML() {
+    if (!ui.locationBlocked) return '';
+    var reasonText = ui.locationReason === 'denied'
+      ? '你把定位权限拒绝了'
+      : ui.locationReason === 'timeout'
+        ? '定位超时了（室内/地下常见）'
+        : '浏览器没有给出位置';
+    return '<section class="locblock" role="alert">' +
+      '<p class="locblock__title">没拿到你的位置，抽不了真实地点</p>' +
+      '<p class="locblock__text">' + esc(reasonText) + '。真实盲盒必须知道你在哪。</p>' +
+      '<div class="locblock__actions">' +
+      '<button type="button" class="btn btn--primary" data-action="retry-location">再试一次定位</button>' +
+      '<button type="button" class="btn btn--ghost" data-action="manual-location">手动输入位置</button>' +
+      '</div>' +
+      '<button type="button" class="locblock__demo" data-action="start-demo">不定位，先看演示（虚构地点）</button>' +
+      '</section>';
+  }
+
   function sheetHTML() {
     var durations = D.DURATIONS.map(function (duration) {
       return '<button type="button" data-action="select-duration" data-value="' + duration.id + '"' +
@@ -1263,6 +1304,7 @@
       '<div class="field"><span class="field__label">心情</span><div class="moods">' + moods + '</div></div>' +
       '<div class="field"><span class="field__label">区域</span><div class="areachips">' + areas + '</div></div>' +
       '<div class="sheet__actions">' +
+      locationBlockedHTML() +
       '<button type="button" class="btn btn--primary btn--block" data-action="shake" aria-label="摇一个盲盒">摇一个盲盒</button>' +
       '<button type="button" class="btn btn--quiet" data-action="close-setup" aria-label="今天不想出门">今天不想出门</button>' +
       '</div>' +
@@ -1338,7 +1380,7 @@
       (arrived
         ? '<button type="button" class="btn btn--primary btn--block" data-action="collect" aria-label="揭晓盲盒">揭晓盲盒</button>'
         : (isRealSession(session)
-          ? '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="我到了">走累了？直接揭晓<span class="demo-tag">兜底</span></button>'
+          ? '<button type="button" class="btn btn--primary btn--block" data-action="reveal-now" aria-label="直接揭晓">走累了？直接揭晓</button>'
           : '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="模拟步行 50 米">模拟步行 +50m<span class="demo-tag">演示</span></button>')) +
       '<button type="button" class="btn btn--quiet" data-action="arrive" aria-label="我到了，直接揭晓">我到了</button>' +
       '</div>' +
@@ -1689,8 +1731,17 @@
       ratingBadge(place.rarity) +
       '</div>' +
       (place.photoUrl
-        ? '<figure class="reveal-card__figure">' +
-            '<img class="reveal-card__photo" src="' + esc(place.photoUrl) + '" alt="' + esc(place.name) + ' 的实景照片" loading="lazy" referrerpolicy="no-referrer">' +
+        ? '<figure class="reveal-card__figure" data-photo-figure data-photo-url="' + esc(place.photoUrl) + '">' +
+            '<div class="reveal-card__photoloading" data-photo-loading>' +
+              '<span class="reveal-card__spinner" aria-hidden="true"></span>' +
+              '<p>照片加载中…</p>' +
+            '</div>' +
+            '<div class="reveal-card__photofallback" data-photo-fallback hidden>' +
+              '<span aria-hidden="true">' + (place.categoryEmoji || '🖼️') + '</span>' +
+              '<p>照片没加载出来</p>' +
+              '<button type="button" data-action="retry-photo">重新加载</button>' +
+            '</div>' +
+            '<img class="reveal-card__photo" data-photo-img src="' + esc(place.photoUrl) + '" alt="' + esc(place.name) + ' 的实景照片" loading="eager" decoding="async" referrerpolicy="no-referrer">' +
             '<figcaption class="reveal-card__credit">图片 · ' + esc(place.photoCredit || 'Wikimedia Commons') + '</figcaption>' +
           '</figure>'
         : '') +
@@ -1745,6 +1796,38 @@
       '</div>';
   }
 
+  /** 揭晓照片加载失败 → 显示占位 + 重试按钮（不显示破图） */
+  function bindRevealPhoto() {
+    var figure = document.querySelector('[data-photo-figure]');
+    if (!figure) return;
+    var img = figure.querySelector('[data-photo-img]');
+    var fallback = figure.querySelector('[data-photo-fallback]');
+    var loading = figure.querySelector('[data-photo-loading]');
+    if (!img || !fallback) return;
+    var showFallback = function () {
+      img.hidden = true;
+      fallback.hidden = false;
+      if (loading) loading.hidden = true;
+      figure.classList.add('is-broken');
+    };
+    var showImage = function () {
+      img.hidden = false;
+      fallback.hidden = true;
+      if (loading) loading.hidden = true;
+      figure.classList.remove('is-broken');
+    };
+    img.addEventListener('load', function () {
+      if (img.naturalWidth > 0) showImage(); else showFallback();
+    });
+    img.addEventListener('error', showFallback);
+    if (img.complete) {
+      if (img.naturalWidth > 0) showImage(); else showFallback();
+    }
+    window.setTimeout(function () {
+      if (!img.complete || img.naturalWidth === 0) showFallback();
+    }, 7000);
+  }
+
   function renderReveal() {
     var reveal = state.reveal;
     if (!reveal) {
@@ -1779,6 +1862,7 @@
     }
 
     dom.overlayRoot.innerHTML = revealCardHTML();
+    bindRevealPhoto();
   }
 
   function cardsHTML() {
@@ -2235,12 +2319,13 @@
   /* ---- 定位：失败降级到演示坐标，并明确标注 ---- */
   function currentLocation(callback) {
     var fallback = { lat: D.SURPRISE_ORIGIN.lat, lng: D.SURPRISE_ORIGIN.lng,
-                     lon: D.SURPRISE_ORIGIN.lng, demo: true };
+                     lon: D.SURPRISE_ORIGIN.lng, demo: true, reason: 'no-fix' };
     if (!navigator.geolocation) { callback(fallback); return; }
     var done = false;
     var timer = window.setTimeout(function () {
       if (done) return;
       done = true;
+      fallback.reason = 'timeout';
       callback(fallback);
     }, 6000);
     navigator.geolocation.getCurrentPosition(
@@ -2251,10 +2336,11 @@
         callback({ lat: pos.coords.latitude, lng: pos.coords.longitude,
                    lon: pos.coords.longitude, demo: false });
       },
-      function () {
+      function (err) {
         if (done) return;
         done = true;
         window.clearTimeout(timer);
+        fallback.reason = (err && err.code === 1) ? 'denied' : 'no-fix';
         callback(fallback);
       },
       { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
@@ -2909,8 +2995,15 @@
     };
 
     var go = function (loc) {
-      // loc.demo = 拿不到真实定位（权限被拒/超时/不支持）：不能冒充「真实坐标」
-      if (!loc || loc.demo || !window.BW_GEO) { fallback(); return; }
+      // 拿不到真实定位：不再静默退回虚构地点，而是明确告诉用户并提供出口
+      //（重试 / 手动输入位置 / 明确选择演示）
+      if (!loc || loc.demo || !window.BW_GEO) {
+        ui.shaking = false;
+        ui.locationBlocked = true;
+        ui.locationReason = (loc && loc.reason) || 'no-fix';
+        if (currentRoute() === '/setup') render(); else render();
+        return;
+      }
       ui.myLocation = ui.myLocation || loc;
       window.BW_GEO.findRealPlace(
         { lat: loc.lat, lon: (loc.lon !== undefined ? loc.lon : loc.lng) },
@@ -3047,6 +3140,26 @@
       case 'walk':
         onWalk();
         break;
+      case 'retry-photo': {
+        var fig = document.querySelector('[data-photo-figure]');
+        if (!fig) break;
+        var im = fig.querySelector('[data-photo-img]');
+        var url = fig.getAttribute('data-photo-url') || '';
+        if (!im || !url) break;
+        fig.classList.remove('is-broken');
+        im.hidden = false;
+        im.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'r=' + Date.now();
+        var fb = fig.querySelector('[data-photo-fallback]');
+        if (fb) fb.hidden = true;
+        break;
+      }
+      case 'reveal-now': {
+        // 真实定位下没走到也能直接揭晓：立刻进入到达态
+        if (!state.session || state.session.phase !== 'walking') break;
+        stopRealTracking();
+        beginArrival();
+        break;
+      }
       case 'arrive':
         beginArrival();
         break;
@@ -3144,6 +3257,55 @@
         break;
       case 'open-debug': {
         navigate('/debug');
+        break;
+      }
+      case 'retry-location': {
+        ui.locationBlocked = false;
+        ui.myLocation = null;
+        render();
+        showToast('正在重新获取定位…', '📡', { duration: 1600 });
+        currentLocation(function (loc) {
+          if (loc && !loc.demo) {
+            ui.myLocation = loc;
+            ui.geoErrorShown = false;
+            render();
+            bwShakeNow();
+          } else {
+            ui.locationBlocked = true;
+            ui.locationReason = (loc && loc.reason) || 'no-fix';
+            render();
+          }
+        });
+        break;
+      }
+      case 'manual-location': {
+        var input = window.prompt('输入地址或坐标（例：南京市鼓楼区金银街 / 32.0597,118.7713）');
+        if (!input) break;
+        showToast('正在查这个位置…', '🔎', { duration: 2000 });
+        window.BW_GEO.geocodeAddress(input).then(function (hit) {
+          if (!hit) {
+            showToast('没找到这个位置，换个写法试试', '😕', { duration: 2600 });
+            return;
+          }
+          ui.myLocation = { lat: hit.lat, lng: hit.lon, lon: hit.lon, demo: false, manual: true };
+          ui.locationBlocked = false;
+          ui.locationReason = '';
+          render();
+          showToast('已用：' + hit.label, '📍', { duration: 2400 });
+          bwShakeNow();
+        }).catch(function () {
+          showToast('位置查询失败，检查网络', '📴', { duration: 2400 });
+        });
+        break;
+      }
+      case 'start-demo': {
+        // 用户明确选择演示：这才允许用虚构地点
+        ui.locationBlocked = false;
+        state.demoSeeded = true;
+        var place = drawPlace();
+        startSession(place, { source: 'catalog', fallback: true });
+        navigate('/journey');
+        showToast('演示模式 · 这是虚构地点', '🧪', { duration: 2400 });
         break;
       }
       case 'retry-real': {
@@ -3284,8 +3446,16 @@
       seedDemo();
     } else {
       var saved = load();
-      if (saved) hydrate(saved);
-      else seedFresh();
+      if (saved && saved.demoSeeded) {
+        // 以前用 ?demo=1 打开过 → 存档里是演示数据。
+        // 用户要的是真实地点，这里直接清掉演示存档，回到真实模式。
+        seedFresh();
+        state.autoExitedDemo = true;
+      } else if (saved) {
+        hydrate(saved);
+      } else {
+        seedFresh();
+      }
     }
 
     // state 在 seedDemo/seedFresh/hydrate 里才创建，所以标记放在这之后
@@ -3327,6 +3497,12 @@
 
     bindEvents();
     render();
+
+    if (state.autoExitedDemo) {
+      window.setTimeout(function () {
+        showToast('已退出演示数据，抽的是真实地点', '📍', { duration: 2600 });
+      }, 600);
+    }
 
     // 记录 SW 版本，诊断页展示用
     if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {

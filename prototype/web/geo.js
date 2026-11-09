@@ -446,6 +446,7 @@
     if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
+    if (/大学|学院|校区|书院/.test(text)) return 'historic';
     if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
@@ -457,6 +458,57 @@
     return 'plaza';
   }
 
+
+
+  /* ============================================================
+     手动指定位置：地址 → 坐标（GPS 不可用时的「真实地点」出口）
+     Nominatim 优先，失败换 Photon；都失败返回 null
+     ============================================================ */
+  function geocodeAddress(rawQuery) {
+    var query = (rawQuery || '').trim();
+    if (!query) return Promise.resolve(null);
+
+    // 直接输坐标：31.23,121.47
+    var coordMatch = query.match(/^\s*(-?\d{1,2}\.\d+)\s*[,， ]\s*(-?\d{2,3}\.\d+)\s*$/);
+    if (coordMatch) {
+      return Promise.resolve({
+        lat: parseFloat(coordMatch[1]),
+        lon: parseFloat(coordMatch[2]),
+        label: '你输入的位置',
+        source: 'manual'
+      });
+    }
+
+    var nominatim = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=zh-CN&q=' +
+      encodeURIComponent(query);
+    return fetchJSON(nominatim, 6000).then(function (list) {
+      if (Array.isArray(list) && list.length) {
+        return {
+          lat: parseFloat(list[0].lat),
+          lon: parseFloat(list[0].lon),
+          label: list[0].display_name || query,
+          source: 'nominatim'
+        };
+      }
+      return geocodePhoton(query);
+    }).catch(function () {
+      return geocodePhoton(query);
+    });
+  }
+
+  function geocodePhoton(query) {
+    return fetchJSON('https://photon.komoot.io/api/?limit=1&lang=zh&q=' + encodeURIComponent(query), 6000)
+      .then(function (data) {
+        var f = data && data.features && data.features[0];
+        if (!f) return null;
+        var c = f.geometry && f.geometry.coordinates;
+        if (!c) return null;
+        var p = f.properties || {};
+        var label = [p.name, p.street, p.district, p.city].filter(Boolean).join(' · ') || query;
+        return { lat: c[1], lon: c[0], label: label, source: 'photon' };
+      })
+      .catch(function () { return null; });
+  }
 
   /* ============================================================
      步行路线与转向指令（Valhalla 公共实例，CORS 全开、无需 Key）
@@ -1228,6 +1280,7 @@
     if (/博物|纪念馆|展览馆|陈列馆/.test(text)) return 'museum';
     if (/音乐厅|剧院|剧场|戏院|大戏院|演奏厅/.test(text)) return 'venue';
     if (/美术馆|艺术|画廊/.test(text)) return 'art';
+    if (/大学|学院|校区|书院/.test(text)) return 'historic';
     if (/故居|旧址|会址|公馆|洋房|里弄|弄堂|饭店|酒店|宾馆|旅馆/.test(text)) return 'historic';
     if (/图书/.test(text)) return 'library';
     if (/书店/.test(text)) return 'bookstore';
@@ -1239,6 +1292,57 @@
     return 'plaza';
   }
 
+
+
+  /* ============================================================
+     手动指定位置：地址 → 坐标（GPS 不可用时的「真实地点」出口）
+     Nominatim 优先，失败换 Photon；都失败返回 null
+     ============================================================ */
+  function geocodeAddress(rawQuery) {
+    var query = (rawQuery || '').trim();
+    if (!query) return Promise.resolve(null);
+
+    // 直接输坐标：31.23,121.47
+    var coordMatch = query.match(/^\s*(-?\d{1,2}\.\d+)\s*[,， ]\s*(-?\d{2,3}\.\d+)\s*$/);
+    if (coordMatch) {
+      return Promise.resolve({
+        lat: parseFloat(coordMatch[1]),
+        lon: parseFloat(coordMatch[2]),
+        label: '你输入的位置',
+        source: 'manual'
+      });
+    }
+
+    var nominatim = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=zh-CN&q=' +
+      encodeURIComponent(query);
+    return fetchJSON(nominatim, 6000).then(function (list) {
+      if (Array.isArray(list) && list.length) {
+        return {
+          lat: parseFloat(list[0].lat),
+          lon: parseFloat(list[0].lon),
+          label: list[0].display_name || query,
+          source: 'nominatim'
+        };
+      }
+      return geocodePhoton(query);
+    }).catch(function () {
+      return geocodePhoton(query);
+    });
+  }
+
+  function geocodePhoton(query) {
+    return fetchJSON('https://photon.komoot.io/api/?limit=1&lang=zh&q=' + encodeURIComponent(query), 6000)
+      .then(function (data) {
+        var f = data && data.features && data.features[0];
+        if (!f) return null;
+        var c = f.geometry && f.geometry.coordinates;
+        if (!c) return null;
+        var p = f.properties || {};
+        var label = [p.name, p.street, p.district, p.city].filter(Boolean).join(' · ') || query;
+        return { lat: c[1], lon: c[0], label: label, source: 'photon' };
+      })
+      .catch(function () { return null; });
+  }
 
   /* ============================================================
      步行路线与转向指令（Valhalla 公共实例，CORS 全开、无需 Key）
@@ -1573,6 +1677,7 @@
     wikipediaPOIs: wikipediaPOIs,
     makeWikiPlace: makeWikiPlace,
     loadCuratedPOIs: loadCuratedPOIs,
+    geocodeAddress: geocodeAddress,
     fetchRoute: fetchRoute,
     routeProgress: routeProgress,
     guidanceFor: guidanceFor,
