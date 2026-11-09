@@ -7,11 +7,11 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v22';
+  var APP_VERSION = 'v23';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
-    '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises'];
+    '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises', '/account', '/datasource'];
   var TAB_ROUTES = ['/home', '/cards', '/social', '/profile'];
   var LEVEL_NAMES = ['出门新手', '街角观察员', '城市漫游者', '惊喜收藏家', '迷雾探险家',
     '黄昏猎人', '夜路诗人', '盲走大师', '城市传说', '盲盒之神'];
@@ -323,6 +323,7 @@
   function seedFresh() {
     state = freshState();
     try { localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
+    save();   // 新用户也立即有一条完整存档，账号同步才有内容
   }
 
   function seedDemo() {
@@ -1268,6 +1269,201 @@
       '</section>';
   }
 
+
+  /* ============================================================
+     账号（可选云端）与数据源设置
+     - 未登录：完全本地，离线可用
+     - 登录：把 profile / surprises / settings 整包同步到账号服务
+     ============================================================ */
+  var ACCOUNT_STORE = 'bw.account.v1';
+  var DATA_SOURCE_STORE = 'bw.datasource.v1';
+
+  function accountConfig() {
+    try {
+      var raw = localStorage.getItem(ACCOUNT_STORE);
+      var cfg = raw ? JSON.parse(raw) : null;
+      return cfg && typeof cfg === 'object' ? cfg : { baseUrl: 'http://127.0.0.1:8803', user: null };
+    } catch (e) { return { baseUrl: 'http://127.0.0.1:8803', user: null }; }
+  }
+
+  function saveAccountConfig(cfg) {
+    try { localStorage.setItem(ACCOUNT_STORE, JSON.stringify(cfg)); } catch (e) { /* ignore */ }
+  }
+
+  function accountApi(path, options) {
+    var cfg = accountConfig();
+    var base = (cfg.baseUrl || '').replace(/\/$/, '');
+    var init = { method: (options && options.method) || 'GET', credentials: 'include', headers: {} };
+    if (options && options.body !== undefined) {
+      init.headers['Content-Type'] = 'application/json; charset=utf-8';
+      init.body = JSON.stringify(options.body);
+    }
+    return fetch(base + path, init).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (payload) {
+        if (!res.ok) {
+          var err = new Error((payload && payload.error) || ('HTTP ' + res.status));
+          err.code = payload && payload.code;
+          err.status = res.status;
+          throw err;
+        }
+        return payload;
+      });
+    });
+  }
+
+  function accountErrText(e) {
+    var code = e && e.code;
+    if (code === 'BAD_CREDENTIALS') return '用户名或密码不对';
+    if (code === 'USERNAME_TAKEN') return '这个用户名已被注册';
+    if (code === 'BAD_REQUEST') return '用户名 3–24 字符，密码至少 6 位';
+    if (code === 'TOO_MANY_ATTEMPTS') return '尝试次数太多，10 分钟后再试';
+    if (code === 'UNAUTHENTICATED') return '登录已过期，请重新登录';
+    if (e && /Failed to fetch|NetworkError/.test(e.message || '')) {
+      return '连不上账号服务（检查地址/是否启动；HTTPS 页面不能调 http）';
+    }
+    return (e && e.message) || '操作失败';
+  }
+
+  function accountStatusText() {
+    var cfg = accountConfig();
+    if (cfg.user) return '已登录：' + cfg.user.username;
+    return '未登录（数据只存在本机）';
+  }
+
+  /** 登录/注册成功后刷新界面 */
+  function onAccountChanged(user) {
+    var cfg = accountConfig();
+    cfg.user = user || null;
+    saveAccountConfig(cfg);
+    if (currentRoute() === '/account') render();
+    else if (currentRoute() === '/profile') render();
+  }
+
+  function syncPayload() {
+    return {
+      app: 'blindwalk',
+      version: 1,
+      savedAt: Date.now(),
+      profile: state.profile,
+      surprises: state.surprises,
+      settings: state.settings
+    };
+  }
+
+  /** 登录后把本机数据推到账号 */
+  function pushProfile() {
+    return accountApi('/api/me/profile', { method: 'PUT', body: { profile: syncPayload() } })
+      .then(function (r) { return r; });
+  }
+
+  /** 从账号拉数据覆盖本机 */
+  function pullProfile() {
+    return accountApi('/api/auth/me').then(function (data) {
+      var remote = data && data.profile;
+      if (!remote || !remote.profile) throw new Error('账号里还没有数据');
+      state.profile = remote.profile;
+      if (Array.isArray(remote.surprises)) state.surprises = remote.surprises;
+      if (remote.settings) state.settings = remote.settings;
+      save();
+      return remote;
+    });
+  }
+
+
+  /** 账号页：登录 / 注册 / 同步 / 退出 / 删号 */
+  function accountHTML() {
+    var cfg = accountConfig();
+    var mixedBlocked = location.protocol === 'https:' && /^http:\/\//i.test(cfg.baseUrl || '');
+    var logged = !!cfg.user;
+    var rows = logged
+      ? '<div class="dbg__row"><span class="dbg__k">当前账号</span><span class="dbg__v">' + esc(cfg.user.username) + '</span></div>' +
+        '<div class="dbg__row"><span class="dbg__k">服务地址</span><span class="dbg__v">' + esc(cfg.baseUrl) + '</span></div>' +
+        '<div class="dbg__row"><span class="dbg__k">本机数据</span><span class="dbg__v">' +
+          state.profile.cards.length + ' 张卡片 · ' + state.profile.xp + ' 探索值 · ' + state.surprises.length + ' 个惊喜</span></div>'
+      : '<div class="dbg__row"><span class="dbg__k">当前状态</span><span class="dbg__v">未登录 · 数据只存在这台设备</span></div>';
+
+    var form = logged
+      ? '<div class="dbg__actions">' +
+          '<button type="button" class="btn btn--primary btn--block" data-action="account-sync">同步到账号（覆盖云端）</button>' +
+          '<button type="button" class="btn btn--ghost btn--block" data-action="account-restore">从账号恢复（覆盖本机）</button>' +
+          '<button type="button" class="btn btn--quiet btn--block" data-action="account-logout">退出登录</button>' +
+          '<button type="button" class="btn btn--quiet btn--block" data-action="account-delete">删除账号</button>' +
+        '</div>'
+      : '<div class="acc__form">' +
+          '<label class="acc__label" for="acc-base">账号服务地址</label>' +
+          '<input class="acc__input" id="acc-base" type="url" value="' + esc(cfg.baseUrl) + '" placeholder="http://127.0.0.1:8803">' +
+          '<label class="acc__label" for="acc-user">用户名</label>' +
+          '<input class="acc__input" id="acc-user" type="text" autocomplete="username" placeholder="3–24 个字符">' +
+          '<label class="acc__label" for="acc-pass">密码</label>' +
+          '<input class="acc__input" id="acc-pass" type="password" autocomplete="current-password" placeholder="至少 6 位">' +
+          '<div class="dbg__actions">' +
+            '<button type="button" class="btn btn--primary btn--block" data-action="account-login">登录</button>' +
+            '<button type="button" class="btn btn--ghost btn--block" data-action="account-register">注册并登录</button>' +
+          '</div>' +
+          '<p class="dbg__hint">账号是可选的。不登录也能用，数据留在本机。<br>' +
+          '云端账号需要把 <code>account</code> 服务跑起来（<code>bash scripts/start-account.sh</code>），' +
+          '并且用 http 地址打开 App（HTTPS 页面不能调本地 http 服务）。</p>' +
+        '</div>';
+
+    return '<div class="page dbg">' +
+      '<header class="pagehead"><div><h2 class="pagehead__title">账号</h2>' +
+      '<p class="pagehead__sub">' + esc(accountStatusText()) + '</p></div>' +
+      '<button type="button" class="iconbtn" data-action="go-profile" aria-label="返回我的">' + ICON.back + '</button>' +
+      '</header>' +
+      (mixedBlocked
+        ? '<section class="locblock" role="alert">' +
+            '<p class="locblock__title">当前页面是 HTTPS，连不上 http 的本地账号服务</p>' +
+            '<p class="locblock__text">浏览器会以「混合内容」拦掉请求。两种办法：<br>' +
+            '① 用 http 打开 App（本地 <code>python3 serve.py</code>，访问 <code>http://&lt;电脑IP&gt;:8799</code>）；<br>' +
+            '② 把账号服务部署到 HTTPS 域名，再把地址改成 https://…</p>' +
+          '</section>'
+        : '') +
+      '<section class="dbg__card">' + rows + '</section>' +
+      '<section class="dbg__card dbg__actions">' + form + '</section>' +
+      '</div>';
+  }
+
+  /** 数据源页：高德/百度 Key + 状态 */
+  function datasourceHTML() {
+    var st = (window.BW_PROVIDERS && window.BW_PROVIDERS.status)
+      ? window.BW_PROVIDERS.status()
+      : { sources: [], keys: {} };
+    var list = '<div class="dbg__row"><span class="dbg__k">高德地图</span><span class="dbg__v">' +
+      (st.keys && st.keys.amap ? '已配置 Key' : '未配置（可选）') + '</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">百度地图</span><span class="dbg__v">' +
+      (st.keys && st.keys.baidu ? '已配置 Key' : '未配置（可选）') + '</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">OpenStreetMap</span><span class="dbg__v">免费 · 始终可用</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">中文维基百科</span><span class="dbg__v">免费 · 带实景照片</span></div>';
+    var last = (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport) ? window.BW_PROVIDERS.lastReport() : null;
+    var report = '';
+    if (last && last.sources && last.sources.length) {
+      report = '<div class="dbg__row"><span class="dbg__k">上次抓取</span><span class="dbg__v">' +
+        last.sources.map(function (x) {
+          return esc(x.label || x.id) + '：' + (x.ok ? (x.count + ' 条') : (x.reason || '失败'));
+        }).join('；') + '</span></div>';
+    }
+
+    return '<div class="page dbg">' +
+      '<header class="pagehead"><div><h2 class="pagehead__title">数据源</h2>' +
+      '<p class="pagehead__sub">真实地点从哪来 · 填入你自己的 Key 可启用地图服务商</p></div>' +
+      '<button type="button" class="iconbtn" data-action="go-profile" aria-label="返回我的">' + ICON.back + '</button>' +
+      '</header>' +
+      '<section class="dbg__card">' + list + report + '</section>' +
+      '<section class="dbg__card">' +
+        '<p class="dbg__label">高德 Web 服务 Key（可选）</p>' +
+        '<input class="acc__input" id="ds-amap" type="text" placeholder="高德开放平台 → Web服务 → Key">' +
+        '<p class="dbg__label">百度地图服务端 AK（可选）</p>' +
+        '<input class="acc__input" id="ds-baidu" type="text" placeholder="百度地图开放平台 → 服务端 → AK">' +
+        '<div class="dbg__actions">' +
+          '<button type="button" class="btn btn--primary btn--block" data-action="ds-save">保存 Key</button>' +
+          '<button type="button" class="btn btn--ghost btn--block" data-action="ds-test">用当前位置测一次抓取</button>' +
+        '</div>' +
+        '<p class="dbg__hint">Key 只保存在这台设备（localStorage），不会上传到任何服务器。<br>' +
+        '不填也能用：默认走 OpenStreetMap + 维基百科。</p>' +
+      '</section>' +
+      '</div>';
+  }
+
   /** 定位受阻提示：只有「真实地点」或「明确选演示」两条路 */
   function locationBlockedHTML() {
     if (!ui.locationBlocked) return '';
@@ -1665,6 +1861,12 @@
     if (source === 'wikipedia') {
       return '<span class="srcbadge srcbadge--real">真实地标</span>';
     }
+    if (source === 'amap') {
+      return '<span class="srcbadge srcbadge--real">高德地点</span>';
+    }
+    if (source === 'baidu') {
+      return '<span class="srcbadge srcbadge--real">百度地点</span>';
+    }
     if (source === 'osm') {
       return '<span class="srcbadge srcbadge--real">真实地点</span>';
     }
@@ -1675,7 +1877,8 @@
   }
 
   function isRealSource(source) {
-    return source === 'osm' || source === 'geo' || source === 'wikipedia' || source === 'curated';
+    return source === 'osm' || source === 'geo' || source === 'wikipedia'
+      || source === 'curated' || source === 'amap' || source === 'baidu' || source === 'wiki';
   }
 
   function isRealSession(session) {
@@ -2071,6 +2274,14 @@
       '</button>' +
       '<button type="button" class="setting setting--danger" data-action="clear-data" aria-label="清除演示数据">' +
       '<span class="setting__label">清除演示数据</span>' +
+      '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
+      '</button>' +
+      '<button type="button" class="setting" data-action="go-account" aria-label="账号">' +
+      '<span class="setting__label">账号 <em class="acc__state">' + (accountConfig().user ? esc(accountConfig().user.username) : '未登录') + '</em></span>' +
+      '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
+      '</button>' +
+      '<button type="button" class="setting" data-action="go-datasource" aria-label="数据源">' +
+      '<span class="setting__label">数据源（高德 / 百度 / OSM）</span>' +
       '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
       '</button>' +
       '<button type="button" class="setting" data-action="open-debug" aria-label="打开诊断信息">' +
@@ -2896,6 +3107,12 @@
       case '/debug':
         html = debugHTML();
         break;
+      case '/account':
+        html = accountHTML();
+        break;
+      case '/datasource':
+        html = datasourceHTML();
+        break;
       default:
         html = homeHTML();
     }
@@ -3350,6 +3567,102 @@
         ui.autoShake = true;
         navigate('/setup');
         showToast('正在重新获取定位…', '📡', { duration: 1600 });
+        break;
+      }
+      case 'go-account':
+        navigate('/account');
+        break;
+      case 'go-datasource':
+        navigate('/datasource');
+        break;
+      case 'go-profile':
+        navigate('/profile');
+        break;
+      case 'account-login': {
+        var loginName = document.getElementById('acc-user').value.trim();
+        var loginPass = document.getElementById('acc-pass').value;
+        var baseEl = document.getElementById('acc-base');
+        if (baseEl) { var cfg0 = accountConfig(); cfg0.baseUrl = baseEl.value.trim() || cfg0.baseUrl; saveAccountConfig(cfg0); }
+        if (!loginName || !loginPass) { showToast('用户名和密码都要填', '✍️'); break; }
+        showToast('正在登录…', '🔐', { duration: 1600 });
+        accountApi('/api/auth/login', { method: 'POST', body: { username: loginName, password: loginPass } })
+          .then(function (r) { onAccountChanged(r.user); showToast('已登录：' + r.user.username, '✅'); })
+          .catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
+        break;
+      }
+      case 'account-register': {
+        var regName = document.getElementById('acc-user').value.trim();
+        var regPass = document.getElementById('acc-pass').value;
+        var baseEl2 = document.getElementById('acc-base');
+        if (baseEl2) { var cfg1 = accountConfig(); cfg1.baseUrl = baseEl2.value.trim() || cfg1.baseUrl; saveAccountConfig(cfg1); }
+        if (!regName || !regPass) { showToast('用户名和密码都要填', '✍️'); break; }
+        showToast('正在注册…', '🆕', { duration: 1600 });
+        accountApi('/api/auth/register', { method: 'POST', body: { username: regName, password: regPass } })
+          .then(function (r) { onAccountChanged(r.user); showToast('注册成功，已登录', '✅'); })
+          .catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
+        break;
+      }
+      case 'account-logout': {
+        accountApi('/api/auth/logout', { method: 'POST' }).catch(function () {}).then(function () {
+          onAccountChanged(null);
+          showToast('已退出登录', '👋');
+        });
+        break;
+      }
+      case 'account-sync': {
+        showToast('正在同步到账号…', '☁️', { duration: 1800 });
+        pushProfile().then(function (r) {
+          var bytes = r.bytes || 0;
+          var size = bytes >= 1024 ? (bytes / 1024).toFixed(1) + ' KB' : bytes + ' 字节';
+          showToast('已同步 · ' + size, '☁️');
+        }).catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
+        break;
+      }
+      case 'account-restore': {
+        if (!window.confirm('用账号里的数据覆盖本机？本机当前进度会丢。')) break;
+        showToast('正在恢复…', '⬇️', { duration: 1800 });
+        pullProfile().then(function () {
+          showToast('已从账号恢复', '✅');
+          navigate('/home');
+        }).catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
+        break;
+      }
+      case 'account-delete': {
+        var pass = window.prompt('删除账号不可恢复。请输入密码确认：');
+        if (!pass) break;
+        accountApi('/api/me', { method: 'DELETE', body: { password: pass } })
+          .then(function () {
+            onAccountChanged(null);
+            showToast('账号已删除', '🗑️');
+          })
+          .catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
+        break;
+      }
+      case 'ds-save': {
+        var amapEl = document.getElementById('ds-amap');
+        var baiduEl = document.getElementById('ds-baidu');
+        if (window.BW_PROVIDERS && window.BW_PROVIDERS.setKeys) {
+          window.BW_PROVIDERS.setKeys({
+            amap: amapEl ? amapEl.value.trim() : '',
+            baidu: baiduEl ? baiduEl.value.trim() : ''
+          });
+        }
+        showToast('Key 已保存在本机', '🔑');
+        render();
+        break;
+      }
+      case 'ds-test': {
+        var here = ui.myLocation || ui.lastFix;
+        if (!here) { showToast('先给一次定位，或用「手动输入位置」', '📍'); break; }
+        showToast('正在测试抓取…', '🔎', { duration: 2000 });
+        if (!window.BW_PROVIDERS) { showToast('数据源模块没加载', '⚠️'); break; }
+        window.BW_PROVIDERS.nearby({ lat: here.lat, lon: (here.lon !== undefined ? here.lon : here.lng), radius: 1200, limit: 20 })
+          .then(function (list) {
+            var withPhoto = list.filter(function (x) { return x.photoUrl; }).length;
+            showToast('抓到 ' + list.length + ' 个 · 带图 ' + withPhoto + ' 个', '✅', { duration: 2600 });
+            render();
+          })
+          .catch(function (e) { showToast('抓取失败：' + (e.message || e), '⚠️', { duration: 3200 }); });
         break;
       }
       case 'force-update': {
