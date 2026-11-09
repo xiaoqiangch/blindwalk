@@ -33,7 +33,11 @@
     buryLocation: null,
     seekShot: null,
     demoArrived: false,
-    seekID: null
+    seekID: null,
+    geoWatch: null,
+    lastHeading: null,
+    geoAsked: false,
+    geoErrorShown: false
   };
   var timers = { journey: null, reveal: [] };
 
@@ -117,6 +121,7 @@
         reveal: state.reveal,
         feed: state.feed,
         surprises: state.surprises,
+        realPlaces: state.realPlaces,
         settings: state.settings
       }));
     } catch (err) { /* file:// 隐私模式等场景忽略 */ }
@@ -130,8 +135,22 @@
       if (!data || data.v !== 1 || !data.profile) return null;
       // 向后兼容：旧数据没有 surprises 字段
       if (!Array.isArray(data.surprises)) data.surprises = [];
+      if (!data.realPlaces || typeof data.realPlaces !== 'object') data.realPlaces = {};
       return data;
     } catch (err) { return null; }
+  }
+
+
+  /* ============================================================
+     地点查询：内置虚构地点 + 真实 POI 快照
+     真实地点在抽到时会把完整对象存进 state.realPlaces，
+     之后图鉴/揭晓/旅程都用这里查，不再依赖 D.PLACE_MAP。
+     ============================================================ */
+  function placeOf(id) {
+    if (!id) return null;
+    var real = state.realPlaces && state.realPlaces[id];
+    if (real) return real;
+    return D.PLACE_MAP[id] || null;
   }
 
   /* ============================================================
@@ -153,14 +172,14 @@
 
   function rareCount() {
     return state.profile.cards.filter(function (card) {
-      var place = D.PLACE_MAP[card.placeID];
+      var place = placeOf(card.placeID);
       return place && place.rarity !== 'common';
     }).length;
   }
 
   function hiddenCount() {
     return state.profile.cards.filter(function (card) {
-      var place = D.PLACE_MAP[card.placeID];
+      var place = placeOf(card.placeID);
       return place && place.rarity === 'hidden';
     }).length;
   }
@@ -242,7 +261,7 @@
   }
 
   function areaOf(placeID) {
-    var place = D.PLACE_MAP[placeID];
+    var place = placeOf(placeID);
     return place ? place.area : 'near';
   }
 
@@ -274,6 +293,7 @@
       session: null,
       reveal: null,
       feed: [],
+      realPlaces: {},
       surprises: [],
       pendingBury: null,
       pendingSeek: null,
@@ -297,7 +317,7 @@
     state.profile.displayName = D.DEMO.displayName;
 
     state.profile.cards = D.DEMO_ORDER.map(function (placeID) {
-      var place = D.PLACE_MAP[placeID];
+      var place = placeOf(placeID);
       return {
         placeID: placeID,
         serial: place.serial,
@@ -374,6 +394,10 @@
       session: saved.session || null,
       reveal: saved.reveal || null,
       feed: Array.isArray(saved.feed) ? saved.feed : [],
+      realPlaces: (saved.realPlaces && typeof saved.realPlaces === 'object') ? saved.realPlaces : {},
+      surprises: Array.isArray(saved.surprises) ? saved.surprises : [],
+      pendingBury: null,
+      pendingSeek: null,
       settings: Object.assign(base.settings, saved.settings || {})
     };
     state.profile.achievements = state.profile.achievements || {};
@@ -425,8 +449,13 @@
     return bag[bag.length - 1].place;
   }
 
-  function startSession(place) {
+  function startSession(place, meta) {
     var duration = D.DURATIONS.filter(function (d) { return d.id === ui.duration; })[0] || D.DURATIONS[1];
+    // 真实地点（真实 POI 或真实坐标）：把完整对象存起来（之后 placeOf 能查到）
+    if (place.source === 'osm' || place.source === 'geo' || place.coordinate) {
+      state.realPlaces = state.realPlaces || {};
+      state.realPlaces[place.id] = place;
+    }
     state.session = {
       placeID: place.id,
       totalMeters: duration.startMeters,
@@ -434,7 +463,10 @@
       unlockedHintCount: 1,
       phase: 'walking',
       startedAt: Date.now(),
-      demo: false
+      demo: false,
+      source: place.source || (meta && meta.source) || 'catalog',
+      coordinate: place.coordinate || null,
+      bearing: place.bearing || null
     };
     state.reveal = null;
     ui.newHint = -1;
@@ -450,8 +482,8 @@
     var session = state.session;
     if (!session || session.phase !== 'walking') return [];
     var events = [];
-    var next = clamp(session.remainingMeters - Math.abs(meters), 0, session.totalMeters);
-    session.remainingMeters = next;
+    var next = Math.round(clamp(session.remainingMeters - Math.abs(meters), 0, session.totalMeters));
+    session.remainingMeters = Math.round(next);
 
     while (session.unlockedHintCount < 3) {
       var threshold = D.HINT_THRESHOLDS[session.unlockedHintCount];
@@ -465,6 +497,67 @@
       events.push({ type: 'arrived' });
     }
     return events;
+  }
+
+  /* 真实定位模式：用 watchPosition 持续更新剩余距离与方位 */
+  function startRealTracking() {
+    if (!window.BW_GEO || !state.session || !isRealSession(state.session)) return;
+    var target = state.session.coordinate;
+    if (!target) return;
+    if (!navigator.geolocation) return;
+
+    stopRealTracking();
+    ui.geoWatch = navigator.geolocation.watchPosition(function (pos) {
+      var here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      ui.myLocation = here;
+      var session = state.session;
+      if (!session || session.phase !== 'walking') return;
+      var d = window.BW_GEO.distance ? window.BW_GEO.distance(here, target) : null;
+      if (d === null) {
+        // 用 geo.js 内部同一套 Haversine
+        var R = 6371000;
+        var lat1 = here.lat * Math.PI / 180, lat2 = target.lat * Math.PI / 180;
+        var dLat = (target.lat - here.lat) * Math.PI / 180;
+        var dLon = (target.lon - here.lon) * Math.PI / 180;
+        var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        d = 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+      }
+      var prev = session.remainingMeters;
+      var events = advanceSession(prev - d);
+      var heading = pos.coords.heading;
+      ui.lastHeading = (heading === null || isNaN(heading)) ? null : heading;
+      if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
+      if (events.length) events.forEach(function (e) {
+        if (e.type === 'hint') {
+          ui.newHint = e.index;
+          showToast('解锁新线索', '🔓');
+        }
+        if (e.type === 'arrived') {
+          // 真实 GPS 走进到达圈：自动开盒（和模拟模式同一套逻辑）
+          stopRealTracking();
+          beginArrival();
+        }
+      });
+      if (session.phase !== 'walking') stopRealTracking();
+    }, function (err) {
+      // 定位失败不等于地点是假的：只停止跟踪并提示，不把 session.source 降级，
+      // 否则「真实地点」会被误标成演示模式。
+      stopRealTracking();
+      if (!ui.geoErrorShown) {
+        ui.geoErrorShown = true;
+        var msg = err && err.code === 1 ? '定位权限被拒，距离不再自动更新' : '定位信号中断，距离暂停更新';
+        showToast(msg, '📴', { duration: 2400 });
+      }
+      if (currentRoute() === '/journey') render();
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  }
+
+  function stopRealTracking() {
+    if (ui.geoWatch !== null && ui.geoWatch !== undefined) {
+      try { navigator.geolocation.clearWatch(ui.geoWatch); } catch (e) { /* ignore */ }
+      ui.geoWatch = null;
+    }
   }
 
   function onWalk() {
@@ -499,7 +592,7 @@
   function goRevealFromSession() {
     var session = state.session;
     if (!session) return;
-    var place = D.PLACE_MAP[session.placeID];
+    var place = placeOf(session.placeID);
     if (!place) return;
     state.reveal = {
       placeID: session.placeID,
@@ -537,7 +630,7 @@
   function doCollect() {
     var reveal = state.reveal;
     if (!reveal || reveal.collected) return;
-    var place = D.PLACE_MAP[reveal.placeID];
+    var place = placeOf(reveal.placeID);
     if (!place) return;
     var now = Date.now();
     var xp = 40 + rarityOf(place).xpBonus;
@@ -586,7 +679,7 @@
   function onShare() {
     var reveal = state.reveal;
     if (!reveal || reveal.shared) return;
-    var place = D.PLACE_MAP[reveal.placeID];
+    var place = placeOf(reveal.placeID);
     if (!place) return;
     var now = Date.now();
     state.feed.unshift({
@@ -742,8 +835,10 @@
     var H = 300;
     var startX = 196;
     var startY = 288;
-    var destX = clamp(place.coords.x, 0.1, 0.9) * W;
-    var destY = clamp(place.coords.y, 0.12, 0.78) * H;
+    // 内置地点用 coords，真实地点用 mapPoint（两者字段名不同）
+    var point = place.coords || place.mapPoint || { x: 0.5, y: 0.3 };
+    var destX = clamp(point.x, 0.1, 0.9) * W;
+    var destY = clamp(point.y, 0.12, 0.78) * H;
     var midX = (startX + destX) / 2;
     var cp1x = startX + (destX - startX) * 0.18;
     var cp1y = startY - (startY - destY) * 0.44;
@@ -832,7 +927,7 @@
   function homeHTML() {
     var profile = state.profile;
     var pass = latestCard();
-    var passPlace = pass ? D.PLACE_MAP[pass.placeID] : null;
+    var passPlace = pass ? placeOf(pass.placeID) : null;
     var friends = D.FRIENDS.map(function (friend) {
       return '<span class="avatar" title="' + esc(friend.name) + '">' + friend.emoji +
         (friend.online ? '<span class="avatar__dot" aria-hidden="true"></span>' : '') +
@@ -924,7 +1019,8 @@
   }
 
   function clueMarkup(place, index, unlockedCount, remaining) {
-    var text = [place.hint1, place.hint2, place.hint3][index];
+    var text = (place.hints && place.hints[index]) ||
+      [place.hint1, place.hint2, place.hint3][index] || '';
     if (index < unlockedCount) {
       var fresh = ui.newHint === index ? ' clue--new' : '';
       return '<div class="clue' + fresh + '"><span class="clue__mark" aria-hidden="true">✅</span><span>' + esc(text) + '</span></div>';
@@ -939,7 +1035,7 @@
     var session = state.session;
     var backBtn = '<button type="button" class="iconbtn" data-action="back-home" aria-label="返回首页">' + ICON.back + '</button>';
 
-    if (!session || !D.PLACE_MAP[session.placeID]) {
+    if (!session || !placeOf(session.placeID)) {
       return '<div class="journey">' +
         '<div class="journey__top">' + backBtn +
         '<div class="journey__topinfo"><span class="micro">盲盒进行中</span><span class="journey__timer">--:--:--</span></div>' +
@@ -952,7 +1048,7 @@
         '</div></div>';
     }
 
-    var place = D.PLACE_MAP[session.placeID];
+    var place = placeOf(session.placeID);
     var remaining = session.remainingMeters;
     var unlocked = session.unlockedHintCount;
     var elapsed = ui.paused ? ui.pausedElapsed : Math.max(0, Date.now() - session.startedAt);
@@ -973,26 +1069,67 @@
       '</div>' +
       '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
       '</div>' +
+      '<div class="journey__status">' + realStatusHTML() + '</div>' +
       '<div class="journey__map">' + mapSVG(place) +
-      '<span class="journey__mapcap">目的地保密中 · 还有 ' + remaining + ' 米</span>' +
+      (isRealSession(session)
+        ? '<span class="journey__mapcap">真实位置 · 目的地保密中 · 还有 ' + remaining + ' 米</span>'
+        : '<span class="journey__mapcap">目的地保密中 · 还有 ' + remaining + ' 米</span>') +
       '</div>' +
       '<div class="journey__distance">' +
       '<div><span class="journey__digits">' + remaining + '</span><span class="journey__unit">米</span></div>' +
-      '<div class="journey__bearing"><b aria-hidden="true">' + bearingFor(remaining) + '</b><span>' + esc(walkCopy) + '</span></div>' +
+      '<div class="journey__bearing"><b aria-hidden="true">' + realBearingSymbol(session, remaining) + '</b><span>' + esc(realWalkCopy(session, walkCopy)) + '</span></div>' +
       '</div>' +
       '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
       '<div class="journey__actions">' +
       (arrived
         ? '<button type="button" class="btn btn--primary btn--block" data-action="collect" aria-label="揭晓盲盒">揭晓盲盒</button>'
-        : '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="模拟步行 50 米">模拟步行 +50m<span class="demo-tag">演示</span></button>') +
+        : (isRealSession(session)
+          ? '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="我到了">走累了？直接揭晓<span class="demo-tag">兜底</span></button>'
+          : '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="模拟步行 50 米">模拟步行 +50m<span class="demo-tag">演示</span></button>')) +
       '<button type="button" class="btn btn--quiet" data-action="arrive" aria-label="我到了，直接揭晓">我到了</button>' +
       '</div>' +
       '</div>';
   }
 
+  function isRealSession(session) {
+    return session && (session.source === 'osm' || session.source === 'geo');
+  }
+
+  /* 真实定位状态条 */
+  function realStatusHTML() {
+    var session = state.session;
+    if (!session) return '';
+    if (session.source === 'osm' || session.source === 'geo') {
+      var realLabel = session.source === 'osm' ? '实时定位 · 真实地点' : '实时定位 · 真实坐标';
+      return '<span class="geo-pill geo-pill--live"><i aria-hidden="true"></i>' + realLabel + '</span>' +
+        '<span class="geo-pill geo-pill--gps">GPS</span>';
+    }
+    return '<span class="geo-pill"><i aria-hidden="true"></i>演示模式 · 内置地点</span>';
+  }
+
+  /* 真实方位：如有手机朝向则相对朝向显示 */
+  function realBearingSymbol(session, remaining) {
+    if (isRealSession(session) && typeof session.bearing === 'number') {
+      var rel = session.bearing - (ui.lastHeading || 0);
+      var arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+      var idx = Math.round(((rel % 360) + 360) % 360 / 45) % 8;
+      return arrows[idx];
+    }
+    return bearingFor(remaining);
+  }
+
+  function realWalkCopy(session, fallbackCopy) {
+    if (isRealSession(session) && typeof session.bearing === 'number') {
+      var compass = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+      var idx = Math.round((((session.bearing % 360) + 360) % 360) / 45) % 8;
+      return '往' + compass[idx] + '走，别急';
+    }
+    return fallbackCopy;
+  }
+
   function revealCardHTML() {
     var reveal = state.reveal;
-    var place = D.PLACE_MAP[reveal.placeID];
+    var place = placeOf(reveal.placeID);
     var info = rarityOf(place);
     var collected = reveal.collected;
     var primary = collected
@@ -1017,7 +1154,9 @@
       '<div class="reveal-card__hero">' +
       '<span class="reveal-card__emoji" aria-hidden="true">' + place.categoryEmoji + '</span>' +
       '<h2 class="reveal-card__name">' + esc(place.name) + '</h2>' +
-      '<p class="reveal-card__area">' + esc(placeAreaWord(place)) + ' · ' + esc(place.category) + '</p>' +
+      '<p class="reveal-card__area">' + esc(placeAreaWord(place)) + ' · ' + esc(place.category) +
+      (place.address ? ' · ' + esc(place.address) : '') +
+      (place.source === 'osm' || place.source === 'geo' ? ' · 真实地点' : '') + '</p>' +
       '</div>' +
       '<div class="rule"></div>' +
       '<p class="reveal-card__label">为什么是这里：</p>' +
@@ -1072,11 +1211,11 @@
         serial: D.DEMO.reveal.serial,
         collected: false,
         shared: false,
-        xpGained: 40 + D.RARITY[D.PLACE_MAP[placeID].rarity].xpBonus
+        xpGained: 40 + D.RARITY[placeOf(placeID).rarity].xpBonus
       };
       reveal = state.reveal;
     }
-    if (!D.PLACE_MAP[reveal.placeID]) {
+    if (!placeOf(reveal.placeID)) {
       state.reveal = { placeID: D.DEMO.reveal.placeID, serial: D.DEMO.reveal.serial, collected: false, shared: false, xpGained: 50 };
       reveal = state.reveal;
     }
@@ -1104,7 +1243,13 @@
     var cardMap = {};
     profile.cards.forEach(function (card) { cardMap[card.placeID] = card; });
 
-    var filtered = D.PLACES.filter(function (place) {
+    // 内置地点 + 抽到过的真实地点（真实地点只在抽到后进入图鉴）
+    var allPlaces = D.PLACES.slice();
+    Object.keys(state.realPlaces || {}).forEach(function (id) {
+      if (!D.PLACE_MAP[id]) allPlaces.push(state.realPlaces[id]);
+    });
+
+    var filtered = allPlaces.filter(function (place) {
       if (ui.filter === 'rare') return place.rarity !== 'common';
       if (ui.filter === 'hidden') return place.rarity === 'hidden';
       if (ui.filter === 'area') return place.area === filterArea();
@@ -1117,7 +1262,7 @@
       if (cardA && cardB) return cardB.collectedAt - cardA.collectedAt;
       if (cardA) return -1;
       if (cardB) return 1;
-      return D.PLACES.indexOf(a) - D.PLACES.indexOf(b);
+      return allPlaces.indexOf(a) - allPlaces.indexOf(b);
     });
 
     var grid = filtered.map(function (place) {
@@ -1389,7 +1534,7 @@
   }
 
   function openCardModal(placeID) {
-    var place = D.PLACE_MAP[placeID];
+    var place = placeOf(placeID);
     var card = null;
     state.profile.cards.forEach(function (item) { if (item.placeID === placeID) card = item; });
     if (!place || !card) return;
@@ -1545,7 +1690,8 @@
 
   /* ---- 定位：失败降级到演示坐标，并明确标注 ---- */
   function currentLocation(callback) {
-    var fallback = { lat: D.SURPRISE_ORIGIN.lat, lng: D.SURPRISE_ORIGIN.lng, demo: true };
+    var fallback = { lat: D.SURPRISE_ORIGIN.lat, lng: D.SURPRISE_ORIGIN.lng,
+                     lon: D.SURPRISE_ORIGIN.lng, demo: true };
     if (!navigator.geolocation) { callback(fallback); return; }
     var done = false;
     var timer = window.setTimeout(function () {
@@ -1558,7 +1704,8 @@
         if (done) return;
         done = true;
         window.clearTimeout(timer);
-        callback({ lat: pos.coords.latitude, lng: pos.coords.longitude, demo: false });
+        callback({ lat: pos.coords.latitude, lng: pos.coords.longitude,
+                   lon: pos.coords.longitude, demo: false });
       },
       function () {
         if (done) return;
@@ -2044,6 +2191,12 @@
     dom.tabbar.hidden = TAB_ROUTES.indexOf(route) === -1;
     setActiveTab(route);
 
+    /* 首页/抽盒页提前取一次定位：点击摇盒时通常已就绪，不阻塞交互 */
+    if ((route === '/home' || route === '/setup') && !ui.myLocation && !ui.geoAsked) {
+      ui.geoAsked = true;
+      currentLocation(function (loc) { ui.myLocation = loc; });
+    }
+
     /* 埋/寻相关页面：确保拿到定位（失败降级演示坐标） */
     if ((route === '/bury' || route === '/seek' || route === '/seek-detail') && !ui.myLocation) {
       currentLocation(function (loc) {
@@ -2103,7 +2256,12 @@
     dom.main.innerHTML = html;
     dom.main.scrollTop = 0;
 
-    if (route === '/journey') startJourneyTimer();
+    if (route === '/journey') {
+      startJourneyTimer();
+      startRealTracking();
+    } else {
+      stopRealTracking();
+    }
     if (route === '/reveal') renderReveal();
     if (!isReveal) dom.overlayRoot.innerHTML = '';
   }
@@ -2147,13 +2305,80 @@
     ui.shaking = true;
     button.classList.add('is-shaking', 'is-busy');
     button.innerHTML = shakeGlyph() + '<span>摇盒中…</span>';
-    window.setTimeout(function () {
-      var place = drawPlace();
-      startSession(place);
+
+    var duration = D.DURATIONS.filter(function (d) { return d.id === ui.duration; })[0] || D.DURATIONS[1];
+
+    /* 真实地理模式：先查附近真实 POI，失败才退回内置地点 */
+    var finish = function (place, meta) {
+      startSession(place, meta);
       ui.shaking = false;
       if (currentRoute() === '/setup') navigate('/journey');
       else render();
-    }, 600);
+      if (place.source === 'osm') {
+        showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地点', '📍', { duration: 1800 });
+        // 后台补真实街道名
+        if (window.BW_GEO) {
+          window.BW_GEO.enrichWithAddress(place).then(function (enriched) {
+            if (enriched && enriched.address) {
+              state.realPlaces[enriched.id] = enriched;
+              save();
+            }
+          }).catch(function () {});
+        }
+      } else if (place.source === 'geo') {
+        showToast('已定位 · 走的是真实的路', '📍', { duration: 2000 });
+        if (window.BW_GEO) {
+          window.BW_GEO.enrichWithAddress(place).then(function (enriched) {
+            if (!enriched) return;
+            state.realPlaces[enriched.id] = enriched;
+            save();
+            if (currentRoute() === '/journey') render();
+          }).catch(function () {});
+        }
+      }
+    };
+
+    var fallback = function () {
+      window.setTimeout(function () {
+        finish(drawPlace(), { source: 'catalog', fallback: true });
+      }, 420);
+    };
+
+    var go = function (loc) {
+      // loc.demo = 拿不到真实定位（权限被拒/超时/不支持）：不能冒充「真实坐标」
+      if (!loc || loc.demo || !window.BW_GEO) { fallback(); return; }
+      ui.myLocation = ui.myLocation || loc;
+      window.BW_GEO.findRealPlace(
+        { lat: loc.lat, lon: (loc.lon !== undefined ? loc.lon : loc.lng) },
+        ui.mood,
+        duration.startMeters
+      ).then(function (result) {
+        if (result && result.place) {
+          finish(result.place, { source: 'osm', poolSize: result.poolSize, cached: result.cached });
+        } else {
+          fallback();
+        }
+      }).catch(fallback);
+    };
+
+    /* 有定位就用真实位置；没有就现取一次，最多等 3 秒，超时降级不卡用户 */
+    if (ui.myLocation) {
+      go(ui.myLocation);
+      return;
+    }
+    var settled = false;
+    var waitTimer = window.setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      finish(drawPlace(), { source: 'catalog', fallback: true });
+    }, 3000);
+    currentLocation(function (loc) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(waitTimer);
+      ui.myLocation = loc;
+      go(loc);
+    });
   }
 
   function toggleReaction(button) {
