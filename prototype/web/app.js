@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v29';
+  var APP_VERSION = 'v30';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1544,6 +1544,34 @@
       '</section>';
   }
 
+  /** 真实地点搜索失败：明确告知 + 提供扩大范围/手动位置/演示 三条路（绝不偷偷用虚构地点） */
+  function searchFailedHTML() {
+    if (!ui.searchFailed) return '';
+    var reason = ui.searchFailed.reason || 'no-real-place';
+    var text = reason === 'network'
+      ? '网络不给力，地图数据没取到（可能是 OSM/高德都被挡住或超时）'
+      : '这一带暂时没有适合走过去的真实地点';
+    var report = ui.searchFailed.report;
+    var detail = '';
+    if (report && report.sources && report.sources.length) {
+      detail = '<ul class="locblock__list">' +
+        report.sources.map(function (x) {
+          return '<li>' + esc(x.label || x.id) + '：' +
+            (x.ok ? ('找到 ' + x.count + ' 个') : esc(x.error || x.reason || '失败')) + '</li>';
+        }).join('') + '</ul>';
+    }
+    return '<section class="locblock" role="alert">' +
+      '<p class="locblock__title">没找到真实地点，这次不抽了</p>' +
+      '<p class="locblock__text">' + esc(text) + '。不会用虚构地点糊弄你。</p>' +
+      detail +
+      '<div class="locblock__actions">' +
+      '<button type="button" class="btn btn--primary" data-action="search-wider">扩大范围再找</button>' +
+      '<button type="button" class="btn btn--ghost" data-action="manual-location">换个位置</button>' +
+      '</div>' +
+      '<button type="button" class="locblock__demo" data-action="start-demo">改成演示模式（虚构地点）</button>' +
+      '</section>';
+  }
+
   function sheetHTML() {
     var durations = D.DURATIONS.map(function (duration) {
       return '<button type="button" data-action="select-duration" data-value="' + duration.id + '"' +
@@ -1575,6 +1603,7 @@
       '<div class="field"><span class="field__label">区域</span><div class="areachips">' + areas + '</div></div>' +
       '<div class="sheet__actions">' +
       locationBlockedHTML() +
+      searchFailedHTML() +
       '<button type="button" class="btn btn--primary btn--block" data-action="shake" aria-label="摇一个盲盒">摇一个盲盒</button>' +
       '<button type="button" class="btn btn--quiet" data-action="close-setup" aria-label="今天不想出门">今天不想出门</button>' +
       '</div>' +
@@ -2177,8 +2206,9 @@
   }
 
   function isRealSource(source) {
-    return source === 'osm' || source === 'geo' || source === 'wikipedia'
-      || source === 'curated' || source === 'amap' || source === 'baidu' || source === 'wiki';
+    // 注意：'geo' 是程序编出来的坐标兜底点（假的），绝不算真实地点。
+    return source === 'osm' || source === 'wikipedia' || source === 'curated'
+      || source === 'amap' || source === 'baidu' || source === 'wiki';
   }
 
   function isRealSession(session) {
@@ -3368,6 +3398,7 @@
       case '/setup':
         html = homeHTML();
         dom.sheetRoot.innerHTML = sheetHTML();
+    document.body.setAttribute('data-sheet', '1');
         break;
       case '/journey':
         dom.main.className = 'main main--flush';
@@ -3414,6 +3445,7 @@
         html = datasourceHTML();
         break;
       default:
+        document.body.removeAttribute('data-sheet');
         html = homeHTML();
     }
 
@@ -3529,10 +3561,46 @@
       }
     };
 
-    var fallback = function () {
-      window.setTimeout(function () {
-        finish(drawPlace(), { source: 'catalog', fallback: true });
-      }, 420);
+    var failSearch = function (reason, report) {
+      ui.shaking = false;
+      ui.searchFailed = {
+        reason: reason || 'no-real-place',
+        at: Date.now(),
+        report: report || (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport
+          ? window.BW_PROVIDERS.lastReport() : null)
+      };
+      ui.searchScale = 1;
+      render();
+    };
+
+    // 真实模式：来源必须是真实数据，且必须有坐标。这一道闸门兜住所有上游 bug。
+    var finishReal = function (place, meta) {
+      if (!place || !isRealSource(place.source) || !place.coordinate) {
+        failSearch('not-real');
+        return;
+      }
+      ui.searchFailed = null;
+      finish(place, meta);
+    };
+
+    var searchAttempt = function (patch, scale, triesLeft) {
+      return window.BW_GEO.findRealPlace(
+        patch,
+        ui.mood,
+        duration.startMeters,
+        { radiusScale: scale }
+      ).then(function (result) {
+        if (result && result.place && isRealSource(result.place.source)) {
+          ui.searchScale = 1;
+          finishReal(result.place, { source: result.place.source, poolSize: result.poolSize, cached: result.cached });
+          return;
+        }
+        if (triesLeft > 0) {
+          showToast('这一带没有合适的点，扩大范围再找…', '🔎', { duration: 1800 });
+          return searchAttempt(patch, scale * 2.4, triesLeft - 1);
+        }
+        failSearch((result && result.reason) || 'no-real-place');
+      });
     };
 
     var go = function (loc) {
@@ -3546,17 +3614,11 @@
         return;
       }
       ui.myLocation = ui.myLocation || loc;
-      window.BW_GEO.findRealPlace(
-        { lat: loc.lat, lon: (loc.lon !== undefined ? loc.lon : loc.lng) },
-        ui.mood,
-        duration.startMeters
-      ).then(function (result) {
-        if (result && result.place) {
-          finish(result.place, { source: 'osm', poolSize: result.poolSize, cached: result.cached });
-        } else {
-          fallback();
-        }
-      }).catch(fallback);
+      ui.searchFailed = null;
+      var patch = { lat: loc.lat, lon: (loc.lon !== undefined ? loc.lon : loc.lng) };
+      searchAttempt(patch, ui.searchScale || 1, 1).catch(function () {
+        failSearch('network');
+      });
     };
 
     /* 有定位就用真实位置；没有就现取一次，最多等 3 秒，超时降级不卡用户 */
@@ -3568,8 +3630,11 @@
     var waitTimer = window.setTimeout(function () {
       if (settled) return;
       settled = true;
-      finish(drawPlace(), { source: 'catalog', fallback: true });
-    }, 3000);
+      ui.shaking = false;
+      ui.locationBlocked = true;
+      ui.locationReason = 'timeout';
+      render();
+    }, 4000);
     currentLocation(function (loc) {
       if (settled) return;
       settled = true;
@@ -3827,6 +3892,13 @@
         });
         break;
       }
+      case 'search-wider': {
+        ui.searchFailed = null;
+        ui.searchScale = (ui.searchScale || 1) * 2.4;
+        render();
+        bwShakeNow();
+        break;
+      }
       case 'manual-location': {
         var input = window.prompt('输入地址或坐标（例：南京市鼓楼区金银街 / 32.0597,118.7713）');
         if (!input) break;
@@ -3839,6 +3911,8 @@
           ui.myLocation = { lat: hit.lat, lng: hit.lon, lon: hit.lon, demo: false, manual: true };
           ui.locationBlocked = false;
           ui.locationReason = '';
+          ui.searchFailed = null;
+          ui.searchScale = 1;
           render();
           showToast('已用：' + hit.label, '📍', { duration: 2400 });
           bwShakeNow();
@@ -4120,6 +4194,17 @@
     // state 在 seedDemo/seedFresh/hydrate 里才创建，所以标记放在这之后
     state.bootMode = fresh ? 'fresh' : demo ? 'demo' : 'saved';
 
+    // 历史遗留：以前真实模式会用虚构兜底点（source='geo'），把这类会话清掉，
+    // 否则用户会一直看到同一个假地点（"路口的那个角落"）。
+    if (state.session && !state.demoSeeded && !isRealSource(state.session.source)) {
+      var staleName = (state.realPlaces[state.session.placeID] || {}).name;
+      state.session = null;
+      state.reveal = null;
+      state.session = null;
+      save();
+      state.clearedStaleSession = staleName || true;
+    }
+
     // demo / fresh 只是「这次打开」的开关，用完从 URL 去掉，
     // 否则用户把它加到桌面或分享出去，会永远是演示数据。
     if (demo || fresh) {
@@ -4160,6 +4245,12 @@
 
     bindEvents();
     render();
+
+    if (state.clearedStaleSession) {
+      window.setTimeout(function () {
+        showToast('之前那个"路口的角落"是程序的假地点，已清掉，重新抽吧', '🧹', { duration: 3600 });
+      }, 700);
+    }
 
     if (state.autoExitedDemo) {
       window.setTimeout(function () {

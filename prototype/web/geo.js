@@ -211,40 +211,6 @@
      做法：取用户真实坐标，按抽到的方位与距离算出真实可走的坐标点，
      再尽力反查街道名。这样即使断网/接口挂了，走的仍是真实的路。
      ============================================================ */
-  function proceduralPlace(origin, mood, startMeters, seed) {
-    var bearing = (seed % 360);
-    var meters = Math.max(180, Math.round(startMeters * (0.55 + ((seed >> 8) % 40) / 100)));
-    var R = 6371000;
-    var ang = meters / R;
-    var brg = bearing * Math.PI / 180;
-    var lat1 = origin.lat * Math.PI / 180, lon1 = origin.lon * Math.PI / 180;
-    var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(brg));
-    var lon2 = lon1 + Math.atan2(Math.sin(brg) * Math.sin(ang) * Math.cos(lat1),
-                                 Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2));
-    var target = { lat: lat2 * 180 / Math.PI, lon: lon2 * 180 / Math.PI };
-    var geo = mapPointFor(origin, target, startMeters);
-    var meta = CATEGORY_META.park;
-    return {
-      id: 'geo-' + Math.round(target.lat * 1e5) + '-' + Math.round(target.lon * 1e5),
-      name: '路口的那个角落',
-      area: 'near',
-      category: meta.label,
-      categoryEmoji: '📍',
-      rarity: 'common',
-      why: mood === 'drift' ? '你选了「放空」，这里适合什么都不想。'
-        : mood === 'discover' ? '你选了「发现」，这里不是游客会停下来的地方。'
-        : '你选了「热闹」，这个位置通常不会太冷清。',
-      task: '站 60 秒，找出你能听见的第三种声音。',
-      hints: ['往这个方向走，不用赶。', '还有一半路。注意路边的小东西。', '就在前面。抬手机，慢慢看。'],
-      mapPoint: { x: geo.x, y: geo.y },
-      bearing: geo.bearing,
-      distance: geo.distance,
-      coordinate: target,
-      address: null,
-      source: 'geo',
-      collected: false
-    };
-  }
 
   /** 反查并补上真实街道名（拿到后替换名字） */
   function enrichWithAddress(place) {
@@ -724,15 +690,16 @@
     };
   }
 
-  function findRealPlace(rawOrigin, mood, startMeters) {
+  function findRealPlace(rawOrigin, mood, startMeters, opts) {
     var origin = norm(rawOrigin);
     if (!origin) return Promise.resolve({ place: null, reason: 'no-origin' });
-    var radius = Math.max(600, Math.round(startMeters * 1.8));
+    var scale = (opts && opts.radiusScale) || 1;      // 找不到时放大范围重试
+    var radius = Math.max(600, Math.round(startMeters * 1.8 * scale));
     var seed = Math.floor(Date.now() / 1000) % 100000;
 
     // 真实定位下必须「走得到」：目标不能太近（会一开盒就到达），也不能超出抽盒半径
     var minDistance = Math.max(110, Math.round(startMeters * 0.35));
-    var maxDistance = Math.round(startMeters * 1.7);
+    var maxDistance = Math.round(startMeters * 1.7 * scale);
 
     // ① 后台策展数据优先：人工审核过的点最可靠
     return loadCuratedPOIs().then(function (curated) {
@@ -943,10 +910,10 @@
             };
           }
         }
-        return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'no-pick' };
+        return { place: null, fallback: true, reason: 'no-real-place' };
       });
     }).catch(function () {
-      return { place: proceduralPlace(origin, mood, startMeters, seed), fallback: true, reason: 'network' };
+      return { place: null, fallback: true, reason: 'network' };
     });
   }
 
@@ -973,7 +940,7 @@
         };
       }
     }
-    return { place: proceduralPlace(ctx.origin, ctx.mood, ctx.startMeters, ctx.seed), fallback: true, reason: 'no-pick' };
+    return { place: null, fallback: true, reason: 'no-real-place' };
   }
 
   /** 从 Wikipedia 地标里挑一个：距离合适 + 类别与心情相容 + 带图片 */
@@ -1626,7 +1593,6 @@
   window.BW_GEO = {
     findRealPlace: findRealPlace,
     searchPOIs: searchPOIs,
-    proceduralPlace: proceduralPlace,
     wikipediaPOIs: wikipediaPOIs,
     makeWikiPlace: makeWikiPlace,
     loadCuratedPOIs: loadCuratedPOIs,
