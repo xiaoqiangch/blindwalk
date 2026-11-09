@@ -3314,3 +3314,25 @@ body[data-mode="standalone"] .toast-root {
 @media (prefers-reduced-motion: reduce) {
   .reveal-card__spinner { animation: none; border-top-color: rgba(23, 20, 16, .3); }
 }
+
+/* ============================================================
+   32. 按钮可点性加固（鸿蒙/内置浏览器）
+   - touch-action: manipulation 去掉双击缩放等待
+   - 底部操作条抬高到安全区之上，避免被系统手势条挡住
+   ============================================================ */
+
+button, .btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.journey__actions {
+  position: relative;
+  z-index: 3;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 兜底提示条：按钮点击后若状态没变，给一次可见反馈 */
+.journey__actions .btn:active {
+  transform: scale(.985);
+}

@@ -7,6 +7,9 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
+  var APP_VERSION = 'v18';
+  var APP_BUILT_AT = '2026-11-09 14:10';
+
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
     '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises'];
   var TAB_ROUTES = ['/home', '/cards', '/social', '/profile'];
@@ -802,7 +805,13 @@
     var session = state.session;
     if (!session) return;
     var place = placeOf(session.placeID);
-    if (!place) return;
+    if (!place) {
+      showToast('这个地点的数据丢了，重新抽一个吧', '😕', { duration: 2600 });
+      state.session = null;
+      save();
+      navigate('/setup');
+      return;
+    }
     state.reveal = {
       placeID: session.placeID,
       serial: session.demo ? D.DEMO.reveal.serial : randomSerial(),
@@ -1168,7 +1177,9 @@
       ['触摸设备', document.documentElement.classList.contains('is-touch') ? '是' : '否（桌面）'],
       ['是否独立启动', (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ? '是（已加到桌面）' : '否（浏览器标签页）'],
       ['网络', navigator.onLine ? '在线' : '离线'],
-      ['Service Worker', window.__bwSWVersion || '未注册 / 未知'],
+      ['页面版本', APP_VERSION + ' · ' + APP_BUILT_AT],
+      ['Service Worker', state.swVersion || '未注册 / 未知'],
+      ['是否最新版本', state.swVersion && state.swVersion.indexOf(APP_VERSION) >= 0 ? '✅ 是' : '⚠️ 可能不是最新（点下面「强制更新」）'],
       ['本机存档 xp', state.profile ? String(state.profile.xp) : '—'],
       ['本机卡片数', state.profile ? String(state.profile.cards.length) : '—']
     ].map(function (row) {
@@ -1186,6 +1197,7 @@
       '<p class="dbg__hint">想让两边完全一致：都用同一个地址打开、并且都不要带 <code>?demo=1</code>。</p>' +
       '<button type="button" class="btn btn--primary btn--block" data-action="retry-real">清掉演示数据，用真实定位重开</button>' +
       '<button type="button" class="btn btn--ghost btn--block" data-action="reset-demo">重置为演示数据（对比用）</button>' +
+      '<button type="button" class="btn btn--quiet btn--block" data-action="force-update">强制更新到最新版（清缓存并重开）</button>' +
       '</section>' +
       '</div>';
   }
@@ -3155,9 +3167,17 @@
       }
       case 'reveal-now': {
         // 真实定位下没走到也能直接揭晓：立刻进入到达态
-        if (!state.session || state.session.phase !== 'walking') break;
+        if (!state.session) { showToast('还没有进行中的盲盒', '🤔'); break; }
+        if (state.session.phase !== 'walking') { goRevealFromSession(); break; }
         stopRealTracking();
         beginArrival();
+        // 兜底：1.8 秒后还没揭晓，强制走一次（避免动画/定时器被打断后按钮“没反应”）
+        window.setTimeout(function () {
+          if (location.hash.indexOf('/reveal') < 0 && !state.reveal) {
+            ui.arriving = false;
+            goRevealFromSession();
+          }
+        }, 1800);
         break;
       }
       case 'arrive':
@@ -3321,6 +3341,25 @@
         ui.autoShake = true;
         navigate('/setup');
         showToast('正在重新获取定位…', '📡', { duration: 1600 });
+        break;
+      }
+      case 'force-update': {
+        showToast('正在清理缓存并重新加载…', '🔄', { duration: 2000 });
+        Promise.all([
+          window.caches && caches.keys ? caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }) : Promise.resolve(),
+          navigator.serviceWorker && navigator.serviceWorker.getRegistrations
+            ? navigator.serviceWorker.getRegistrations().then(function (rs) {
+                return Promise.all(rs.map(function (r) { return r.unregister(); }));
+              })
+            : Promise.resolve()
+        ]).then(function () {
+          window.__bwReloading = true;
+          location.replace(location.pathname + '?fresh=1#/home');
+        }).catch(function () {
+          location.reload();
+        });
         break;
       }
       case 'reset-demo': {
@@ -3504,11 +3543,24 @@
       }, 600);
     }
 
-    // 记录 SW 版本，诊断页展示用
-    if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
-      navigator.serviceWorker.getRegistration().then(function (reg) {
-        if (reg && reg.active) window.__bwSWVersion = 'active';
-      }).catch(function () {});
+    /* Service Worker 自动更新：鸿蒙/微信等内置浏览器常把旧版本缓存很久，
+       这里主动 update，并在新版本接管时自动刷新一次，避免用户长期跑旧代码。 */
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__bwReloading) return;
+        window.__bwReloading = true;
+        location.reload();
+      });
+      if (navigator.serviceWorker.register) {
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+          if (reg && reg.update) reg.update().catch(function () {});
+        }).catch(function () {});
+      }
+      if (navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration().then(function (reg) {
+          if (reg && reg.update) reg.update().catch(function () {});
+        }).catch(function () {});
+      }
     }
   }
 
