@@ -33,6 +33,7 @@ import {
   resolveConfig
 } from './llm.mjs';
 import { renderLoginPage, serveStatic } from './static.mjs';
+import { MapKeysService } from './mapkeys.mjs';
 import {
   AuthManager,
   SESSION_TTL_MS,
@@ -229,6 +230,56 @@ export function createServer(options = {}) {
     env: options.authEnv || process.env
   });
   auth.startPruneTimer();
+  const mapKeys = options.mapKeys || new MapKeysService({
+    db: store.db,
+    env: options.mapKeysEnv || options.env || process.env,
+    fetchImpl: options.mapKeyFetch,
+    now: options.now
+  });
+
+  // ---------- 公开端点：地图 Key（无鉴权，但限制来源） ----------
+  function sendPublicJson(req, res, status, payload) {
+    const body = Buffer.from(JSON.stringify(payload), 'utf8');
+    const origin = req.headers ? req.headers.origin : undefined;
+    const headers = {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': body.length,
+      'Cache-Control': 'no-store',
+      Vary: 'Origin'
+    };
+    if (typeof origin === 'string' && origin.length > 0 && mapKeys.allowsOrigin(origin)) {
+      headers['Access-Control-Allow-Origin'] = origin;
+    }
+    res.writeHead(status, headers);
+    res.end(body);
+  }
+
+  function handlePublicMapKeys(req, res, method) {
+    const origin = req.headers ? req.headers.origin : undefined;
+    const hasOrigin = typeof origin === 'string' && origin.length > 0;
+    if (hasOrigin && !mapKeys.allowsOrigin(origin)) {
+      sendPublicJson(req, res, 403, { error: '来源不被允许', code: 'FORBIDDEN' });
+      return;
+    }
+    if (method === 'OPTIONS') {
+      const headers = {
+        'Cache-Control': 'no-store',
+        Vary: 'Origin',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'content-type',
+        'Access-Control-Max-Age': '600'
+      };
+      if (hasOrigin) headers['Access-Control-Allow-Origin'] = origin;
+      res.writeHead(204, headers);
+      res.end();
+      return;
+    }
+    if (method !== 'GET') {
+      sendPublicJson(req, res, 405, { error: 'Method Not Allowed', code: 'METHOD_NOT_ALLOWED' });
+      return;
+    }
+    sendPublicJson(req, res, 200, mapKeys.publicView());
+  }
 
   async function handleApi(req, res, pathname, searchParams) {
     const method = req.method || 'GET';
@@ -394,6 +445,24 @@ export function createServer(options = {}) {
       return;
     }
 
+    // ---------- 地图 Key（管理员） ----------
+    if (pathname === '/api/mapkeys' && method === 'GET') {
+      sendJson(res, 200, mapKeys.adminView());
+      return;
+    }
+    if (pathname === '/api/mapkeys' && method === 'PUT') {
+      const body = await readBody(req);
+      sendJson(res, 200, mapKeys.updateKeys(body));
+      return;
+    }
+    if (pathname === '/api/mapkeys/test' && method === 'POST') {
+      const body = await readBody(req);
+      const provider = requireString(body.provider, 'provider');
+      const result = await mapKeys.testProvider(provider);
+      sendJson(res, 200, result);
+      return;
+    }
+
     throw new PoiError('接口不存在：' + method + ' ' + pathname, 'NOT_FOUND', 404);
   }
 
@@ -407,6 +476,12 @@ export function createServer(options = {}) {
       return;
     }
     const pathname = parsedUrl.pathname;
+
+    // ---------- 公开端点：地图 Key（无鉴权，来源白名单 + no-store） ----------
+    if (pathname === '/api/public/mapkeys') {
+      handlePublicMapKeys(req, res, method);
+      return;
+    }
 
     // ---------- 认证端点（无需登录） ----------
     if (pathname === '/api/auth/status' && method === 'GET') {
@@ -484,6 +559,7 @@ export function createServer(options = {}) {
 
   server.store = store;
   server.auth = auth;
+  server.mapKeys = mapKeys;
   server.paths = { dataDir, dbPath: store.dbPath, publicDir, exportPath, backupPath };
   server.on('close', () => {
     auth.stopPruneTimer();
@@ -507,6 +583,7 @@ export function startServer(options = {}) {
     console.log('  登录入口  http://' + host + ':' + port + '/admin/login');
     console.log('  数据目录  ' + server.paths.dataDir);
     console.log('  数据库    ' + server.paths.dbPath);
+    console.log('  地图 Key  公开端点 /api/public/mapkeys（来源白名单 + no-store）');
     console.log('  导出路径  ' + server.paths.exportPath);
     if (server.store.migration && server.store.migration.migrated) {
       console.log('  迁移      v1 pois.json → SQLite：' + server.store.migration.count + ' 条');

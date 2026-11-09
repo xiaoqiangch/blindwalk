@@ -97,6 +97,13 @@
     exportPois: function () { return request('POST', '/api/export'); },
 
     // 4.7 统计
-    stats: function () { return request('GET', '/api/stats'); }
+    stats: function () { return request('GET', '/api/stats'); },
+
+    // 4.8 地图 Key（管理员；客户端走公开端点 /api/public/mapkeys）
+    mapKeys: function () { return request('GET', '/api/mapkeys'); },
+    putMapKeys: function (keys) { return request('PUT', '/api/mapkeys', { keys: keys }); },
+    testMapKey: function (provider) {
+      return request('POST', '/api/mapkeys/test', { provider: provider });
+    }
   };
 })();

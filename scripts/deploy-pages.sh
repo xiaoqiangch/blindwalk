@@ -18,20 +18,43 @@ if [ -n "$(git status --porcelain prototype/web)" ]; then
     commit -am "chore: snapshot prototype/web for deploy" || true
 fi
 
-echo "== 2) 用 subtree 推送 prototype/web 到 $BRANCH =="
+echo "== 2) 用 subtree 生成网站快照 =="
 # 用 git subtree split 把 prototype/web 摘成独立分支，避免整仓（含 iOS 源码）暴露在 Pages 上
 SPLIT=$(git subtree split --prefix=prototype/web HEAD)
-git push --force "git@github.com:${REPO}.git" "$SPLIT:refs/heads/${BRANCH}"
-echo "   pushed $SPLIT -> $BRANCH"
+echo "   split=$SPLIT"
 
-echo "== 3) 开启 GitHub Pages（若未开）=="
+echo "== 2.5) 注入后台下发的地图 Key（只进 gh-pages 快照，不进主仓）=="
+WT="/tmp/bw-pages-wt-$$"
+MAPKEYS_JSON=""
+if [ -f admin/data/blindwalk.db ]; then
+  MAPKEYS_JSON="$(/opt/homebrew/bin/node scripts/export-mapkeys.mjs admin/data/blindwalk.db 2>/dev/null || true)"
+fi
+if [ -n "$MAPKEYS_JSON" ]; then
+  git worktree add -f --detach "$WT" "$SPLIT" >/dev/null 2>&1
+  printf '%s\n' "$MAPKEYS_JSON" > "$WT/mapkeys.json"
+  ( cd "$WT" && git add -A mapkeys.json && \
+    git -c user.email=deploy@blindwalk.local -c user.name="BlindWalk Deploy" \
+      commit -qm "chore(pages): 注入后台下发的地图 Key" >/dev/null 2>&1 ) || true
+  PUSH_REF=$(cd "$WT" && git rev-parse HEAD)
+  git worktree remove --force "$WT" >/dev/null 2>&1 || true
+  echo "   已注入 mapkeys.json（来源：admin/data/blindwalk.db）"
+else
+  PUSH_REF="$SPLIT"
+  echo "   ⚠️  没有读到后台 Key，本次仅部署免费源版本"
+fi
+
+echo "== 3) 推送 $BRANCH =="
+git push --force "git@github.com:${REPO}.git" "${PUSH_REF}:refs/heads/${BRANCH}"
+echo "   pushed $PUSH_REF -> $BRANCH"
+
+echo "== 4) 开启 GitHub Pages（若未开）=="
 gh api -X POST "repos/${REPO}/pages" \
   -f "source[branch]=${BRANCH}" -f "source[path]=/" 2>/dev/null \
   || gh api -X PUT "repos/${REPO}/pages" \
        -f "source[branch]=${BRANCH}" -f "source[path]=/" 2>/dev/null \
   || echo "   (Pages 可能已启用，继续)"
 
-echo "== 4) 等 Pages 构建 =="
+echo "== 5) 等 Pages 构建 =="
 OWNER="${REPO%%/*}"
 for i in $(seq 1 40); do
   STATUS=$(gh api "repos/${REPO}/pages" --jq '.status' 2>/dev/null || echo "unknown")

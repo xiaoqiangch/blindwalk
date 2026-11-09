@@ -213,6 +213,32 @@
     pois: isEmpty ? [] : SEED.slice()
   };
 
+  // 地图 Key（仅 Mock：保存在内存，方便开发界面联调）
+  const mockMapKeys = { amap: '', baidu: '', updatedAt: 0 };
+
+  function maskMockKey(value) {
+    const text = String(value || '');
+    if (!text) return '';
+    if (text.length >= 8) return text.slice(0, 4) + '…' + text.slice(-4);
+    return '…';
+  }
+
+  function mockMapKeysView() {
+    const keys = {};
+    ['amap', 'baidu'].forEach(function (provider) {
+      if (mockMapKeys[provider]) {
+        keys[provider] = {
+          configured: true,
+          hint: maskMockKey(mockMapKeys[provider]),
+          updatedAt: mockMapKeys.updatedAt
+        };
+      } else {
+        keys[provider] = { configured: false };
+      }
+    });
+    return { ok: true, keys: keys, publicUrl: '/api/public/mapkeys' };
+  }
+
   // ============================================================
   // 工具
   // ============================================================
@@ -386,6 +412,39 @@
   }
 
   function route(pathname, method, body, search) {
+    // 地图 Key（Mock）
+    if (pathname === '/api/mapkeys' && method === 'GET') {
+      return json(mockMapKeysView());
+    }
+    if (pathname === '/api/mapkeys' && method === 'PUT') {
+      const keys = body && body.keys;
+      if (!keys || typeof keys !== 'object' || Array.isArray(keys)) {
+        return fail('keys 必须是对象（含 amap / baidu）', 'BAD_REQUEST', 400);
+      }
+      let changed = false;
+      ['amap', 'baidu'].forEach(function (provider) {
+        if (!Object.prototype.hasOwnProperty.call(keys, provider)) return;
+        if (typeof keys[provider] !== 'string') {
+          return fail('keys.' + provider + ' 必须是字符串', 'BAD_REQUEST', 400);
+        }
+        mockMapKeys[provider] = keys[provider].trim();
+        changed = true;
+      });
+      if (!changed) return fail('没有可更新的 Key', 'BAD_REQUEST', 400);
+      mockMapKeys.updatedAt = Date.now();
+      return json(mockMapKeysView());
+    }
+    if (pathname === '/api/mapkeys/test' && method === 'POST') {
+      const provider = body && body.provider;
+      if (provider !== 'amap' && provider !== 'baidu') {
+        return fail('provider 必须是 amap 或 baidu', 'BAD_REQUEST', 400);
+      }
+      if (!mockMapKeys[provider]) {
+        return json({ ok: false, provider: provider, count: 0, error: '未配置 Key（Mock）' });
+      }
+      return json({ ok: true, provider: provider, count: 3 });
+    }
+
     // 统计
     if (pathname === '/api/stats' && method === 'GET') {
       return json(computeStats());

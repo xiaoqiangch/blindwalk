@@ -78,6 +78,11 @@ CREATE TABLE IF NOT EXISTS sessions (
   createdAt INTEGER NOT NULL,
   expiresAt INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS app_keys (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at INTEGER
+);
 `;
 
 function parseJsonColumn(text, fallback) {

@@ -26,7 +26,8 @@
     dirty: false,
     booted: false,
     statsError: '',
-    mock: !!window.__BW_MOCK__
+    mock: !!window.__BW_MOCK__,
+    mapkeys: { loading: false, data: null, error: '', testResults: {} }
   };
 
   const els = {
@@ -34,7 +35,9 @@
     llmBadge: document.getElementById('llm-badge'),
     filters: document.getElementById('filters'),
     listpane: document.getElementById('listpane'),
-    editorpane: document.getElementById('editorpane')
+    editorpane: document.getElementById('editorpane'),
+    mapkeysPanel: document.getElementById('mapkeys-panel'),
+    mapkeysBody: document.getElementById('mapkeys-body')
   };
 
   let drawerScrim = null;
@@ -124,6 +127,8 @@
       '<button type="button" class="btn" data-action="ai-batch" title="' + UI.escapeHtml(ruleHint) + '" aria-label="批量分析当前筛选状态下的兴趣点">' +
         UI.icon('layers') + '<span>AI 批量分析</span></button>' +
       '<span class="toolbar-sep" aria-hidden="true"></span>' +
+      '<button type="button" class="btn" data-action="mapkeys" aria-label="管理地图 Key">' +
+        UI.icon('lockKey') + '<span>地图 Key</span></button>' +
       '<button type="button" class="btn" data-action="export" aria-label="导出已通过的兴趣点到 App">' +
         UI.icon('upload') + '<span>导出到 App</span></button>';
   }
@@ -1253,8 +1258,224 @@
         else if (action === 'ai-edit') openAiEditModal();
         else if (action === 'ai-analyze') runAnalyze(button);
         else if (action === 'ai-batch') runBatchAnalyze(button);
+        else if (action === 'mapkeys') openMapKeysPanel();
         else if (action === 'export') runExport(button);
       });
+    });
+  }
+
+  // ============================================================
+  // 地图 Key（后台统一配置，公开端点自动下发）
+  // ============================================================
+
+  const MAPKEY_PROVIDERS = [
+    { id: 'amap', label: '高德 Web 服务 Key', help: 'Web 服务 Key（restapi.amap.com，注意不是 JS API Key）' },
+    { id: 'baidu', label: '百度地图服务端 AK', help: '服务端 AK（api.map.baidu.com）' }
+  ];
+
+  function mapKeyMeta(id) {
+    for (let i = 0; i < MAPKEY_PROVIDERS.length; i += 1) {
+      if (MAPKEY_PROVIDERS[i].id === id) return MAPKEY_PROVIDERS[i];
+    }
+    return { id: id, label: id, help: '' };
+  }
+
+  function openMapKeysPanel() {
+    if (!els.mapkeysPanel) return;
+    els.mapkeysPanel.hidden = false;
+    loadMapKeys();
+  }
+
+  function closeMapKeysPanel() {
+    if (!els.mapkeysPanel) return;
+    els.mapkeysPanel.hidden = true;
+  }
+
+  async function loadMapKeys() {
+    state.mapkeys.loading = true;
+    state.mapkeys.error = '';
+    renderMapKeys();
+    try {
+      state.mapkeys.data = await API.mapKeys();
+    } catch (error) {
+      state.mapkeys.error = errorText(error);
+    } finally {
+      state.mapkeys.loading = false;
+      renderMapKeys();
+    }
+  }
+
+  function showMapKeyResult(providerId, result) {
+    const target = document.getElementById('mapkey-result-' + providerId);
+    if (!target) return;
+    if (!result) {
+      target.className = 'mapkeys__result';
+      target.textContent = '';
+      return;
+    }
+    if (result.ok) {
+      target.className = 'mapkeys__result is-ok';
+      target.textContent = '连接成功 · 返回 ' + result.count + ' 条结果';
+    } else {
+      target.className = 'mapkeys__result is-err';
+      target.textContent = '测试失败：' + (result.error || '未知错误');
+    }
+  }
+
+  function mapKeyRowHtml(provider) {
+    const data = state.mapkeys.data;
+    const entry = data && data.keys ? data.keys[provider.id] : null;
+    const configured = !!(entry && entry.configured);
+    const hint = configured ? entry.hint : '';
+    const statusHtml = configured
+      ? '<span class="mapkeys__status is-on">● 已配置 · <code>' + UI.escapeHtml(hint) + '</code></span>'
+      : '<span class="mapkeys__status">○ 未配置</span>';
+    const placeholder = configured
+      ? '已配置 · ' + hint + '（留空表示不修改）'
+      : '输入 ' + provider.label + ' 后保存';
+    const testButton =
+      '<button type="button" class="btn btn--sm" data-mapkeys-test="' + provider.id + '"' +
+        (configured ? '' : ' title="先保存 Key 再测试"') + '>测试连接</button>';
+    const clearButton = configured
+      ? '<button type="button" class="btn btn--sm btn--danger" data-mapkeys-clear="' + provider.id + '">清除</button>'
+      : '';
+    return '<div class="mapkeys__row" data-provider="' + provider.id + '">' +
+      '<div class="mapkeys__rowhead">' +
+        '<div>' +
+          '<label class="field__label" for="mapkey-input-' + provider.id + '">' + UI.escapeHtml(provider.label) + '</label>' +
+          '<p class="mapkeys__help">' + UI.escapeHtml(provider.help) + '</p>' +
+        '</div>' +
+        statusHtml +
+      '</div>' +
+      '<div class="mapkeys__controls">' +
+        '<input class="input" id="mapkey-input-' + provider.id + '" type="password" ' +
+          'autocomplete="new-password" spellcheck="false" ' +
+          'placeholder="' + UI.escapeHtml(placeholder) + '" ' +
+          'aria-label="' + UI.escapeHtml(provider.label) + '">' +
+        testButton +
+        clearButton +
+      '</div>' +
+      '<p class="mapkeys__result" id="mapkey-result-' + provider.id + '"></p>' +
+    '</div>';
+  }
+
+  function renderMapKeys() {
+    if (!els.mapkeysBody) return;
+    const data = state.mapkeys.data;
+    const rows = MAPKEY_PROVIDERS.map(mapKeyRowHtml).join('');
+    const loading = state.mapkeys.loading ? '<p class="mapkeys__loading">正在读取服务器上的地图 Key…</p>' : '';
+    const error = state.mapkeys.error
+      ? '<p class="mapkeys__err">读取失败：' + UI.escapeHtml(state.mapkeys.error) + '</p>'
+      : '';
+    const publicUrl = data && data.publicUrl ? data.publicUrl : '/api/public/mapkeys';
+    const versionText = data && data.version ? ' · 版本 ' + UI.escapeHtml(data.version) : '';
+    els.mapkeysBody.innerHTML =
+      '<div class="mapkeys__note">' + UI.icon('alert', 14) +
+        '<span>Key 只存服务器数据库，客户端通过 <code>/api/public/mapkeys</code> 自动获取；' +
+        '<strong>注意 Web 服务 Key 在前端必然可见</strong>，请用独立限额 Key 并定期轮换。</span>' +
+      '</div>' +
+      loading + error +
+      '<div class="mapkeys__rows">' + rows + '</div>' +
+      '<footer class="mapkeys__foot">' +
+        '<span class="mapkeys__public">公开地址 <code>' + UI.escapeHtml(publicUrl) + '</code>' + versionText + '</span>' +
+        '<span class="spacer"></span>' +
+        '<button type="button" class="btn btn--primary" data-mapkeys-save>保存</button>' +
+      '</footer>';
+    MAPKEY_PROVIDERS.forEach(function (provider) {
+      showMapKeyResult(provider.id, state.mapkeys.testResults[provider.id]);
+    });
+  }
+
+  async function saveMapKeys(button) {
+    const keys = {};
+    MAPKEY_PROVIDERS.forEach(function (provider) {
+      const input = document.getElementById('mapkey-input-' + provider.id);
+      if (!input) return;
+      const value = input.value.trim();
+      if (value) keys[provider.id] = value;
+    });
+    if (Object.keys(keys).length === 0) {
+      UI.toast('输入新 Key 后再保存（留空表示不修改）', 'info', 3200);
+      return;
+    }
+    await withBusy(button, '保存中…', async function () {
+      try {
+        state.mapkeys.data = await API.putMapKeys(keys);
+        state.mapkeys.testResults = {};
+        renderMapKeys();
+        UI.toast('地图 Key 已保存', 'success', 2400);
+      } catch (error) {
+        toastError('保存地图 Key 失败', error);
+      }
+    });
+  }
+
+  async function clearMapKey(providerId, button) {
+    const provider = mapKeyMeta(providerId);
+    const ok = await UI.confirmDialog({
+      title: '清除地图 Key',
+      subtitle: provider.label,
+      message: '清除后公开端点不再下发这个 Key，客户端对应的地图能力会不可用。',
+      confirmText: '清除',
+      cancelText: '取消',
+      danger: true
+    });
+    if (!ok) return;
+    await withBusy(button, '清除中…', async function () {
+      try {
+        const body = {};
+        body[providerId] = '';
+        state.mapkeys.data = await API.putMapKeys(body);
+        state.mapkeys.testResults[providerId] = null;
+        renderMapKeys();
+        UI.toast('已清除 ' + provider.label, 'success', 2400);
+      } catch (error) {
+        toastError('清除地图 Key 失败', error);
+      }
+    });
+  }
+
+  async function testMapKey(providerId, button) {
+    await withBusy(button, '测试中…', async function () {
+      try {
+        const result = await API.testMapKey(providerId);
+        state.mapkeys.testResults[providerId] = result;
+        showMapKeyResult(providerId, result);
+        if (result.ok) {
+          UI.toast('连接成功 · 返回 ' + result.count + ' 条结果', 'success', 3200);
+        } else {
+          UI.toast('测试失败：' + (result.error || '未知错误'), 'error', 4200);
+        }
+      } catch (error) {
+        toastError('测试地图 Key 失败', error);
+      }
+    });
+  }
+
+  function bindMapKeysPanel() {
+    if (!els.mapkeysPanel) return;
+    els.mapkeysPanel.addEventListener('click', function (event) {
+      if (event.target.closest('[data-mapkeys-close]')) {
+        closeMapKeysPanel();
+        return;
+      }
+      const saveButton = event.target.closest('[data-mapkeys-save]');
+      if (saveButton) {
+        saveMapKeys(saveButton);
+        return;
+      }
+      const testButton = event.target.closest('[data-mapkeys-test]');
+      if (testButton) {
+        testMapKey(testButton.getAttribute('data-mapkeys-test'), testButton);
+        return;
+      }
+      const clearButton = event.target.closest('[data-mapkeys-clear]');
+      if (clearButton) {
+        clearMapKey(clearButton.getAttribute('data-mapkeys-clear'), clearButton);
+      }
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !els.mapkeysPanel.hidden) closeMapKeysPanel();
     });
   }
 
@@ -1581,6 +1802,7 @@
     if (!(await ensureAuthenticated())) return;
     renderTopActions();
     bindTopActions();
+    bindMapKeysPanel();
     renderLlmBadge();
     renderFilters();
     renderList();

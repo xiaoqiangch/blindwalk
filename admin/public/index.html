@@ -42,6 +42,23 @@
     <section class="pane editorpane" id="editorpane" aria-label="编辑面板"></section>
   </main>
 
+  <section class="mapkeys" id="mapkeys-panel" hidden aria-label="地图 Key 管理" role="dialog" aria-modal="true">
+    <div class="mapkeys__scrim" data-mapkeys-close aria-hidden="true"></div>
+    <div class="mapkeys__card">
+      <header class="mapkeys__head">
+        <div>
+          <p class="mapkeys__eyebrow">Map keys</p>
+          <h2 class="mapkeys__title">地图 Key</h2>
+          <p class="mapkeys__sub">后台统一配置，客户端通过公开端点自动获取。</p>
+        </div>
+        <button type="button" class="btn btn--icon" data-mapkeys-close aria-label="关闭地图 Key 面板">
+          <span aria-hidden="true" style="font-size:18px;line-height:1">×</span>
+        </button>
+      </header>
+      <div class="mapkeys__body" id="mapkeys-body"></div>
+    </div>
+  </section>
+
   <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
   <div class="modal-root" id="modal-root"></div>
 

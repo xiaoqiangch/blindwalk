@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v25';
+  var APP_VERSION = 'v26';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1270,6 +1270,63 @@
   }
 
 
+
+  /* ============================================================
+     地图 Key：后台统一管理，客户端自动获取（用户不再自己填）
+     来源优先级：
+       1. mapkeys.json（部署时由后台数据库生成，随 Pages 发布）
+       2. 后台 API /api/public/mapkeys（本地开发 / 局域网）
+     都没有：只用免费源（OSM + 维基）
+     ============================================================ */
+  var MAPKEYS_META = 'bw.mapkeys.meta.v1';
+
+  function mapKeysEndpoint() {
+    try { return localStorage.getItem('bw.mapkeys.endpoint') || ''; } catch (e) { return ''; }
+  }
+
+  function applyMapKeys(keys, source) {
+    if (!window.BW_PROVIDERS || !window.BW_PROVIDERS.setKeys) return;
+    window.BW_PROVIDERS.setKeys({
+      amap: (keys && keys.amap) || '',
+      baidu: (keys && keys.baidu) || ''
+    });
+    var meta = { source: source, at: Date.now(), amap: !!(keys && keys.amap), baidu: !!(keys && keys.baidu) };
+    try { localStorage.setItem(MAPKEYS_META, JSON.stringify(meta)); } catch (e) { /* ignore */ }
+    state.mapKeysMeta = meta;
+  }
+
+  function loadMapKeys() {
+    var endpoint = mapKeysEndpoint();
+    function fromJson() {
+      return fetch('mapkeys.json?_=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && data.keys) { applyMapKeys(data.keys, 'pages'); return true; }
+          return false;
+        })
+        .catch(function () { return false; });
+    }
+    function fromApi() {
+      if (!endpoint) return Promise.resolve(false);
+      return fetch(endpoint.replace(/\/$/, '') + '/api/public/mapkeys', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && data.keys) { applyMapKeys(data.keys, 'admin'); return true; }
+          return false;
+        })
+        .catch(function () { return false; });
+    }
+    return fromJson().then(function (ok) {
+      if (ok) return true;
+      return fromApi();
+    }).then(function (ok) {
+      if (!ok) {
+        applyMapKeys({ amap: '', baidu: '' }, 'none');
+      }
+      return ok;
+    });
+  }
+
   /* ============================================================
      账号（可选云端）与数据源设置
      - 未登录：完全本地，离线可用
@@ -1423,43 +1480,47 @@
       '</div>';
   }
 
-  /** 数据源页：高德/百度 Key + 状态 */
+  /** 数据源页：Key 由后台统一配置，这里只做状态展示（用户无需/无法自己填 Key） */
   function datasourceHTML() {
     var st = (window.BW_PROVIDERS && window.BW_PROVIDERS.status)
       ? window.BW_PROVIDERS.status()
       : { sources: [], keys: {} };
+    var meta = state.mapKeysMeta || {};
+    var sourceLabel = meta.source === 'pages' ? '随 App 发布下发'
+      : meta.source === 'admin' ? '后台接口下发'
+      : meta.source === 'none' ? '未配置（只用免费源）' : '加载中…';
+
     var list = '<div class="dbg__row"><span class="dbg__k">高德地图</span><span class="dbg__v">' +
-      (st.keys && st.keys.amap ? '已配置 Key' : '未配置（可选）') + '</span></div>' +
+      (st.keys && st.keys.amap ? '已由后台配置 ✓' : '后台未配置') + '</span></div>' +
       '<div class="dbg__row"><span class="dbg__k">百度地图</span><span class="dbg__v">' +
-      (st.keys && st.keys.baidu ? '已配置 Key' : '未配置（可选）') + '</span></div>' +
+      (st.keys && st.keys.baidu ? '已由后台配置 ✓' : '后台未配置') + '</span></div>' +
       '<div class="dbg__row"><span class="dbg__k">OpenStreetMap</span><span class="dbg__v">免费 · 始终可用</span></div>' +
-      '<div class="dbg__row"><span class="dbg__k">中文维基百科</span><span class="dbg__v">免费 · 带实景照片</span></div>';
+      '<div class="dbg__row"><span class="dbg__k">中文维基百科</span><span class="dbg__v">免费 · 带实景照片</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">Key 来源</span><span class="dbg__v">' + esc(sourceLabel) + '</span></div>';
+
     var last = (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport) ? window.BW_PROVIDERS.lastReport() : null;
     var report = '';
     if (last && last.sources && last.sources.length) {
       report = '<div class="dbg__row"><span class="dbg__k">上次抓取</span><span class="dbg__v">' +
         last.sources.map(function (x) {
-          return esc(x.label || x.id) + '：' + (x.ok ? (x.count + ' 条') : (x.reason || '失败'));
+          return esc(x.label || x.id) + '：' + (x.ok ? (x.count + ' 条') : (x.reason || x.error || '失败'));
         }).join('；') + '</span></div>';
     }
 
     return '<div class="page dbg">' +
       '<header class="pagehead"><div><h2 class="pagehead__title">数据源</h2>' +
-      '<p class="pagehead__sub">真实地点从哪来 · 填入你自己的 Key 可启用地图服务商</p></div>' +
+      '<p class="pagehead__sub">Key 由后台统一管理，你不需要填写</p></div>' +
       '<button type="button" class="iconbtn" data-action="go-profile" aria-label="返回我的">' + ICON.back + '</button>' +
       '</header>' +
       '<section class="dbg__card">' + list + report + '</section>' +
       '<section class="dbg__card">' +
-        '<p class="dbg__label">高德 Web 服务 Key（可选）</p>' +
-        '<input class="acc__input" id="ds-amap" type="text" placeholder="高德开放平台 → Web服务 → Key">' +
-        '<p class="dbg__label">百度地图服务端 AK（可选）</p>' +
-        '<input class="acc__input" id="ds-baidu" type="text" placeholder="百度地图开放平台 → 服务端 → AK">' +
+        '<p class="dbg__hint">地图服务商的 Key 由管理后台统一配置并下发，所有用户共用。<br>' +
+        '客户端只用免费源（OpenStreetMap + 维基百科）也能正常抽真实地点。<br>' +
+        '需要替换 Key？在后台「地图 Key」页修改，重启 App 后自动生效。</p>' +
         '<div class="dbg__actions">' +
-          '<button type="button" class="btn btn--primary btn--block" data-action="ds-save">保存 Key</button>' +
-          '<button type="button" class="btn btn--ghost btn--block" data-action="ds-test">用当前位置测一次抓取</button>' +
+          '<button type="button" class="btn btn--ghost btn--block" data-action="reload-mapkeys">重新加载 Key</button>' +
+          '<button type="button" class="btn btn--quiet btn--block" data-action="ds-test">用当前位置测一次抓取</button>' +
         '</div>' +
-        '<p class="dbg__hint">Key 只保存在这台设备（localStorage），不会上传到任何服务器。<br>' +
-        '不填也能用：默认走 OpenStreetMap + 维基百科。</p>' +
       '</section>' +
       '</div>';
   }
@@ -3875,17 +3936,12 @@
           .catch(function (e) { showToast(accountErrText(e), '⚠️', { duration: 3200 }); });
         break;
       }
-      case 'ds-save': {
-        var amapEl = document.getElementById('ds-amap');
-        var baiduEl = document.getElementById('ds-baidu');
-        if (window.BW_PROVIDERS && window.BW_PROVIDERS.setKeys) {
-          window.BW_PROVIDERS.setKeys({
-            amap: amapEl ? amapEl.value.trim() : '',
-            baidu: baiduEl ? baiduEl.value.trim() : ''
-          });
-        }
-        showToast('Key 已保存在本机', '🔑');
-        render();
+      case 'reload-mapkeys': {
+        showToast('正在从后台重新加载 Key…', '🔑', { duration: 1600 });
+        loadMapKeys().then(function (ok) {
+          showToast(ok ? 'Key 已更新' : '后台还没配置 Key（只用免费源）', ok ? '✅' : 'ℹ️');
+          render();
+        });
         break;
       }
       case 'ds-test': {
@@ -4092,6 +4148,10 @@
         nav: state.navSnapshot || null
       };
     };
+
+    // 地图 Key 由后台统一下发（不打扰用户；失败则只用免费源）
+    state.mapKeysMeta = null;
+    loadMapKeys();
 
     bindEvents();
     render();

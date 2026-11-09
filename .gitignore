@@ -19,3 +19,6 @@ account/data/
 account/*.db
 account/*.db-wal
 account/*.db-shm
+
+# 后台下发的地图 Key（部署时注入 gh-pages，绝不提交主仓）
+prototype/web/mapkeys.json
