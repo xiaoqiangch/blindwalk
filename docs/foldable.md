@@ -71,6 +71,31 @@ public static func isShort(_ height: CGFloat) -> Bool
   该设备 profile 需要 Simulator/DeviceHub 的「展开/折叠」交互才能激活内屏；headless `simctl` 无法驱动。
   需在 **Xcode/DeviceHub 里手动展开 Duo 实机或模拟器**复核宽屏双列。
 
+## 3.1 怎么看效果（四种方式）
+
+### 方式 A：并排预览页（最快，浏览器打开即可）
+👉 **https://xiaoqiangch.github.io/blindwalk/duo-preview.html**
+
+同一份数据、两套尺寸并排：折叠 466×678 / 展开 669×951。
+**iframe 里是真实运行的应用**（不是截图），顶部可切换页面（首页 / 抽盒 / 旅程 / 图鉴 / 我的），两边同步跳转。
+本地文件：`prototype/web/duo-preview.html`；截图：`screenshots/duo-preview/`。
+
+### 方式 B：在 iPhone Duo 真机上
+浏览器直接打开 https://xiaoqiangch.github.io/blindwalk/ ，折叠/展开时自动切布局。
+（SW 有缓存，新版需下拉刷新一次；「我的」页标题旁有版本号可核对。）
+
+### 方式 C：Mac 浏览器模拟
+Chrome → DevTools（⌥⌘I）→ 设备图标（⌘⇧M）→ Responsive → 宽度高度填 `466 × 678` 或 `669 × 951`。
+触摸设备会走 `is-touch` 分支（双列/紧凑布局），**不会套桌面假手机框**。
+
+### 方式 D：iOS 原生版（Xcode 27）
+Xcode 27 用 **DeviceHub** 里的 iPhone Duo 模拟器（不再有独立 Simulator.app）：
+```bash
+open "/Applications/Xcode.app/Contents/Applications/DeviceHub.app"
+```
+选 iPhone Duo → 装 App → 运行。**折叠/展开开关在 DeviceHub 的设备控制里，需要在图形界面手动切换**——
+命令行（`simctl io screenConfig`）无法唤醒外屏，这点已实测过。
+
 ## 4. 未做（后续）
 - 折叠状态切换时的连续性（Duo 展开/折叠瞬间 SwiftUI 会自动 relayout，但没有做「保持地图中心/滚动位置」）
 - 外屏小组件（Duo 折叠态的 cover widget 适合显示「下一个盲盒」）
