@@ -8,6 +8,9 @@ struct CardsView: View {
 
     @State private var filter: CardFilter = .all
     @State private var selectedPlace: Place?
+    /// 从「附近惊喜」点进来的惊喜 id（打开探寻页时聚焦它）
+    @State private var seekFocusID: String?
+    @State private var showSeek = false
 
     private enum CardFilter: String, CaseIterable, Identifiable {
         case all = "全部"
@@ -43,7 +46,8 @@ struct CardsView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     header
-                    collectStats.padding(.top, 2).padding(.bottom, 12)
+                    collectStats.padding(.top, 2).padding(.bottom, 10)
+                    nearbyHintsSection.padding(.bottom, 12)
                     filterRow.padding(.bottom, 15)
                     grid
                 }
@@ -56,6 +60,16 @@ struct CardsView: View {
                 detailOverlay(selectedPlace)
             }
         }
+        .fullScreenCover(isPresented: $showSeek) {
+            SeekSurpriseView(
+                store: store,
+                onClose: {
+                    showSeek = false
+                    seekFocusID = nil
+                },
+                focusID: seekFocusID
+            )
+        }
         .toolbar(.hidden, for: .navigationBar)
         .bwTabBarChrome()
         .bwTypeBounds()
@@ -67,6 +81,128 @@ struct CardsView: View {
                 selectedPlace = allPlaces.first { collectedIDs.contains($0.id) }
             }
         }
+    }
+
+    // MARK: 附近的惊喜（隐晦提示）
+
+    /// 待寻的惊喜，按距离排序
+    private var nearbyHintList: [BuriedSurprise] {
+        let origin = store.lastKnownOrigin
+        // 有定位按 5km 圈；没有定位就全部待寻的，并显示「位置未知」
+        let all = store.explorableSurprises(near: origin)
+        return Array(all.prefix(3))
+    }
+
+    private func distanceBucket(_ meters: Double?) -> String {
+        guard let meters, meters.isFinite else { return "位置未知" }
+        if meters <= 120 { return "就在附近几步" }
+        if meters <= 350 { return "大概一两百米" }
+        if meters <= 800 { return "走过去几分钟" }
+        if meters <= 2000 { return "要走一段路" }
+        if meters <= 8000 { return "在比较远的地方" }
+        return "不在附近，需要专程去"
+    }
+
+    /// 隐晦氛围提示：不含地名、不含作者以外的识别信息
+    private func atmosphere(for surprise: BuriedSurprise) -> String {
+        let pool = [
+            "那儿光线不错，适合停下来喘口气。",
+            "有人在那儿等到过一次意外的好天气。",
+            "那个角落平时没什么人经过。",
+            "声音会变小，风会变大一点。",
+            "走到那儿大概会想掏出手机拍点什么。",
+            "那里有一小块能坐下来的地方。",
+            "路过的人都很赶，只有你可能会停。"
+        ]
+        var seed = 0
+        for ch in surprise.id.unicodeScalars { seed = (seed &* 31 &+ Int(ch.value)) % 9973 }
+        return pool[seed % pool.count]
+    }
+
+    @ViewBuilder
+    private var nearbyHintsSection: some View {
+        let list = nearbyHintList
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("附近的惊喜")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(BWTheme.ink)
+                Text(list.isEmpty ? "这一带暂时没有" : "\(list.count) 个还没被找到")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(BWTheme.ink3)
+            }
+
+            if list.isEmpty {
+                Button {
+                    showSeek = true
+                } label: {
+                    Text("有人在这儿留下第一张？埋一个 →")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(BWTheme.amberDeep)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(BWTheme.amber.opacity(0.05))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(BWTheme.amber.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        )
+                }
+                .buttonStyle(.plain)
+            } else {
+                ForEach(list) { surprise in
+                    Button {
+                        seekFocusID = surprise.id
+                        showSeek = true
+                    } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Text(surprise.authorEmoji)
+                                .font(.system(size: 17))
+                                .frame(width: 32, height: 32)
+                                .background(BWTheme.amber.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(distanceBucket(store.lastKnownOrigin.map { GeoMath.distance(from: $0, to: surprise.location) })) · 有人留下一张照片")
+                                    .font(.system(size: 13.5, weight: .semibold))
+                                    .foregroundStyle(BWTheme.ink)
+                                    .multilineTextAlignment(.leading)
+                                Text(atmosphere(for: surprise))
+                                    .font(.system(size: 12.5))
+                                    .foregroundStyle(BWTheme.ink2)
+                                    .multilineTextAlignment(.leading)
+                                Text("线索要靠走近才会解锁 · 点这里开始找")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(BWTheme.ink3)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(BWTheme.ink3)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 11)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(BWTheme.amber.opacity(0.18), lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                .fill(LinearGradient(colors: [Color(hex: 0xF4F6FF), .white], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                .stroke(BWTheme.line, lineWidth: 1)
+        )
     }
 
     // MARK: 顶栏

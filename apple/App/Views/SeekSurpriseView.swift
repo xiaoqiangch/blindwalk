@@ -18,6 +18,8 @@ struct SeekSurpriseView: View {
     var onClose: () -> Void = {}
     var onOpenBury: (() -> Void)? = nil
     var onOpenMine: (() -> Void)? = nil
+    /// 从图鉴的「附近惊喜」点进来时，直接聚焦这一个
+    var focusID: String? = nil
 
     // MARK: 状态
 
@@ -797,6 +799,11 @@ struct SeekSurpriseView: View {
         // 没有再主动取一次，避免每次进页面都等 GPS。
         probe.startIfNeeded(storeOrigin: store.lastKnownOrigin)
         usesDemoDistance = isDemoDistance
+        // 从图鉴提示点进来：直接打开那一个惊喜的线索页
+        if let focusID, selected == nil,
+           let target = nearbyList.first(where: { $0.id == focusID }) ?? store.surprises.first(where: { $0.id == focusID }) {
+            openDetail(target)
+        }
         applyPreviewRoute()
     }
 
