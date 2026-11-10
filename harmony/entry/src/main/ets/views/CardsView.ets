@@ -1,15 +1,28 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 图鉴 Cards（design-system §5.5）
+ * 盲走 BlindWalk · HarmonyOS ArkUI — 图鉴 Cards（design-system §5.5 + parity: 附近惊喜）
  *
- * 视觉基准：prototype/web/app.js cardsHTML + screenshots/showcase.png（CARDS 屏）
- * 结构：回忆册 header + 筛选图标 → 统计条 → 筛选 chips → 卡片网格（3/4/5 列自适应）
+ * 视觉基准：prototype/web/app.js cardsHTML（Web v46）+ screenshots/showcase.png（CARDS 屏）
+ * 结构：回忆册 header + 筛选图标 → 统计条 → **附近的惊喜（隐晦提示）** → 筛选 chips → 卡片网格
  * 点击已解锁卡 → 居中放大查看（卡片 + 小任务 + 关闭）
+ *
+ * ## 附近的惊喜（对齐 Web v46 / iOS CardsView.nearbyHintsSection）
+ * 只给「距离分档 + 氛围句 + 作者 emoji」，**绝不**给区域名 / 作者提示 / 照片 / 坐标。
+ * 点卡片 → 回调 `onOpenSeek(id)`，由 Index 打开探寻面板（线索要靠走近才解锁）。
+ * 保密逻辑全部在 `core/hints.ts`（纯 TS，有单测断言）。
  *
  * 响应式：手机 3 列 / 折叠态（矮屏）4 列 / 展开态（宽屏）5 列（docs/foldable.md）。
  */
 
 import { AppSnapshot } from '../core/contract';
 import { Area, Place, PlaceCard, Rarity } from '../core/types';
+import {
+  HINT_EMPTY_CTA,
+  HINT_FOOTER,
+  HINT_TITLE_SUFFIX,
+  NearHint,
+  nearbyHintCountText,
+  nearbyHints
+} from '../core/hints';
 import {
   BwHairline,
   BwMicroLabel,
@@ -65,6 +78,12 @@ export struct CardsView {
 
   onChanged: () => void = () => {
   };
+  /** 点「附近的惊喜」卡片 → 由 Index 打开探寻面板 */
+  onOpenSeek: (surpriseID: string) => void = () => {
+  };
+  /** 空状态 CTA：去埋一个（由 Index 决定去哪） */
+  onOpenBury: () => void = () => {
+  };
 
   @State private snapshot: AppSnapshot = emptySnapshot();
   @State private filter: CardFilter = CardFilter.All;
@@ -106,6 +125,19 @@ export struct CardsView {
     }
     const place: Place | undefined = placeOf(this.snapshot, cards[0].placeID);
     return place === undefined ? Area.Near : place.area;
+  }
+
+  /** 附近惊喜的隐晦提示（最多 3 条，按距离排序；保密逻辑在 core/hints.ts） */
+  private nearbyHintList(): NearHint[] {
+    return nearbyHints(
+      this.snapshot.explorableSurprises,
+      this.snapshot.lastKnownOrigin,
+      this.snapshot.profile.name
+    );
+  }
+
+  private hasLocation(): boolean {
+    return this.snapshot.lastKnownOrigin !== undefined;
   }
 
   private matchesFilter(place: Place): boolean {
@@ -267,6 +299,120 @@ export struct CardsView {
       Blank()
     }
     .width('100%')
+  }
+
+  /**
+   * 附近的惊喜（隐晦提示）
+   * 保密：这里**只**读 core/hints.ts 产出的 NearHint，不碰 BuriedSurprise 的
+   * areaWord / hints / photoUri / location —— 那会让提示变成剧透。
+   */
+  @Builder
+  nearbyHintsSection() {
+    Column({ space: 8 }) {
+      // 标题行
+      Row({ space: 6 }) {
+        Text('附近的惊喜')
+          .fontSize(BWFont.caption)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(BWColor.ink)
+        Text(nearbyHintCountText(this.nearbyHintList().length))
+          .fontSize(BWFont.microSm)
+          .fontColor(BWColor.ink3)
+          .maxLines(1)
+        Blank()
+      }
+      .width('100%')
+
+      if (this.nearbyHintList().length === 0) {
+        // 空状态：CTA 去埋一个
+        Button() {
+          Text(HINT_EMPTY_CTA)
+            .fontSize(BWFont.caption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(BWColor.amberDeep)
+            .textAlign(TextAlign.Center)
+            .width('100%')
+        }
+        .type(ButtonType.Normal)
+        .height(42)
+        .width('100%')
+        .backgroundColor('#0DE89B4C')
+        .borderRadius(BWSize.cardRadiusXs)
+        .border({
+          width: 1,
+          color: '#59E89B4C',
+          radius: BWSize.cardRadiusXs,
+          style: BorderStyle.Dashed
+        })
+        .onClick(() => {
+          this.onOpenBury();
+        })
+      } else {
+        ForEach(this.nearbyHintList(), (hint: NearHint) => {
+          this.hintCard(hint)
+        }, (hint: NearHint) => hint.id)
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(14)
+    .backgroundColor(BWColor.paper)
+    .borderRadius(BWSize.cardRadius)
+    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .shadow({ radius: 12, color: BWColor.shadowSoft, offsetX: 0, offsetY: 6 })
+  }
+
+  /** 一张隐晦提示卡：emoji + 「距离分档 · 有人留下一张照片」+ 氛围句 + 底部提示 */
+  @Builder
+  hintCard(hint: NearHint) {
+    Row({ space: 10 }) {
+      // 作者 emoji：三端唯一允许的社交信息
+      Text(hint.emoji)
+        .fontSize(BWFont.titleMd)
+        .textAlign(TextAlign.Center)
+        .width(32)
+        .height(32)
+        .backgroundColor(BWColor.amberSoft)
+        .borderRadius(10)
+
+      Column({ space: 2 }) {
+        Text(hint.distanceText + ' · ' + HINT_TITLE_SUFFIX)
+          .fontSize(BWFont.caption)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(BWColor.ink)
+          .maxLines(2)
+          .width('100%')
+
+        Text(hint.atmosphere)
+          .fontSize(BWFont.captionSm)
+          .fontColor(BWColor.ink2)
+          .maxLines(2)
+          .lineHeight(18)
+          .width('100%')
+
+        Text(HINT_FOOTER)
+          .fontSize(BWFont.microSm)
+          .fontColor(BWColor.ink3)
+          .maxLines(1)
+          .width('100%')
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      Text('›')
+        .fontSize(BWFont.caption)
+        .fontColor(BWColor.ink3)
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Top)
+    .padding({ left: 12, right: 12, top: 11, bottom: 11 })
+    .backgroundColor(BWColor.paper)
+    .borderRadius(BWSize.cardRadiusXs)
+    .border({ width: 1, color: '#2EE89B4C', radius: BWSize.cardRadiusXs })
+    .onClick(() => {
+      // 只把 id 交出去；其余信息（区域/线索/照片）由探寻页按距离决定是否给
+      this.onOpenSeek(hint.id);
+    })
   }
 
   @Builder
@@ -499,6 +645,12 @@ export struct CardsView {
             this.statsLine()
           }
           .margin({ top: 8 })
+
+          // 附近的惊喜：隐晦提示（点一下开始探寻）
+          Column() {
+            this.nearbyHintsSection()
+          }
+          .margin({ top: 12 })
 
           Column() {
             this.filterRow()

@@ -17,6 +17,7 @@ import { PreferencesKV } from '../components/PreferencesKV';
 import { HarmonyHttpClient, readBundledMapKeys } from '../components/HttpClient';
 import { BwAccountPanel } from '../components/AccountPanel';
 import { BwDataSourcePanel } from '../components/DataSourcePanel';
+import { BwSeekPanel } from '../components/SeekPanel';
 import { DataSourceStatus } from '../core/contract';
 import { BWColor, BWFont, BWSize } from '../theme/Theme';
 import { BwBoxArt } from '../components/BoxArt';
@@ -27,6 +28,7 @@ import { applySyncedPayload, buildSyncPayload } from '../components/StoreBridge'
 import { readAccountConfig } from '../core/account';
 import { MAPKEYS_CACHE_KEY, loadMapKeys, mapKeysSourceText } from '../core/mapkeys';
 import { bwToast } from '../components/Async';
+import { BuriedSurprise, GeoPoint } from '../core/types';
 import { HomeView } from '../views/HomeView';
 import { CardsView } from '../views/CardsView';
 import { SocialView } from '../views/SocialView';
@@ -47,6 +49,7 @@ const OVERLAY_REVEAL: string = 'reveal';
 const OVERLAY_ACHIEVEMENTS: string = 'achievements';
 const OVERLAY_ACCOUNT: string = 'account';
 const OVERLAY_DATASOURCE: string = 'datasource';
+const OVERLAY_SEEK: string = 'seek';
 
 @Entry
 @Component
@@ -74,6 +77,14 @@ struct Index {
   @State private accountLabel: string = '未登录';
   /** 策展地点条数（数据源面板展示） */
   @State private curatedCount: number = 0;
+  /** 正在探寻的惊喜 id（空串 = 没打开） */
+  @State private seekSurpriseID: string = '';
+  /** 正在探寻的惊喜线索（只读副本；不传整颗惊喜，避免 UI 拿到照片字段） */
+  @State private seekClues: string[] = [];
+  /** 正在探寻的惊喜坐标（只用于算距离，不渲染） */
+  @State private seekTargetLat: number = 0;
+  @State private seekTargetLon: number = 0;
+  @State private seekAuthorEmoji: string = '🎁';
 
   aboutToAppear(): void {
     // 地图朝向开关：AppStorage 全局共享 + 持久化（重启后保持）
@@ -181,6 +192,31 @@ struct Index {
     }
   }
 
+  /** 当前定位（没有就是 0,0；配合 hasOrigin() 判断） */
+  private currentFix(): GeoPoint {
+    try {
+      const snapshot = getStore().snapshot();
+      const origin: GeoPoint | undefined = snapshot.lastKnownOrigin;
+      if (origin === undefined) {
+        const zero: GeoPoint = { latitude: 0, longitude: 0 };
+        return zero;
+      }
+      return origin;
+    } catch (err) {
+      const zero: GeoPoint = { latitude: 0, longitude: 0 };
+      return zero;
+    }
+  }
+
+  /** 是否已经拿到过定位（决定线索能不能按距离解锁） */
+  private hasOrigin(): boolean {
+    try {
+      return getStore().snapshot().lastKnownOrigin !== undefined;
+    } catch (err) {
+      return false;
+    }
+  }
+
   /** 当前数据源状态（没搜索过时给空态） */
   private dataSourceStatus(): DataSourceStatus {
     try {
@@ -209,6 +245,39 @@ struct Index {
       this.adminBase, Date.now()
     );
     bwToast(mapKeysSourceText(keys.source));
+    this.refresh();
+  }
+
+  /**
+   * 打开探寻面板：从快照里找到目标惊喜，只把「判定线索需要的字段」传进去。
+   *
+   * **保密**：不传 areaWord / photoUri / photoHash，只传 hints + 坐标（坐标只算距离）。
+   */
+  private openSeek(surpriseID: string): void {
+    let found: BuriedSurprise | undefined = undefined;
+    try {
+      const snapshot = getStore().snapshot();
+      const list: BuriedSurprise[] = snapshot.explorableSurprises;
+      for (let i = 0; i < list.length; i += 1) {
+        if (list[i].id === surpriseID) {
+          found = list[i];
+          break;
+        }
+      }
+    } catch (err) {
+      found = undefined;
+    }
+    if (found === undefined) {
+      bwToast('这个惊喜已经不在了');
+      this.refresh();
+      return;
+    }
+    this.seekSurpriseID = found.id;
+    this.seekClues = found.hints.slice();
+    this.seekAuthorEmoji = found.authorEmoji;
+    this.seekTargetLat = found.location.latitude;
+    this.seekTargetLon = found.location.longitude;
+    this.overlay = OVERLAY_SEEK;
     this.refresh();
   }
 
@@ -296,6 +365,13 @@ struct Index {
           winHeight: this.winHeight,
           onChanged: () => {
             this.refresh();
+          },
+          onOpenSeek: (surpriseID: string) => {
+            this.openSeek(surpriseID);
+          },
+          onOpenBury: () => {
+            // 埋惊喜 UI 尚未移植（本轮范围外）：明确告知，而不是静默无反应
+            bwToast('埋惊喜还没搬到鸿蒙，先在 Web 上试');
           }
         })
       }
@@ -431,6 +507,24 @@ struct Index {
             this.setupStarted();
           },
           onChanged: () => {
+            this.refresh();
+          }
+        })
+      }
+
+      if (this.ready && this.overlay === OVERLAY_SEEK) {
+        BwSeekPanel({
+          surpriseID: this.seekSurpriseID,
+          clues: this.seekClues,
+          authorEmoji: this.seekAuthorEmoji,
+          hereLat: this.currentFix().lat,
+          hereLon: this.currentFix().lon,
+          hasOrigin: this.hasOrigin(),
+          targetLat: this.seekTargetLat,
+          targetLon: this.seekTargetLon,
+          onBack: () => {
+            this.overlay = OVERLAY_NONE;
+            this.seekSurpriseID = '';
             this.refresh();
           }
         })

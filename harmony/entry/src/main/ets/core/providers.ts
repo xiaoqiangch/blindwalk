@@ -33,7 +33,6 @@ import {
 import {
   DEDUPE_METERS,
   LANDMARK_KEYWORD_LIMIT,
-  LANDMARK_KEYWORDS,
   PoiCandidate,
   dedupe,
   landmarkKeywordList,
@@ -721,7 +720,6 @@ export function parseWiki(json: Record<string, unknown>): PoiCandidate[] {
     const displayName: string = title.replace(/\s*[（(][^）)]*[）)]\s*$/, '').trim();
     if (displayName.length === 0) continue;
 
-    const extract: string = readString(page, 'extract');
     const pageID: unknown = page['pageid'];
     const idText: string = typeof pageID === 'number' ? String(pageID) : title;
 

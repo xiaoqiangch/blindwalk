@@ -16,6 +16,7 @@ entry/src/main/ets/
 │   ├── mapkeys.ts  地图 Key 下发（包内→Pages→后台→免费源）
 │   ├── search.ts   三档搜索 + 策展优先 + 明确失败（绝不虚构）
 │   ├── fog.ts      迷雾路径几何（纯函数）
+│   ├── hints.ts    图鉴「附近惊喜」隐晦提示 + 探寻线索解锁（保密铁律）
 │   ├── account.ts  账号（手动 Cookie）
 │   └── …           地理 / 抽盒 / 会话 / dHash / 成就 / 持久化 / store
 ├── pages/   路由外壳（Index）
@@ -28,8 +29,8 @@ entry/src/main/ets/
 
 ```
 tsc --noEmit          0 error
-npm test              98/98 通过
-ArkTS 静态检查        25 个 .ets，0 error
+npm test              117/117 通过
+ArkTS 静态检查        26 个 .ets，0 error（含「附近惊喜保密」守卫）
 ```
 
 > `.hap` 编译仍需 DevEco Studio；需要真机确认的 API 清单见 [docs/HARMONY.md](docs/HARMONY.md) §7。

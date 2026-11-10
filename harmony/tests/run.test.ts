@@ -204,6 +204,26 @@ import {
   toDataSourceStatus
 } from '../entry/src/main/ets/core/flow';
 import {
+  DISTANCE_UNKNOWN_TEXT,
+  HINT_ATMOSPHERE,
+  HINT_EMPTY_CTA,
+  HINT_FOOTER,
+  HINT_TITLE_SUFFIX,
+  LOCKED_CLUE_TEXT,
+  NEARBY_HINT_LIMIT,
+  NearHint,
+  SEEK_NO_LOCATION_TEXT,
+  SURPRISE_RADIUS_METERS,
+  distanceBucket,
+  hintForSurprise,
+  isFarBucket,
+  makeNearHint,
+  nearbyHintCountText,
+  nearbyHints,
+  seekClueState,
+  seekLeadText
+} from '../entry/src/main/ets/core/hints';
+import {
   ROUTE_CACHE_TTL_MS,
   decodePolyline6,
   fetchWalkingRoute,
@@ -2678,6 +2698,394 @@ test('路线：取路线带 10 分钟缓存；失败返回 undefined（不阻塞
     assert.equal(polyline.distanceMeters, first.distanceMeters);
     assert.equal(polyline.fetchedAt, now);
   }
+});
+
+// ============================================================
+// 21. 图鉴「附近惊喜」隐晦提示（对齐 Web v46 / iOS）
+// ============================================================
+
+/** 造一颗可完全控制的惊喜（每个字段都填成「可识别的剧透值」） */
+function spoilerSurprise(overrides: Partial<BuriedSurprise> = {}): BuriedSurprise {
+  const base: BuriedSurprise = {
+    id: 'surprise-spoiler-001',
+    authorName: '小满',
+    authorEmoji: '🐱',
+    location: geoPoint(31.2344, 121.4737),
+    areaWord: '静安 · 街角咖啡店后门',
+    hints: ['往灯最暖的那扇窗走。', '找一块回声很大的地方。', '台阶有点滑。慢一点。'],
+    photoHash: '6f4b1d2a9c3e8057',
+    photoUri: 'file:///sandbox/secret-photo.jpg',
+    buriedAt: 1700000000000,
+    found: false
+  };
+  if (Object.keys(overrides).length === 0) return base;
+  const merged: BuriedSurprise = {
+    id: overrides.id === undefined ? base.id : overrides.id,
+    authorName: overrides.authorName === undefined ? base.authorName : overrides.authorName,
+    authorEmoji: overrides.authorEmoji === undefined ? base.authorEmoji : overrides.authorEmoji,
+    location: overrides.location === undefined ? base.location : overrides.location,
+    areaWord: overrides.areaWord === undefined ? base.areaWord : overrides.areaWord,
+    hints: overrides.hints === undefined ? base.hints : overrides.hints,
+    photoHash: overrides.photoHash === undefined ? base.photoHash : overrides.photoHash,
+    photoUri: overrides.photoUri === undefined ? base.photoUri : overrides.photoUri,
+    buriedAt: overrides.buriedAt === undefined ? base.buriedAt : overrides.buriedAt,
+    found: overrides.found === undefined ? base.found : overrides.found
+  };
+  return merged;
+}
+
+test('提示：距离分档逐字对齐 Web v46（7 档 + 未知）', (): void => {
+  assert.equal(DISTANCE_UNKNOWN_TEXT, '位置未知');
+  assert.equal(distanceBucket(undefined), '位置未知');
+  assert.equal(distanceBucket(NaN), '位置未知');
+  assert.equal(distanceBucket(Infinity), '位置未知');
+  assert.equal(distanceBucket(0), '就在附近几步');
+  assert.equal(distanceBucket(120), '就在附近几步', '≤120 边界');
+  assert.equal(distanceBucket(121), '大概一两百米');
+  assert.equal(distanceBucket(350), '大概一两百米', '≤350 边界');
+  assert.equal(distanceBucket(351), '走过去几分钟');
+  assert.equal(distanceBucket(800), '走过去几分钟', '≤800 边界');
+  assert.equal(distanceBucket(801), '要走一段路');
+  assert.equal(distanceBucket(2000), '要走一段路', '≤2000 边界');
+  assert.equal(distanceBucket(2001), '在比较远的地方');
+  assert.equal(distanceBucket(8000), '在比较远的地方', '≤8000 边界');
+  assert.equal(distanceBucket(8001), '不在附近，需要专程去');
+  // isFarBucket 与分档一致（>800 算远）
+  assert.equal(isFarBucket(800), false);
+  assert.equal(isFarBucket(801), true);
+  assert.equal(isFarBucket(undefined), true);
+});
+
+test('提示：氛围池 7 条逐字对齐，且按 id 稳定选择', (): void => {
+  assert.equal(HINT_ATMOSPHERE.length, 7);
+  assert.deepEqual(HINT_ATMOSPHERE, [
+    '那儿光线不错，适合停下来喘口气。',
+    '有人在那儿等到过一次意外的好天气。',
+    '那个角落平时没什么人经过。',
+    '声音会变小，风会变大一点。',
+    '走到那儿大概会想掏出手机拍点什么。',
+    '那里有一小块能坐下来的地方。',
+    '路过的人都很赶，只有你可能会停。'
+  ]);
+  // 同一个 id 永远同一句（刷新不会变）
+  const a = hintForSurprise('surprise-abc', 0);
+  const b = hintForSurprise('surprise-abc', 0);
+  assert.equal(a, b);
+  // 结果一定来自池子
+  for (let i = 0; i < 30; i += 1) {
+    const picked = hintForSurprise('surprise-' + String(i), i % 3);
+    assert.ok(HINT_ATMOSPHERE.indexOf(picked) >= 0, '必须来自氛围池');
+  }
+  // 相邻几条尽量不同（同屏不重复）
+  const set = new Set<string>();
+  set.add(hintForSurprise('s-1', 0));
+  set.add(hintForSurprise('s-2', 1));
+  set.add(hintForSurprise('s-3', 2));
+  assert.ok(set.size >= 2, '同屏 3 条不应全一样');
+  // 空 id 也不炸
+  assert.ok(HINT_ATMOSPHERE.indexOf(hintForSurprise('', 0)) >= 0);
+});
+
+test('保密（铁律）：NearHint 里绝不能出现区域/消息/照片/坐标/作者名', (): void => {
+  const surprise = spoilerSurprise();
+  const hint: NearHint = makeNearHint(surprise, 0, 480);
+
+  // 1) 结构上就不该有这些字段
+  const record: Record<string, unknown> = hint as unknown as Record<string, unknown>;
+  const forbiddenFields: string[] = [
+    'areaWord', 'areaLabel', 'message', 'hints', 'photoUri', 'photoHash',
+    'photoName', 'location', 'latitude', 'longitude', 'authorName'
+  ];
+  for (const field of forbiddenFields) {
+    assert.equal(record[field], undefined, 'NearHint 不得包含字段 ' + field);
+  }
+
+  // 2) 序列化后不得出现任何剧透内容
+  const json: string = JSON.stringify(hint);
+  const spoilers: string[] = [
+    surprise.areaWord,              // 「静安 · 街角咖啡店后门」
+    '静安',
+    '咖啡店',
+    '后门',
+    surprise.photoUri,              // file:///sandbox/secret-photo.jpg
+    surprise.photoHash,
+    'secret-photo',
+    surprise.authorName,            // 「小满」
+    surprise.hints[0],
+    surprise.hints[1],
+    surprise.hints[2],
+    '灯最暖',
+    '回声',
+    String(surprise.location.latitude),
+    String(surprise.location.longitude),
+    '31.2344',
+    '121.4737'
+  ];
+  for (const text of spoilers) {
+    assert.equal(json.indexOf(text) < 0, true, 'NearHint 泄露了「' + text + '」：' + json);
+  }
+
+  // 3) 只允许：id / emoji / 分档文案 / 氛围句 / 取整距离
+  const keys: string[] = Object.keys(hint);
+  assert.equal(keys.length, 5, 'NearHint 只应有 5 个字段，实际：' + keys.join(','));
+  assert.ok(keys.indexOf('id') >= 0);
+  assert.ok(keys.indexOf('emoji') >= 0);
+  assert.ok(keys.indexOf('distanceText') >= 0);
+  assert.ok(keys.indexOf('atmosphere') >= 0);
+  assert.ok(keys.indexOf('distanceMeters') >= 0);
+
+  // 4) 距离只进 distanceMeters（取整），不进文案
+  assert.equal(hint.distanceMeters, 480);
+  assert.equal(hint.distanceText, '走过去几分钟');
+  assert.equal(hint.distanceText.indexOf('480'), -1, '分档文案不能含精确数字');
+  assert.equal(hint.emoji, '🐱', '作者 emoji 是唯一允许的社交信息');
+});
+
+test('保密（铁律）：nearbyHints 整体输出也不含任何剧透', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const list: BuriedSurprise[] = [
+    spoilerSurprise({ id: 'sp-near', authorName: '小满', areaWord: '静安 · 街角咖啡店后门' }),
+    spoilerSurprise({ id: 'sp-mid', authorName: '阿岛', areaWord: '河岸 · 桥洞下第三块石阶' }),
+    spoilerSurprise({ id: 'sp-far', authorName: '77', areaWord: '老城区 · 洗衣店门口' }),
+    spoilerSurprise({ id: 'sp-veryfar', authorName: '老陈', areaWord: '附近 · 广场最东侧' })
+  ];
+  const hints: NearHint[] = nearbyHints(list, origin, '阿澈', 3);
+  const json: string = JSON.stringify(hints);
+
+  for (const surprise of list) {
+    assert.equal(json.indexOf(surprise.areaWord) < 0, true, '不得出现区域名 ' + surprise.areaWord);
+    assert.equal(json.indexOf(surprise.photoUri) < 0, true, '不得出现照片 URI');
+    assert.equal(json.indexOf(surprise.photoHash) < 0, true, '不得出现照片哈希');
+    assert.equal(json.indexOf(surprise.authorName) < 0, true, '不得出现作者名 ' + surprise.authorName);
+    for (const hintText of surprise.hints) {
+      assert.equal(json.indexOf(hintText) < 0, true, '不得出现作者线索「' + hintText + '」');
+    }
+    assert.equal(json.indexOf(String(surprise.location.latitude)) < 0, true, '不得出现坐标');
+  }
+  assert.equal(json.indexOf('静安') < 0, true, '不得出现「静安」');
+  assert.equal(json.indexOf('桥洞') < 0, true, '不得出现「桥洞」');
+  assert.equal(json.indexOf('石阶') < 0, true, '不得出现「石阶」');
+  assert.equal(json.indexOf('洗衣店') < 0, true, '不得出现「洗衣店」');
+});
+
+test('提示列表：按距离升序、排除已找到与自己埋的、最多 3 条', (): void => {
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  // 纬度每 +0.001 ≈ 111 米
+  const near: BuriedSurprise = spoilerSurprise({ id: 'a-near', location: geoPoint(31.2312, 121.4737) });   // ~89m
+  const mid: BuriedSurprise = spoilerSurprise({ id: 'b-mid', location: geoPoint(31.2321, 121.4737) });     // ~189m
+  const far: BuriedSurprise = spoilerSurprise({ id: 'c-far', location: geoPoint(31.2330, 121.4737) });     // ~289m
+  const found: BuriedSurprise = spoilerSurprise({ id: 'd-found', location: geoPoint(31.2305, 121.4737), found: true });
+  const mine: BuriedSurprise = spoilerSurprise({ id: 'e-mine', location: geoPoint(31.2306, 121.4737), authorName: '阿澈' });
+
+  const hints: NearHint[] = nearbyHints([far, found, mine, near, mid], origin, '阿澈');
+  assert.equal(hints.length, 3, '最多 3 条');
+  assert.deepEqual(hints.map((h: NearHint): string => h.id), ['a-near', 'b-mid', 'c-far'],
+    '应按距离升序，且排除已找到 / 自己埋的');
+
+  // limit 可调
+  assert.equal(nearbyHints([near, mid, far], origin, '阿澈', 2).length, 2);
+  assert.equal(nearbyHints([near, mid, far], origin, '阿澈', 10).length, 3);
+  assert.equal(nearbyHints([], origin, '阿澈').length, 0);
+  assert.equal(NEARBY_HINT_LIMIT, 3);
+
+  // 分档与真实距离一致
+  assert.equal(hints[0].distanceText, '就在附近几步');
+  assert.equal(hints[1].distanceText, '大概一两百米');
+  assert.equal(hints[2].distanceText, '大概一两百米');
+});
+
+test('提示列表：没有定位时仍显示，文案为「位置未知」且排最后', (): void => {
+  const withDist: BuriedSurprise = spoilerSurprise({ id: 'a', location: geoPoint(31.2312, 121.4737) });
+  const list: BuriedSurprise[] = [withDist, spoilerSurprise({ id: 'b' }), spoilerSurprise({ id: 'c' })];
+
+  const noLocation: NearHint[] = nearbyHints(list, undefined, '阿澈');
+  assert.equal(noLocation.length, 3, '没定位也要提示（不是隐藏）');
+  for (const hint of noLocation) {
+    assert.equal(hint.distanceText, '位置未知');
+    assert.equal(hint.distanceMeters, undefined, '没定位就不该有距离数字');
+  }
+
+  // 有定位时：有距离的排前面，且能正常分档
+  const origin: GeoPoint = geoPoint(31.2304, 121.4737);
+  const withLocation: NearHint[] = nearbyHints(list, origin, '阿澈');
+  assert.equal(withLocation.length, 3);
+  assert.equal(withLocation[0].distanceText, '就在附近几步', '≈89m 应该是最近的一档');
+  assert.ok(withLocation[0].distanceMeters !== undefined);
+  // 其余两颗（同一位置 31.2344）也应有距离
+  for (let i = 0; i < withLocation.length; i += 1) {
+    assert.notEqual(withLocation[i].distanceText, DISTANCE_UNKNOWN_TEXT);
+  }
+});
+
+test('提示列表：计数文案与空状态 CTA（三端逐字一致）', (): void => {
+  assert.equal(nearbyHintCountText(0), '这一带暂时没有');
+  assert.equal(nearbyHintCountText(1), '1 个还没被找到');
+  assert.equal(nearbyHintCountText(3), '3 个还没被找到');
+  assert.equal(HINT_EMPTY_CTA, '有人在这儿留下第一张？埋一个 →');
+  assert.equal(HINT_TITLE_SUFFIX, '有人留下一张照片');
+  assert.equal(HINT_FOOTER, '线索要靠走近才会解锁 · 点这里开始找');
+});
+
+test('提示列表：Store 快照里就是可用的输入（三颗演示惊喜）', async (): Promise<void> => {
+  const store: BlindWalkStoreApi = await freshStore();
+  const snapshot = store.snapshot();
+  assert.equal(snapshot.explorableSurprises.length, 3, '演示预置 3 颗待寻');
+  const hints: NearHint[] = nearbyHints(
+    snapshot.explorableSurprises,
+    snapshot.lastKnownOrigin,
+    snapshot.profile.name
+  );
+  assert.equal(hints.length, 3);
+  for (const hint of hints) {
+    assert.ok(hint.id.length > 0);
+    assert.ok(hint.atmosphere.length > 0);
+    assert.ok(hint.distanceText.length > 0);
+  }
+});
+
+// ============================================================
+// 22. 探寻页：三阶线索按距离解锁
+// ============================================================
+
+test('探寻：距离分三档解锁（起点 1 条 / 3×半径 2 条 / 半径内 3 条）', (): void => {
+  const surprise: BuriedSurprise = spoilerSurprise({
+    location: geoPoint(31.2304, 121.4737),
+    hints: ['第一条', '第二条', '第三条']
+  });
+
+  // 1) 很近（≤60m）→ 全解锁 + 可拍
+  const atDoor = seekClueState(surprise, geoPoint(31.2304, 121.4737 + 0.0002), false);
+  assert.equal(atDoor.unlockedCount, 3);
+  assert.equal(atDoor.inRange, true);
+  assert.deepEqual(atDoor.lines, ['第一条', '第二条', '第三条']);
+  assert.equal(atDoor.distanceText, '就在附近几步');
+
+  // 2) 中距离（≤180m，>60m）→ 2 条
+  const nearbyish = seekClueState(surprise, geoPoint(31.2313, 121.4737), false);
+  assert.equal(nearbyish.unlockedCount, 2, '≈100m 应解锁 2 条');
+  assert.equal(nearbyish.inRange, false);
+  assert.equal(nearbyish.lines[2], LOCKED_CLUE_TEXT);
+  assert.equal(nearbyish.lines[0], '第一条');
+
+  // 3) 远（>180m）→ 只有第 1 条
+  const farAway = seekClueState(surprise, geoPoint(31.2400, 121.4737), false);
+  assert.equal(farAway.unlockedCount, 1, '≈1km 只剩第 1 条');
+  assert.equal(farAway.lines[1], LOCKED_CLUE_TEXT);
+  assert.equal(farAway.lines[2], LOCKED_CLUE_TEXT);
+  assert.equal(farAway.inRange, false);
+});
+
+test('探寻：没定位时只解锁第 1 条，并明确说明（不假装解锁）', (): void => {
+  const surprise: BuriedSurprise = spoilerSurprise({ hints: makeClues('叶子的反面比正面浅。') });
+  const state = seekClueState(surprise, undefined, false);
+  assert.equal(state.unlockedCount, 1);
+  assert.equal(state.inRange, false);
+  assert.equal(state.distanceMeters, undefined);
+  assert.equal(state.distanceText, DISTANCE_UNKNOWN_TEXT);
+  assert.equal(state.lines[1], LOCKED_CLUE_TEXT);
+  assert.equal(state.lines[2], LOCKED_CLUE_TEXT);
+
+  const lead: string = seekLeadText(state);
+  assert.equal(lead, SEEK_NO_LOCATION_TEXT);
+  assert.equal(SEEK_NO_LOCATION_TEXT, '拿不到定位，线索暂时解锁不了');
+});
+
+test('探寻：点「当作到了（演示）」全解锁，但必须标记 demoArrived', (): void => {
+  const surprise: BuriedSurprise = spoilerSurprise({ hints: ['甲', '乙', '丙'] });
+  const state = seekClueState(surprise, undefined, true);
+  assert.equal(state.unlockedCount, 3);
+  assert.equal(state.inRange, true);
+  assert.equal(state.demoArrived, true, 'UI 必须能区分「真到了」和「演示」');
+  assert.equal(seekLeadText(state), '演示：已当作你走到了这里。');
+});
+
+test('探寻：线索未解锁时不得泄露作者提示内容（只给占位文案）', (): void => {
+  // 用真实的 makeClues() 结构：clue[0] 通用、clue[1] 作者提示、clue[2] 通用
+  const authorHint: string = '往灯最暖的那扇窗走。';
+  const clues: string[] = makeClues(authorHint);
+  assert.equal(clues[0], '有人在这里放下了一张照片。先走近一点。', '第 1 条必须是通用句');
+  assert.equal(clues[1], authorHint, '作者提示在第 2 条');
+  const surprise: BuriedSurprise = spoilerSurprise({
+    location: geoPoint(31.2304, 121.4737),
+    hints: clues
+  });
+  const farAway = seekClueState(surprise, geoPoint(31.2400, 121.4737), false);
+  const json: string = JSON.stringify(farAway);
+  assert.equal(farAway.unlockedCount, 1, '1km 外只解锁第 1 条');
+  assert.equal(json.indexOf('灯最暖') < 0, true, '作者提示（第 2 条）不得出现');
+  assert.equal(json.indexOf('回声') < 0, true, '未解锁线索不得出现');
+  assert.equal(json.indexOf('台阶') < 0, true, '未解锁线索不得出现');
+  // 也不得出现区域名 / 照片
+  assert.equal(json.indexOf(surprise.areaWord) < 0, true, '不得出现区域名');
+  assert.equal(json.indexOf(surprise.photoUri) < 0, true, '不得出现照片 URI');
+  assert.equal(json.indexOf(surprise.photoHash) < 0, true, '不得出现照片哈希');
+  assert.equal(json.indexOf(String(surprise.location.latitude)) < 0, true, '不得出现坐标');
+  // 保留的第 1 条是通用句，本身不含任何作者信息
+  assert.equal(farAway.lines[0], clues[0]);
+  assert.equal(farAway.lines[1], LOCKED_CLUE_TEXT);
+
+  // 到达后才给全部线索（含作者提示）
+  const atDoor = seekClueState(surprise, geoPoint(31.2304, 121.4737), false);
+  assert.equal(atDoor.lines[1], authorHint);
+  assert.equal(atDoor.lines[2], clues[2]);
+});
+
+test('探寻：半径可覆写（默认 60m，与苹果版一致）', (): void => {
+  assert.equal(SURPRISE_RADIUS_METERS, 60);
+  const surprise: BuriedSurprise = spoilerSurprise({ location: geoPoint(31.2304, 121.4737) });
+  // 100 米：默认半径(60)下未到；半径 200 时算到了
+  const far100 = geoPoint(31.2313, 121.4737);
+  assert.equal(seekClueState(surprise, far100, false).inRange, false);
+  assert.equal(seekClueState(surprise, far100, false, 200).inRange, true);
+  assert.equal(seekClueState(surprise, far100, false, 200).unlockedCount, 3);
+  // 非法半径回退默认
+  assert.equal(seekClueState(surprise, far100, false, 0).inRange, false);
+  assert.equal(seekClueState(surprise, far100, false, -5).inRange, false);
+});
+
+test('探寻：下一步文案（到了 / 还差多少米）', (): void => {
+  const surprise: BuriedSurprise = spoilerSurprise({ location: geoPoint(31.2304, 121.4737) });
+  const atDoor = seekClueState(surprise, geoPoint(31.2304, 121.4737), false);
+  assert.equal(seekLeadText(atDoor), '你到了。抬手机，找到 TA 的角度。');
+
+  const about150 = seekClueState(surprise, geoPoint(31.23175, 121.4737), false);
+  assert.ok(about150.distanceMeters !== undefined);
+  if (about150.distanceMeters !== undefined) {
+    const gap = Math.round(about150.distanceMeters - SURPRISE_RADIUS_METERS);
+    assert.equal(seekLeadText(about150), '再走近 ' + String(gap) + ' 米。');
+  }
+});
+
+test('探寻（不变量）：makeClues 的第 1 条永远是通用句，作者提示只在第 2 条', (): void => {
+  // 这条不变量是「起点即解锁第 1 条」安全的前提：
+  // 如果哪天有人把作者提示挪到 index 0，1km 外就会直接看到答案。
+  const generic: string = '有人在这里放下了一张照片。先走近一点。';
+  const withHint: string[] = makeClues('往灯最暖的那扇窗走。');
+  assert.equal(withHint.length, 3);
+  assert.equal(withHint[0], generic, '第 1 条必须是通用句');
+  assert.equal(withHint[1], '往灯最暖的那扇窗走。', '作者提示必须在第 2 条');
+  assert.ok(withHint[2].length > 0);
+
+  const noHint: string[] = makeClues(undefined);
+  assert.equal(noHint[0], generic);
+  assert.ok(noHint[1].length > 0, '没有作者提示也要有通用第 2 条');
+  assert.equal(noHint[1].indexOf('灯最暖'), -1);
+
+  const emptyHint: string[] = makeClues('');
+  assert.equal(emptyHint[0], generic);
+  assert.equal(emptyHint[1], '找到能把眼前的画面装进取景框的位置。');
+
+  // 无论哪种，第 1 条都不含地名/照片信息
+  for (const clues of [withHint, noHint, emptyHint]) {
+    assert.equal(clues[0].indexOf('灯'), -1);
+    assert.equal(clues[0].indexOf('窗'), -1);
+  }
+});
+
+test('常量：探寻页文案与 Web v46 一致', (): void => {
+  assert.equal(LOCKED_CLUE_TEXT, '再走近一点…');
+  assert.equal(SEEK_NO_LOCATION_TEXT, '拿不到定位，线索暂时解锁不了');
+  assert.equal(seekLeadText(seekClueState(spoilerSurprise(), undefined, false)), SEEK_NO_LOCATION_TEXT);
 });
 
 // ============================================================

@@ -40,6 +40,7 @@ entry/src/main/ets/
 │   ├── route.ts         Valhalla 步行路线（polyline6 解码）
 │   ├── fog.ts           迷雾路径几何（parity.md §3，纯函数可测）
 │   ├── geocode.ts       地址 → 坐标（GPS 不可用时的真实地点出口）
+│   ├── hints.ts         图鉴「附近惊喜」隐晦提示 + 探寻页线索解锁（保密铁律）
 │   └── account.ts       账号服务（手动 Cookie 管理）
 ├── theme/Theme.ets      设计 token（奶油底 / 琥珀主色 / 圆角 / 字号）
 ├── pages/Index.ets      Tab 外壳
@@ -71,6 +72,8 @@ entry/src/main/ets/
 | **明确失败面板**（绝不虚构兜底） | ✅ v0.7 完成，三按钮同 Web |
 | **迷雾路径视图**（parity.md §3） | ✅ v0.7 几何层单测覆盖；Canvas 绘制待 DevEco 首编 |
 | **账号**（登录/同步/恢复/退出/删号） | ✅ v0.7 完成（手动 Cookie） |
+| **图鉴「附近惊喜」隐晦提示**（对齐 Web v46） | ✅ v0.8 完成，纯 TS 单测 + 静态守卫双重保密 |
+| **探寻面板**（三阶线索按距离解锁） | ✅ v0.8 完成（拍照/对比待相机接入） |
 | **字号对齐 Web v32**（无 <10pt） | ✅ v0.7 完成 |
 
 ---
@@ -223,6 +226,7 @@ bash scripts/check-harmony.sh
 | `components/HttpClient.ets` | **`http.createHttp()` / `request()` 的 API 12 签名**、`expectDataType`、`header` 键名大小写、`responseCode` 类型 |
 | `components/HttpClient.ets` | **`resourceManager.getRawFileContent('mapkeys.json')`**（包内 Key 下发；文件不存在时必须走 catch 分支） |
 | `components/AccountPanel.ets` | `TextInput` 的 `InputType.Password`、`promptAction.showToast` |
+| `components/SeekPanel.ets` | `@Prop @Watch` 多字段联动（hints 数组 + 坐标同时变）是否只触发一次；`BwQuietButton` 的 `tag` 参数（本轮未用 tag） |
 
 首次编译报错大概率集中在这 8 处，改起来都是机械调整。其余（组件树、装饰器、状态管理）是按 ArkTS 规范写的。
 
@@ -235,6 +239,8 @@ bash scripts/check-harmony.sh
 | 迷雾路径 Canvas 绘制 | 需要渲染 | 旅程页看到琥珀色前方路径 + 灰褐已走段 + 两端渐隐 + 指北针 |
 | 剩余 < 60m 隐藏整段 | 需要走完一段 | 接近终点时路径消失，只剩「就在附近 · 抬头看看周围」 |
 | 账号 Cookie 持久化 | 需要 `@ohos.net.http` 真实响应头 | 登录后杀进程重开，仍是登录态 |
+| 图鉴「附近的惊喜」三张卡 | 需要渲染 | 统计条下面出现 3 张卡（🐱/🎧/🌙），点任意一张进探寻页 |
+| 探寻页线索按距离解锁 | 需要真实走动 | 起点 1/3 → 走近到 180m 内 2/3 → 60m 内 3/3 |
 | 账号 CORS/地址 | 鸿蒙无 CORS，但要注意「真机不能访问 127.0.0.1」 | 把服务地址改成电脑局域网 IP（如 `http://192.168.1.5:8803`） |
 
 ## 8. 立即可测的替代路径（今晚就能用）
@@ -254,7 +260,44 @@ bash scripts/check-harmony.sh
 | 版本 | 内容 |
 |---|---|
 | v0.6（本轮） | 工程骨架 + 逻辑层（含测试）+ 7 个主界面 + 真实定位 |
-| **v0.7（本轮）** | **功能对齐 Web v32**：多数据源真实 POI、三档放宽、明确失败面板、迷雾路径、账号、字号 |
+| v0.7 | 功能对齐 Web v32：多数据源真实 POI、三档放宽、明确失败面板、迷雾路径、账号、字号 |
+| **v0.8（本轮）** | **图鉴「附近惊喜」隐晦提示 + 探寻面板**（对齐 Web v46）；拍照/对比仍待相机接入 |
+
+### v0.8 图鉴「附近惊喜」（对齐 Web v46 / iOS）
+
+图鉴页在统计条之后、筛选 chips 之前新增「附近的惊喜」区块。
+
+**分层**：
+- `core/hints.ts`（纯 TS，可单测）：`distanceBucket` / `hintForSurprise` / `nearbyHints`
+  + `seekClueState` / `seekLeadText`（探寻页解锁判定）
+- `views/CardsView.ets`：提示区块（最多 3 张卡 / 空状态 CTA）
+- `components/SeekPanel.ets`：探寻面板（三阶线索 + 距离 + 「当作到了（演示）」）
+- `pages/Index.ets`：`onOpenSeek` 注入 → 打开 SeekPanel
+
+**保密铁律**（`NearHint` 只能由三类东西组成）：
+1. 固定文案（7 档距离 + 7 条氛围池）
+2. 作者 emoji（三端唯一允许的社交信息）
+3. 一个**取整后的距离**（只用于选分档，不直接出现在文案里）
+
+**绝不能**出现：`areaWord`（区域名会缩小范围）、`hints`（作者提示，要走近才解锁）、
+`photoUri` / `photoHash`（照片 = 答案）、`location` 坐标、`authorName`（谁埋的）。
+
+三道防线守护这条铁律：
+
+| 防线 | 位置 | 作用 |
+|---|---|---|
+| 类型 | `NearHint` 接口只有 5 个字段 | 结构上就没有地方放剧透字段 |
+| 单测 | `npm test` 的「保密（铁律）」5 项 | 断言序列化后的 JSON 不含任何剧透串 |
+| 静态检查 | `check-arkts.mjs` 的「附近惊喜保密」 | UI 一旦直接读 `.areaWord` / `.photoUri` / `.authorName` 就报错 |
+
+三处都做了**变异测试**验证真的会红（往 NearHint 里加 areaWord、往 CardsView 里读 areaWord）。
+
+**线索解锁规则**（与 Web `seekDetailHTML` 一致）：
+- 起点即第 1 条（`makeClues()` 保证第 1 条是通用句，不含作者提示）
+- `≤ 3×半径`（默认 180m）解锁第 2 条
+- `≤ 半径`（默认 60m）解锁第 3 条 → 进入「这样拍一张」
+- 点「当作到了（演示）」全解锁，但 UI 必须标注「演示」（`demoArrived` 字段）
+- 没定位 → 只有第 1 条 + 明确提示「拿不到定位，线索暂时解锁不了」（**不假装解锁**）
 
 ### v0.7 联调实测发现并修掉的问题（真实网络，不是纸面推演）
 
@@ -276,9 +319,9 @@ bash scripts/check-harmony.sh
   Web 版用同样的三个端点，同样失败 → 确认是**本机网络环境**（代理/出口）问题，不是代码。
   代码侧已按 parity 实现「3 镜像 × 4.5s 超时、整体 8s」，失败只影响 OSM 一个源，不影响整体（维基 + 高德照常）。
 - 维基、高德、Valhalla 从本机可正常访问（已实测 200）。
-| v0.8 | 埋惊喜 / 寻惊喜界面（相机 + 相册 + dHash 取图）、震动反馈 |
-| v0.9 | 华为账号登录（替代自建账号）、桌面卡片（服务卡片显示「下一个盲盒」） |
-| v0.9+ | 折叠屏/平板适配（GridRow 断点）、深色模式、无障碍 |
+| v0.9 | 埋惊喜界面（相机 + 相册 + dHash 取图）、探寻「先拍后揭晓」对比、震动反馈 |
+| v0.10 | 华为账号登录（替代自建账号）、桌面卡片（服务卡片显示「下一个盲盒」） |
+| v0.11+ | 折叠屏/平板适配（GridRow 断点）、深色模式、无障碍 |
 | 待评估 | 华为手表端（Wearable 是独立技术栈，工作量和手机端相当） |
 
 ---

@@ -14,6 +14,7 @@
  *   7. 工程契约：core/store.ts 导出 initStore / getStore
  *   8. 功能对齐：parity.md 的关键常量/入口存在（三档/硬帽/失败文案/迷雾参数）
  *   9. 反虚构兜底：真实模式下不得调用 startQuest()（内置地点抽盒）
+ *  10. 附近惊喜保密：图鉴提示/探寻面板不得渲染 areaWord / hints / photoUri / 坐标
  *
  * 用法：node harmony/scripts/check-arkts.mjs
  */
@@ -475,6 +476,31 @@ function checkParity() {
   }
 
   if (fogMissing === 0) pass('功能对齐', 'core/fog.ts 含前后可见/渐隐/线色/箭头/离路/隐藏常量');
+
+  // 图鉴「附近惊喜」：文案必须与 Web v46 / iOS 逐字一致
+  const hints = coreText('hints.ts');
+  if (hints.length === 0) {
+    fail('功能对齐', '缺少 core/hints.ts（图鉴附近惊喜提示）');
+  } else {
+    expectIn('功能对齐', 'core/hints.ts', hints, [
+      '就在附近几步',
+      '大概一两百米',
+      '走过去几分钟',
+      '要走一段路',
+      '在比较远的地方',
+      '不在附近，需要专程去',
+      '位置未知',
+      '那儿光线不错，适合停下来喘口气。',
+      '有人在那儿等到过一次意外的好天气。',
+      '那个角落平时没什么人经过。',
+      '声音会变小，风会变大一点。',
+      '走到那儿大概会想掏出手机拍点什么。',
+      '那里有一小块能坐下来的地方。',
+      '路过的人都很赶，只有你可能会停。',
+      '线索要靠走近才会解锁 · 点这里开始找',
+      '有人在这儿留下第一张？埋一个 →'
+    ]);
+  }
   pass('功能对齐', 'core/providers.ts / core/mapkeys.ts / core/account.ts 契约齐全');
 }
 
@@ -527,6 +553,93 @@ function checkNoFakeFallback() {
 }
 
 // ============================================================
+// 10) 附近惊喜保密：UI 不得直接渲染惊喜的剧透字段
+// ============================================================
+
+/**
+ * `core/hints.ts` 产出的 NearHint 只允许 id / emoji / distanceText / atmosphere /
+ * distanceMeters。UI 若绕过它、直接读 BuriedSurprise 的 areaWord / hints / photoUri
+ * / location，图鉴的「隐晦提示」就变成剧透了。
+ *
+ * 这条检查守着 `views/CardsView.ets`（图鉴提示区）与 `components/SeekPanel.ets`（探寻页）。
+ */
+function checkSurpriseSecrecy() {
+  const targets = [
+    path.join(ETS_ROOT, 'views', 'CardsView.ets'),
+    path.join(ETS_ROOT, 'components', 'SeekPanel.ets')
+  ];
+  const forbidden = [
+    { re: /\.areaWord\b/, label: 'areaWord（区域名会缩小范围）' },
+    { re: /\.photoUri\b/, label: 'photoUri（作者照片 = 答案）' },
+    { re: /\.photoHash\b/, label: 'photoHash（照片哈希也属答案）' },
+    { re: /\.authorName\b/, label: 'authorName（谁埋的，寻到后才知道）' }
+  ];
+
+  let problems = 0;
+  for (const file of targets) {
+    if (!fs.existsSync(file)) {
+      fail('附近惊喜保密', `缺少 ${rel(file)}`);
+      problems += 1;
+      continue;
+    }
+    const raw = fs.readFileSync(file, 'utf8');
+    // 注释里提到这些字段名是允许的（说明文档），只看代码
+    const code = stripComments(raw);
+    for (const rule of forbidden) {
+      if (rule.re.test(code)) {
+        fail('附近惊喜保密', `${rel(file)} 直接读取了 ${rule.label}`);
+        problems += 1;
+      }
+    }
+    // 图鉴提示区必须走 core/hints.ts，而不是自己拼文案
+    if (file.endsWith('CardsView.ets')) {
+      if (!code.includes('nearbyHints(')) {
+        fail('附近惊喜保密', 'CardsView.ets 没有调用 core/hints.nearbyHints()');
+        problems += 1;
+      }
+      if (!code.includes('NearHint')) {
+        fail('附近惊喜保密', 'CardsView.ets 没有使用 NearHint 类型');
+        problems += 1;
+      }
+    }
+    // 探寻页必须用 seekClueState 判定解锁（不能自己写解锁逻辑）
+    if (file.endsWith('SeekPanel.ets')) {
+      if (!code.includes('seekClueState(')) {
+        fail('附近惊喜保密', 'SeekPanel.ets 没有调用 core/hints.seekClueState()');
+        problems += 1;
+      }
+    }
+  }
+
+  // core/hints.ts 本身不得把剧透字段塞进 NearHint
+  const hintsFile = path.join(ETS_ROOT, 'core', 'hints.ts');
+  if (!fs.existsSync(hintsFile)) {
+    fail('附近惊喜保密', '缺少 core/hints.ts');
+    return;
+  }
+  const hintsText = fs.readFileSync(hintsFile, 'utf8');
+  // NearHint 接口只允许 5 个字段
+  const ifaceMatch = hintsText.match(/export interface NearHint \{([\s\S]*?)\n\}/);
+  if (ifaceMatch === null) {
+    fail('附近惊喜保密', 'core/hints.ts 里找不到 NearHint 接口');
+    problems += 1;
+  } else {
+    const body = ifaceMatch[1];
+    const badFields = ['areaWord', 'areaLabel', 'message', 'photoUri', 'photoHash', 'photoName', 'location', 'authorName'];
+    for (const field of badFields) {
+      if (new RegExp('\\b' + field + '\\s*[?:]').test(body)) {
+        fail('附近惊喜保密', `NearHint 接口里出现了剧透字段 ${field}`);
+        problems += 1;
+      }
+    }
+  }
+
+  if (problems === 0) {
+    pass('附近惊喜保密', '图鉴提示与探寻页只读 NearHint / seekClueState，无剧透字段');
+  }
+}
+
+// ============================================================
 // 输出
 // ============================================================
 
@@ -539,7 +652,8 @@ const sections = [
   ['保密规则', checkSecretRule],
   ['工程契约', checkStoreContract],
   ['功能对齐', checkParity],
-  ['反虚构兜底', checkNoFakeFallback]
+  ['反虚构兜底', checkNoFakeFallback],
+  ['附近惊喜保密', checkSurpriseSecrecy]
 ];
 
 console.log('═══ 盲走 BlindWalk · HarmonyOS ArkTS 静态自检 ═══');
