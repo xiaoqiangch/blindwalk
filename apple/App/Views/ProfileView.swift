@@ -263,6 +263,47 @@ struct ProfileView: View {
 
     // MARK: 设置
 
+    // MARK: - 账号卡片（显眼入口）
+
+    private var accountCard: some View {
+        Button {
+            showAccount = true
+        } label: {
+            HStack(spacing: 12) {
+                Text(account.user == nil ? "☁️" : "👤")
+                    .font(.system(size: 19))
+                    .frame(width: 38, height: 38)
+                    .background(BWTheme.amber.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(account.user == nil ? "登录 / 注册账号" : "已登录 · " + (account.user?.username ?? ""))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(BWTheme.ink)
+                    Text(account.user == nil
+                         ? "把卡片和进度存到云端，换手机也不丢（可选）"
+                         : "进度已可跨设备同步 · 点这里管理")
+                        .font(.system(size: 12))
+                        .foregroundStyle(BWTheme.ink3)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(BWTheme.amber.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(BWTheme.line, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             BWSectionHeader(title: "设置")
@@ -282,6 +323,10 @@ struct ProfileView: View {
                     .scaleEffect(0.86)
                     .frame(width: 44)
                 }
+
+                BWHairline()
+
+                accountCard
 
                 BWHairline()
 

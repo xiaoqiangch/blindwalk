@@ -270,6 +270,46 @@ export struct ProfileView {
     })
   }
 
+  /** 账号卡片：放在等级卡下方，显眼位置（与 Web v43 一致） */
+  @Builder
+  accountCard() {
+    Row({ space: 12 }) {
+      Text(this.accountLabel === '未登录' ? '☁️' : '👤')
+        .fontSize(19)
+        .width(38)
+        .height(38)
+        .textAlign(TextAlign.Center)
+        .backgroundColor('#1F5B6CFF')
+        .borderRadius(12)
+
+      Column({ space: 2 }) {
+        Text(this.accountLabel === '未登录' ? '登录 / 注册账号' : '已登录 · ' + this.accountLabel)
+          .fontSize(BWFont.bodySm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(BWColor.ink)
+        Text(this.accountLabel === '未登录' ? '把卡片和进度存到云端，换手机也不丢（可选）' : '进度已可跨设备同步 · 点这里管理')
+          .fontSize(BWFont.micro)
+          .fontColor(BWColor.ink3)
+          .maxLines(2)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Text('›')
+        .fontSize(BWFont.caption)
+        .fontColor(BWColor.ink3)
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .backgroundColor('#F2EEF1FF')
+    .borderRadius(16)
+    .border({ width: 1, color: BWColor.line })
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => {
+      this.onOpenAccount();
+    })
+  }
+
   @Builder
   settingsCard() {
     Column({ space: 0 }) {
@@ -324,29 +364,6 @@ export struct ProfileView {
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 9, bottom: 9 })
-
-      Divider().strokeWidth(1).color(BWColor.line)
-
-      // 账号入口（parity.md §4：登录/同步/恢复/退出/删号都在面板里）
-      Row({ space: 12 }) {
-        Text('账号')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink)
-        Blank()
-        Text(this.accountLabel)
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink3)
-          .maxLines(1)
-          .constraintSize({ maxWidth: 140 })
-        Text('›')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink3)
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-      .onClick(() => {
-        this.onOpenAccount();
-      })
 
       Divider().strokeWidth(1).color(BWColor.line)
 
@@ -452,6 +469,11 @@ export struct ProfileView {
             this.levelCard()
           }
           .margin({ top: 16 })
+
+          Column() {
+            this.accountCard()
+          }
+          .margin({ top: 14 })
 
           Column() {
             this.achievementStrip()
