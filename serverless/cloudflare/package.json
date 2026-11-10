@@ -1,0 +1,13 @@
+{
+  "name": "bumia-account-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute bumia_account --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

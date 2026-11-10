@@ -1,0 +1,14 @@
+# 步谜 · 账号服务（Cloudflare Workers + D1）
+# 部署步骤见 README.md
+name = "bumia-account"
+main = "worker.mjs"
+compatibility_date = "2026-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bumia_account"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+[vars]
+# 允许调用这个接口的前端来源（逗号分隔，支持 * 前缀通配）
+ALLOWED_ORIGINS = "https://xiaoqiangch.github.io,http://127.0.0.1:*,http://localhost:*"
