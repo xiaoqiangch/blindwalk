@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v36';
+  var APP_VERSION = 'v37';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1367,6 +1367,27 @@
     var meta = { source: source, at: Date.now(), amap: !!(keys && keys.amap), baidu: !!(keys && keys.baidu) };
     try { localStorage.setItem(MAPKEYS_META, JSON.stringify(meta)); } catch (e) { /* ignore */ }
     state.mapKeysMeta = meta;
+  }
+
+  /** 如果本站同源就有账号服务（例如部署在自己的服务器上），自动用它 */
+  function detectSameOriginAccount() {
+    try {
+      var base = location.origin;
+      if (!base || base === 'null' || /github\.io$/.test(location.hostname)) return Promise.resolve(false);
+      var cfg = accountConfig();
+      if (cfg && cfg.baseUrl) return Promise.resolve(false);   // 用户已手动配置过
+      return fetch(base + '/api/health', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.ok) return false;
+          var next = accountConfig();
+          next.baseUrl = base;
+          saveAccountConfig(next);
+          if (currentRoute() === '/account') render();
+          return true;
+        })
+        .catch(function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
   }
 
   function loadMapKeys() {
@@ -4368,6 +4389,7 @@
     // 地图 Key 由后台统一下发（不打扰用户；失败则只用免费源）
     state.mapKeysMeta = null;
     loadMapKeys();
+    detectSameOriginAccount();
 
     bindEvents();
     render();
