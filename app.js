@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v37';
+  var APP_VERSION = 'v38';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1374,8 +1374,8 @@
     try {
       var base = location.origin;
       if (!base || base === 'null' || /github\.io$/.test(location.hostname)) return Promise.resolve(false);
-      var cfg = accountConfig();
-      if (cfg && cfg.baseUrl) return Promise.resolve(false);   // 用户已手动配置过
+      // 只有用户"手动保存过"才跳过自动识别（accountConfig 本身有默认值，不能用它判断）
+      try { if (localStorage.getItem(ACCOUNT_STORE)) return Promise.resolve(false); } catch (e) { /* ignore */ }
       return fetch(base + '/api/health', { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
