@@ -122,7 +122,7 @@ server {
     gzip_types text/css application/javascript application/json image/svg+xml;
 
     # 账号服务（同源，Cookie 不需要 SameSite=None）
-    location /api/ {
+    location ^~ /api/ {
         proxy_pass http://127.0.0.1:8803;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
@@ -133,9 +133,18 @@ server {
         add_header Cache-Control \"no-store\" always;
     }
 
-    # 后台管理（/admin 前缀会被剥掉再转给 8802）
-    location /admin/ {
-        proxy_pass http://127.0.0.1:8802/;
+    # 后台管理：页面保留 /admin 前缀（后台服务自己会剥），API 剥掉前缀转给 /api/
+    location ^~ /admin/api/ {
+        proxy_pass http://127.0.0.1:8802/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location ^~ /admin/ {
+        proxy_pass http://127.0.0.1:8802;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
