@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v45';
+  var APP_VERSION = 'v46';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2620,6 +2620,87 @@
     bindRevealPhoto();
   }
 
+
+  /* ============================================================
+     图鉴 · 附近盲盒的隐晦提示
+     - 只给"模糊方位/距离/氛围"，绝不泄露地点名、照片、精确坐标
+     - 点一下直接开始探寻（进入 seek-detail，按距离逐条解锁线索）
+     ============================================================ */
+  function distanceBucket(meters) {
+    if (meters === null || meters === undefined || !isFinite(meters)) {
+      return { text: '位置未知', far: true };
+    }
+    if (meters <= 120) return { text: '就在附近几步', far: false };
+    if (meters <= 350) return { text: '大概一两百米', far: false };
+    if (meters <= 800) return { text: '走过去几分钟', far: false };
+    if (meters <= 2000) return { text: '要走一段路', far: true };
+    if (meters <= 8000) return { text: '在比较远的地方', far: true };
+    return { text: '不在附近，需要专程去', far: true };
+  }
+
+  /** 隐晦提示：氛围描述，不含地名、不含作者之外的任何识别信息 */
+  var HINT_ATMOSPHERE = [
+    '那儿光线不错，适合停下来喘口气。',
+    '有人在那儿等到过一次意外的好天气。',
+    '那个角落平时没什么人经过。',
+    '声音会变小，风会变大一点。',
+    '走到那儿大概会想掏出手机拍点什么。',
+    '那里有一小块能坐下来的地方。',
+    '路过的人都很赶，只有你可能会停。'
+  ];
+
+  function hintForSurprise(s, index) {
+    var seed = 0;
+    for (var i = 0; i < s.id.length; i += 1) seed = (seed * 31 + s.id.charCodeAt(i)) % 9973;
+    return HINT_ATMOSPHERE[(seed + index) % HINT_ATMOSPHERE.length];
+  }
+
+  /** 附近还没被找到的惊喜，按距离排序（最多 3 个） */
+  function nearbySurpriseHints(limit) {
+    var list = explorableSurprises().slice();
+    list.forEach(function (s) { s._dist = distanceToSurprise(s); });
+    list.sort(function (a, b) {
+      if (a._dist === null || a._dist === undefined) return 1;
+      if (b._dist === null || b._dist === undefined) return -1;
+      return a._dist - b._dist;
+    });
+    // 不论远近都提示：远的就写"在比较远的地方"，让用户自己决定要不要去
+    return list.slice(0, limit || 3);
+  }
+
+  function nearbyHintsHTML() {
+    var list = nearbySurpriseHints(3);
+    if (!list.length) {
+      return '<section class="hintbox">' +
+        '<div class="hintbox__head"><h2>附近的惊喜</h2><span class="hintbox__sub">这一带暂时没有</span></div>' +
+        '<button type="button" class="hintbox__cta" data-action="go-bury">有人在这儿留下第一张？埋一个 →</button>' +
+        '</section>';
+    }
+    var rows = list.map(function (s, index) {
+      var bucket = distanceBucket(s._dist);
+      var atmosphere = hintForSurprise(s, index);
+      return '<button type="button" class="hintcard" data-action="start-seek-journey" data-id="' + esc(s.id) + '"' +
+        ' aria-label="开始探寻一个附近的惊喜">' +
+        '<span class="hintcard__emoji" aria-hidden="true">' + (s.authorEmoji || '🎁') + '</span>' +
+        '<span class="hintcard__body">' +
+        '<span class="hintcard__title">' + esc(bucket.text) + ' · 有人留下一张照片</span>' +
+        '<span class="hintcard__copy">' + esc(atmosphere) + '</span>' +
+        '<span class="hintcard__meta">线索要靠走近才会解锁 · 点这里开始找</span>' +
+        '</span>' +
+        '<span class="hintcard__go" aria-hidden="true">' + ICON.chevron + '</span>' +
+        '</button>';
+    }).join('');
+
+    var needLoc = !ui.myLocation
+      ? '<p class="hintbox__note">打开定位才知道离你多远 · <button type="button" class="hintbox__link" data-action="retry-location">现在定位</button></p>'
+      : '';
+
+    return '<section class="hintbox">' +
+      '<div class="hintbox__head"><h2>附近的惊喜</h2><span class="hintbox__sub">' + list.length + ' 个还没被找到</span></div>' +
+      rows + needLoc +
+      '</section>';
+  }
+
   function cardsHTML() {
     var profile = state.profile;
     var cardMap = {};
@@ -2682,6 +2763,7 @@
       '</header>' +
       '<p class="collectstats">已收集 <b>' + profile.cards.length + '</b>/' + D.PLACES.length +
       '<i>·</i>稀有 <b>' + rareCount() + '</b><i>·</i>隐藏 <b>' + hiddenCount() + '</b></p>' +
+      nearbyHintsHTML() +
       '<div class="filters" role="group" aria-label="筛选卡片">' + filters + '</div>' +
       '<div class="fcards">' + grid + '</div>' +
       '</div>';
@@ -3124,12 +3206,24 @@
     );
   }
 
+  function geoLon(point) {
+    if (!point) return undefined;
+    if (typeof point.lon === 'number') return point.lon;
+    if (typeof point.lng === 'number') return point.lng;
+    if (typeof point.longitude === 'number') return point.longitude;
+    return undefined;
+  }
+
   function geoDistance(a, b) {
     if (!a || !b) return Infinity;
+    var aLon = geoLon(a);
+    var bLon = geoLon(b);
+    if (typeof a.lat !== 'number' || typeof b.lat !== 'number' ||
+        typeof aLon !== 'number' || typeof bLon !== 'number') return Infinity;
     var R = 6371000;
     var lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
     var dLat = (b.lat - a.lat) * Math.PI / 180;
-    var dLon = (b.lng - a.lng) * Math.PI / 180;
+    var dLon = (bLon - aLon) * Math.PI / 180;
     var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
@@ -3631,6 +3725,15 @@
         break;
       case '/cards':
         html = cardsHTML();
+        // 图鉴顶部的「附近惊喜」提示要按距离排序，进页面时主动拿一次定位
+        if (!ui.myLocation && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            ui.myLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            ui.lastFix = { lat: ui.myLocation.lat, lon: ui.myLocation.lon, accuracy: pos.coords.accuracy };
+            if (currentRoute() === '/cards') render();
+          }, function () { /* 拿不到就显示"位置未知"，不阻塞 */ },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 });
+        }
         break;
       case '/social':
         html = socialHTML();
@@ -4328,6 +4431,28 @@
         render();
         showToast('已当作你走到了这里（演示）', '📍');
         break;
+      case 'start-seek-journey': {
+        var sid = target.getAttribute('data-id');
+        var item = sid ? surpriseByID(sid) : null;
+        if (!item) { showToast('这个惊喜已经不在了', '😕'); break; }
+        state.pendingSeek = item;
+        ui.seekID = item.id;
+        ui.seekShot = null;
+        // 开始探寻前先拿一次定位：线索按距离解锁，没有位置会一直是锁的
+        if (!ui.myLocation && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            ui.myLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            ui.lastFix = { lat: ui.myLocation.lat, lon: ui.myLocation.lon, accuracy: pos.coords.accuracy };
+            navigate('/seek-detail');
+          }, function () {
+            navigate('/seek-detail');
+            showToast('拿不到定位，线索暂时解锁不了', '📴', { duration: 2600 });
+          }, { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 });
+        } else {
+          navigate('/seek-detail');
+        }
+        break;
+      }
       case 'go-surprises':
         navigate('/surprises');
         break;
