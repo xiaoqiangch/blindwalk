@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v33';
+  var APP_VERSION = 'v35';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -672,6 +672,74 @@
     if (session.phase !== 'walking') stopRealTracking();
   }
 
+  /* ============================================================
+     设备朝向（罗盘）：迷雾路径要跟着「你面朝的方向」转，而不是路线方向
+     - Android/鸿蒙：deviceorientationabsolute 的 alpha
+     - iOS Safari：webkitCompassHeading（需用户手势后 requestPermission）
+     - 都没有：退回路线方向（保持旧行为）
+     ============================================================ */
+  var HEADING_STORE = 0.28;     // 低通滤波系数，越小越稳
+
+  function applyHeading(raw) {
+    var h = null;
+    if (raw === null || raw === undefined || isNaN(raw)) return;
+    h = ((raw % 360) + 360) % 360;
+    if (ui.deviceHeading === null || ui.deviceHeading === undefined) {
+      ui.deviceHeading = h;
+      return;
+    }
+    var delta = ((h - ui.deviceHeading + 540) % 360) - 180;
+    if (Math.abs(delta) < 0.4) return;
+    // 大角度转身（>45°）直接跟上，避免"转了半天地图才动"；小角度做平滑防抖
+    if (Math.abs(delta) > 45) {
+      ui.deviceHeading = h;
+    } else {
+      ui.deviceHeading = (ui.deviceHeading + delta * 0.45 + 360) % 360;
+    }
+    if (currentRoute() === '/journey') schedulePathRedraw();
+  }
+
+  function onOrientationEvent(event) {
+    if (!event) return;
+    if (typeof event.webkitCompassHeading === 'number' && !isNaN(event.webkitCompassHeading)) {
+      applyHeading(event.webkitCompassHeading);
+      return;
+    }
+    if (typeof event.alpha === 'number' && !isNaN(event.alpha)) {
+      // alpha：绕 z 轴逆时针（0 = 北），转成「顺时针从北算」
+      applyHeading(360 - event.alpha);
+    }
+  }
+
+  function startHeadingTracking() {
+    if (ui.headingBound) return;
+    ui.headingBound = true;
+    try {
+      window.addEventListener('deviceorientationabsolute', onOrientationEvent, true);
+      window.addEventListener('deviceorientation', onOrientationEvent, true);
+    } catch (e) { /* ignore */ }
+    // 有罗盘就每 350ms 重画一次（低通后的朝向变化不会太频繁）
+    if (!ui.headingTimer) {
+      ui.headingTimer = window.setInterval(function () {
+        if (currentRoute() === '/journey') schedulePathRedraw();
+      }, 350);
+    }
+  }
+
+  /** iOS 13+ 需要用户手势授权才能拿到罗盘；失败就继续用路线方向 */
+  function requestHeadingPermission() {
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(function (state) {
+          if (state === 'granted') startHeadingTracking();
+        }).catch(function () { /* ignore */ });
+      } else {
+        startHeadingTracking();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   /* 真实定位模式：用 watchPosition 持续更新剩余距离与方位 */
   function startRealTracking() {
     window.__bwStat = window.__bwStat || { starts: 0, fixes: 0, early: '', src: '', hasTarget: false };
@@ -691,7 +759,7 @@
       navigator.geolocation.getCurrentPosition(function (pos) {
         applyFixToSession(pos);
       }, function () { /* 失败就等 watch */ }, {
-        enableHighAccuracy: true, maximumAge: 3000, timeout: 12000
+        enableHighAccuracy: true, maximumAge: 0, timeout: 8000
       });
     }
 
@@ -723,7 +791,7 @@
       } else if (currentRoute() === '/journey') {
         render();
       }
-    }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 });
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 });
   }
 
   function stopRealTracking() {
@@ -741,22 +809,28 @@
      静止时 GPS 也不上报；靠这个保证「走到 30m 内」一定能被识别为到达。 */
   function startGeoRecheck() {
     if (ui.geoPoll !== null && ui.geoPoll !== undefined) return;
+    /* 很多浏览器/WebView（尤其鸿蒙、微信）的 watchPosition 只推一次就沉默，
+       必须主动轮询 getCurrentPosition，否则用户走了几百米数字仍不动。 */
     ui.geoPoll = window.setInterval(function () {
-      var fix = ui.lastFix;
       var session = state.session;
-      if (!fix || !session || session.phase !== 'walking' || !session.coordinate) return;
-      var d = window.BW_GEO && window.BW_GEO.distanceOf
-        ? window.BW_GEO.distanceOf(fix, session.coordinate)
-        : null;
-      if (d === null || d === undefined) return;
-      var prev = session.remainingMeters;
-      var events = applyRealDistance(d, fix.accuracy);
-      if (Math.abs(prev - session.remainingMeters) >= 1) renderJourney(true);
-      for (var i = 0; i < events.length; i += 1) {
-        if (events[i].type === 'hint') { ui.newHint = events[i].index; showToast('解锁新线索', '🔓'); }
-        if (events[i].type === 'arrived') { stopRealTracking(); beginArrival(); }
+      if (!session || session.phase !== 'walking' || !session.coordinate) return;
+      if (navigator.geolocation && navigator.geolocation.getCurrentPosition) {
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          applyFixToSession(pos);
+        }, function () {
+          // 取不到新读数就退回到上次定位做一次计算（至少让界面别完全冻住）
+          var fix = ui.lastFix;
+          if (!fix || !window.BW_GEO || !window.BW_GEO.distanceOf) return;
+          var d = window.BW_GEO.distanceOf(fix, session.coordinate);
+          if (d === null || d === undefined) return;
+          var events = applyRealDistance(d, fix.accuracy);
+          patchNav(session);
+          for (var i = 0; i < events.length; i += 1) {
+            if (events[i].type === 'arrived') { stopRealTracking(); beginArrival(); }
+          }
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 4000 });
       }
-    }, 2000);
+    }, 1800);
   }
 
   function onWalk() {
@@ -1000,17 +1074,17 @@
 
   function boxArtSVG() {
     return '<svg class="boxart boxart--float" viewBox="0 0 120 106" fill="none" aria-hidden="true">' +
-      '<ellipse cx="60" cy="95" rx="35" ry="5.5" fill="#171410" opacity=".10"/>' +
-      '<circle cx="60" cy="55" r="33" fill="#E89B4C" opacity=".14"/>' +
-      '<path d="M29 53c0-14 8-24 17-27" stroke="#171410" stroke-width="1.3" opacity=".28" stroke-linecap="round"/>' +
-      '<rect x="25" y="46" width="70" height="45" rx="7" fill="#DFC49B" stroke="#171410" stroke-width="1.7"/>' +
-      '<rect x="21" y="33.5" width="78" height="17.5" rx="5" fill="#EAD6B2" stroke="#171410" stroke-width="1.7"/>' +
-      '<path d="M25 53.5h70" stroke="#171410" stroke-width="1.1" opacity=".35"/>' +
-      '<path d="M39.5 33.5c1.6-7.4 7.6-12.5 14.5-12.5M64 21c7 0 13 5.1 14.5 12.5" stroke="#171410" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>' +
-      '<path d="M60 21v12.5" stroke="#171410" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>' +
-      '<text x="60" y="81" text-anchor="middle" font-size="24" font-weight="700" fill="#171410" font-family="inherit">?</text>' +
-      '<circle cx="75" cy="36" r="2.2" fill="#E89B4C"/>' +
-      '<circle cx="31" cy="43" r="1.4" fill="#E89B4C" opacity=".8"/>' +
+      '<ellipse cx="60" cy="95" rx="35" ry="5.5" fill="#111827" opacity=".10"/>' +
+      '<circle cx="60" cy="55" r="33" fill="#5B6CFF" opacity=".14"/>' +
+      '<path d="M29 53c0-14 8-24 17-27" stroke="#111827" stroke-width="1.3" opacity=".28" stroke-linecap="round"/>' +
+      '<rect x="25" y="46" width="70" height="45" rx="7" fill="#A5B4FC" stroke="#111827" stroke-width="1.7"/>' +
+      '<rect x="21" y="33.5" width="78" height="17.5" rx="5" fill="#C7D2FE" stroke="#111827" stroke-width="1.7"/>' +
+      '<path d="M25 53.5h70" stroke="#111827" stroke-width="1.1" opacity=".35"/>' +
+      '<path d="M39.5 33.5c1.6-7.4 7.6-12.5 14.5-12.5M64 21c7 0 13 5.1 14.5 12.5" stroke="#111827" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>' +
+      '<path d="M60 21v12.5" stroke="#111827" stroke-width="1.4" stroke-linecap="round" opacity=".5"/>' +
+      '<text x="60" y="81" text-anchor="middle" font-size="24" font-weight="700" fill="#111827" font-family="inherit">?</text>' +
+      '<circle cx="75" cy="36" r="2.2" fill="#5B6CFF"/>' +
+      '<circle cx="31" cy="43" r="1.4" fill="#5B6CFF" opacity=".8"/>' +
       '</svg>';
   }
 
@@ -1018,31 +1092,31 @@
     return '<svg class="reveal-open__box" viewBox="0 0 120 106" fill="none" aria-hidden="true">' +
       '<ellipse cx="60" cy="97" rx="38" ry="5" fill="#000" opacity=".35"/>' +
       '<g id="box-body">' +
-      '<rect x="25" y="46" width="70" height="46" rx="7" fill="#DFC49B" stroke="#171410" stroke-width="1.8"/>' +
-      '<path d="M25 54h70" stroke="#171410" stroke-width="1.1" opacity=".3"/>' +
-      '<g id="box-q"><text x="60" y="82" text-anchor="middle" font-size="25" font-weight="700" fill="#171410" font-family="inherit">?</text></g>' +
+      '<rect x="25" y="46" width="70" height="46" rx="7" fill="#A5B4FC" stroke="#111827" stroke-width="1.8"/>' +
+      '<path d="M25 54h70" stroke="#111827" stroke-width="1.1" opacity=".3"/>' +
+      '<g id="box-q"><text x="60" y="82" text-anchor="middle" font-size="25" font-weight="700" fill="#111827" font-family="inherit">?</text></g>' +
       '</g>' +
       '<g id="box-lid">' +
-      '<rect x="21" y="33.5" width="78" height="17.5" rx="5" fill="#EAD6B2" stroke="#171410" stroke-width="1.8"/>' +
-      '<path d="M39.5 33.5c1.6-7.4 7.6-12.5 14.5-12.5M64 21c7 0 13 5.1 14.5 12.5" stroke="#171410" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>' +
-      '<path d="M60 21v12.5" stroke="#171410" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>' +
+      '<rect x="21" y="33.5" width="78" height="17.5" rx="5" fill="#C7D2FE" stroke="#111827" stroke-width="1.8"/>' +
+      '<path d="M39.5 33.5c1.6-7.4 7.6-12.5 14.5-12.5M64 21c7 0 13 5.1 14.5 12.5" stroke="#111827" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>' +
+      '<path d="M60 21v12.5" stroke="#111827" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>' +
       '</g>' +
       '</svg>';
   }
 
   function shakeGlyph() {
     return '<svg class="shakebox" viewBox="0 0 22 22" fill="none" aria-hidden="true">' +
-      '<rect x="4.5" y="8" width="13" height="10" rx="2" fill="#171410" opacity=".12" stroke="#171410" stroke-width="1.3"/>' +
-      '<rect x="3" y="5" width="16" height="4.5" rx="1.4" fill="#171410" opacity=".2" stroke="#171410" stroke-width="1.3"/>' +
+      '<rect x="4.5" y="8" width="13" height="10" rx="2" fill="#111827" opacity=".12" stroke="#111827" stroke-width="1.3"/>' +
+      '<rect x="3" y="5" width="16" height="4.5" rx="1.4" fill="#111827" opacity=".2" stroke="#111827" stroke-width="1.3"/>' +
       '</svg>';
   }
 
   function emptyArtSVG() {
     return '<svg class="empty__art" viewBox="0 0 90 76" fill="none" aria-hidden="true">' +
-      '<circle cx="45" cy="40" r="26" fill="#E89B4C" opacity=".13"/>' +
-      '<rect x="22" y="32" width="46" height="32" rx="5" fill="#FFFBF3" stroke="#A69C8C" stroke-width="1.4" stroke-dasharray="4 4"/>' +
-      '<rect x="19" y="24" width="52" height="12" rx="3.5" fill="#FFFBF3" stroke="#A69C8C" stroke-width="1.4" stroke-dasharray="4 4"/>' +
-      '<text x="45" y="55" text-anchor="middle" font-size="18" font-weight="700" fill="#A69C8C" font-family="inherit">?</text>' +
+      '<circle cx="45" cy="40" r="26" fill="#5B6CFF" opacity=".13"/>' +
+      '<rect x="22" y="32" width="46" height="32" rx="5" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="4 4"/>' +
+      '<rect x="19" y="24" width="52" height="12" rx="3.5" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="4 4"/>' +
+      '<text x="45" y="55" text-anchor="middle" font-size="18" font-weight="700" fill="#9CA3AF" font-family="inherit">?</text>' +
       '</svg>';
   }
 
@@ -1090,10 +1164,10 @@
     }).join('');
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="抽象街区示意地图，路线终点保密">' +
-      '<rect width="' + W + '" height="' + H + '" fill="#F5EEE2"/>' +
+      '<rect width="' + W + '" height="' + H + '" fill="#F3F5FB"/>' +
       /* 河流 */
-      '<path d="M-30 74 C 60 116 142 56 236 94 C 306 122 356 98 420 116" stroke="#DCE7E1" stroke-width="46" fill="none" stroke-linecap="round"/>' +
-      '<path d="M-30 74 C 60 116 142 56 236 94 C 306 122 356 98 420 116" stroke="#C9D8D1" stroke-width="1" fill="none" stroke-dasharray="5 9" opacity=".8"/>' +
+      '<path d="M-30 74 C 60 116 142 56 236 94 C 306 122 356 98 420 116" stroke="#DDE3F5" stroke-width="46" fill="none" stroke-linecap="round"/>' +
+      '<path d="M-30 74 C 60 116 142 56 236 94 C 306 122 356 98 420 116" stroke="#C7D2FE" stroke-width="1" fill="none" stroke-dasharray="5 9" opacity=".8"/>' +
       /* 道路 */
       '<path class="map-road" d="M-10 190 C 80 182 150 197 250 188 C 320 182 372 191 412 186"/>' +
       '<path class="map-road" d="M190 -10 C 197 60 180 132 200 212 C 210 252 198 288 202 330"/>' +
@@ -1803,12 +1877,12 @@
       '<g data-path-chevrons></g>' +
       '<g data-path-arrow></g>' +
       '<g data-path-compass transform="translate(292,164)">' +
-      '<circle r="14" fill="#FFFBF3" stroke="#E4D9C6" stroke-width="1"/>' +
+      '<circle r="14" fill="#FFFFFF" stroke="#E2E7F2" stroke-width="1"/>' +
       '<g data-compass-needle>' +
-      '<path d="M 0 -9 L 4 0 L 0 -2 L -4 0 Z" fill="#D25C3A"/>' +
-      '<path d="M 0 9 L 4 0 L 0 2 L -4 0 Z" fill="#C9C0B2"/>' +
+      '<path d="M 0 -9 L 4 0 L 0 -2 L -4 0 Z" fill="#FF6B6B"/>' +
+      '<path d="M 0 9 L 4 0 L 0 2 L -4 0 Z" fill="#C7CEDB"/>' +
       '</g>' +
-      '<text x="0" y="-18" text-anchor="middle" font-size="11" fill="#A69C8C">北</text>' +
+      '<text x="0" y="-18" text-anchor="middle" font-size="11" fill="#9CA3AF">北</text>' +
       '</g>' +
       '</svg>' +
       '<p class="pathview__cap" data-path-cap>迷雾模式 · 只看见前后一段</p>' +
@@ -1850,7 +1924,16 @@
     return { lat: pts[last][1], lon: pts[last][0] };
   }
 
-  /** 重画路径视图（由 patchNav 节流调用） */
+  var pathRedrawTimer = null;
+  function schedulePathRedraw() {
+    if (pathRedrawTimer) return;
+    pathRedrawTimer = window.setTimeout(function () {
+      pathRedrawTimer = null;
+      if (state.session && currentRoute() === '/journey') drawPathView(state.session);
+    }, 60);
+  }
+
+  /** 重画路径视图（由 patchNav / 罗盘 / 定位定时调用） */
   function drawPathView(session) {
     var host = document.querySelector('[data-pathview]');
     if (!host) return;
@@ -1892,7 +1975,9 @@
     }
 
     var pts = state.route.points;
-    var b = progress.bearing || 0;
+    // 地图「朝上」的方向：优先你手机的朝向（转身地图就转），没有罗盘才用路线方向
+    var hasCompass = ui.deviceHeading !== null && ui.deviceHeading !== undefined;
+    var b = hasCompass ? ui.deviceHeading : (progress.bearing || 0);
     var rad = b * Math.PI / 180;
     var sinB = Math.sin(rad);
     var cosB = Math.cos(rad);
@@ -1964,7 +2049,7 @@
       var ext = 0.9;   // 两端各延一点，避免 butt 端点留下细缝
       var seg = '<line x1="' + (pa.x - ux * ext).toFixed(1) + '" y1="' + (pa.y - uy * ext).toFixed(1) +
         '" x2="' + (pb.x + ux * ext).toFixed(1) + '" y2="' + (pb.y + uy * ext).toFixed(1) +
-        '" stroke="' + (isBehind ? '#C9A98A' : '#E89B4C') + '" stroke-width="' + (isBehind ? 7 : 9) +
+        '" stroke="' + (isBehind ? '#AEB8D6' : '#5B6CFF') + '" stroke-width="' + (isBehind ? 7 : 9) +
         '" stroke-linecap="butt" stroke-opacity="' + (op * (isBehind ? 0.55 : 1)).toFixed(2) + '"/>';
       if (isBehind) behindParts += seg;
       else aheadParts += seg;
@@ -1986,7 +2071,7 @@
       chev += '<path d="M ' + (sp.x - 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
         ' L ' + sp.x.toFixed(1) + ' ' + (sp.y - 4).toFixed(1) +
         ' L ' + (sp.x + 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
-        '" fill="none" stroke="rgba(23,20,16,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
+        '" fill="none" stroke="rgba(17,24,39,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
     }
     chevrons.innerHTML = chev;
 
@@ -2003,20 +2088,30 @@
     var pathHeadY = CY;
     arrowG.innerHTML =
       (deviated ? '<line x1="' + pathHeadX + '" y1="' + pathHeadY + '" x2="' + ax.toFixed(1) + '" y2="' + ay +
-        '" stroke="#D25C3A" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>' : '') +
+        '" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>' : '') +
       '<g transform="translate(' + ax.toFixed(1) + ',' + ay + ')">' +
-      '<circle r="17" fill="#E89B4C" opacity=".22"/>' +
-      '<circle r="12" fill="#FFFBF3" stroke="#E89B4C" stroke-width="2.5"/>' +
-      '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#171410"/>' +
+      '<circle r="17" fill="#5B6CFF" opacity=".22"/>' +
+      '<circle r="12" fill="#FFFFFF" stroke="#5B6CFF" stroke-width="2.5"/>' +
+      '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#111827"/>' +
       '</g>';
 
     // 指北针：画布上方是行进方向，所以北方向 = -bearing
+    var compassNote = svg.querySelector('[data-compass-note]');
     var needle = svg.querySelector('[data-compass-needle]');
     if (needle) needle.setAttribute('transform', 'rotate(' + (-b).toFixed(1) + ')');
     if (cap) {
-      cap.textContent = deviated
-        ? '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米'
-        : '迷雾模式 · 只看见前后一段';
+      if (deviated) {
+        cap.textContent = '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米';
+      } else if (hasCompass) {
+        cap.textContent = '跟随你的朝向 · 转身地图也会转';
+      } else {
+        cap.textContent = '迷雾模式 · 只看见前后一段';
+      }
+    }
+
+    // 罗盘可用时，让 UI 上的「你」箭头始终朝上（地图已按朝向旋转）
+    if (hasCompass && compassNote) {
+      compassNote.textContent = '跟随朝向';
     }
   }
 
@@ -2054,12 +2149,12 @@
       }
     }
     var now = Date.now();
-    if (ui.navPatchAt && now - ui.navPatchAt < 600) {
+    if (ui.navPatchAt && now - ui.navPatchAt < 350) {
       if (!ui.navPatchTimer) {
         ui.navPatchTimer = window.setTimeout(function () {
           ui.navPatchTimer = null;
           patchNav(state.session);
-        }, 620);
+        }, 380);
       }
       return;
     }
@@ -2316,7 +2411,7 @@
 
   function revealOpenHTML() {
     var confetti = '';
-    var colors = ['#E89B4C', '#F5EEE2', '#D25C3A', '#2E7D78', '#B98A1F', '#FFFBF3'];
+    var colors = ['#5B6CFF', '#F3F5FB', '#FF6B6B', '#14B8A6', '#F59E0B', '#FFFFFF'];
     for (var i = 0; i < 18; i += 1) {
       var dx = Math.round((Math.random() - 0.5) * 300);
       var dy = Math.round(-60 - Math.random() * 150);
@@ -2633,7 +2728,7 @@
       '<div class="levelbar__meta"><span>' + level.into + '/800</span><span>距离下一级 ' + (800 - level.into) + '</span></div>' +
       '</div>' +
       '<div class="levelstats">' +
-      '<div><b>' + profile.totalKm.toFixed(1) + '<span style="font-size:8px;color:rgba(23,20,16,.45);margin-left:2px">km</span></b><span>累计里程</span></div>' +
+      '<div><b>' + profile.totalKm.toFixed(1) + '<span style="font-size:8px;color:rgba(17,24,39,.45);margin-left:2px">km</span></b><span>累计里程</span></div>' +
       '<div><b>' + profile.boxesOpened + '</b><span>开盒</span></div>' +
       '<div><b>' + profile.streakDays + '</b><span>连续天数</span></div>' +
       '</div>' +
@@ -2678,7 +2773,7 @@
     return '<div class="watchface watchface--progress" role="img" aria-label="手表进度表盘：剩余 480 米，进度 62%">' +
       '<svg class="watchface__ring" viewBox="0 0 198 242" aria-hidden="true">' +
       '<circle cx="99" cy="121" r="84" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="7"/>' +
-      '<circle cx="99" cy="121" r="84" fill="none" stroke="#E89B4C" stroke-width="7" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="200.6" transform="rotate(-90 99 121)"/>' +
+      '<circle cx="99" cy="121" r="84" fill="none" stroke="#5B6CFF" stroke-width="7" stroke-linecap="round" stroke-dasharray="527.8" stroke-dashoffset="200.6" transform="rotate(-90 99 121)"/>' +
       '</svg>' +
       '<div class="watchface__inner">' +
       '<span class="watchface__cap">盲盒进行中</span>' +
@@ -3497,6 +3592,7 @@
   }
 
   function startJourneyTimer() {
+    startHeadingTracking();
     updateJourneyTimer();
     timers.journey = setInterval(updateJourneyTimer, 1000);
   }
@@ -3519,6 +3615,7 @@
 
   function handleShake(button) {
     if (ui.shaking) return;
+    requestHeadingPermission();   // 必须在用户手势里申请 iOS 罗盘权限
     ui.shaking = true;
     button.classList.add('is-shaking', 'is-busy');
     button.innerHTML = shakeGlyph() + '<span>摇盒中…</span>';

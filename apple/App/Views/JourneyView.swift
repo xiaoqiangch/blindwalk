@@ -386,7 +386,8 @@ struct JourneyView: View {
                 FogPathView(
                     route: route,
                     here: currentPoint,
-                    remainingMeters: session.remainingMeters
+                    remainingMeters: session.remainingMeters,
+                    heading: lastReading?.headingDegrees
                 )
             } else {
                 JourneyMapView(

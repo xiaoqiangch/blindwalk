@@ -9,7 +9,7 @@
  * - 朝向：行进方向朝上（heading-up）
  * - 前方可见 min(260, 剩余-25) 米；后方可见 min(140, 已走-5) 米
  * - 两端各 46 米渐隐（按 3 米插值逐段降透明度）
- * - 已走部分灰褐 #C9A98A / 线宽 7；前方琥珀 #E89B4C / 线宽 9
+ * - 已走部分冷灰蓝 #AEB8D6 / 线宽 7；前方靛蓝 #5B6CFF / 线宽 9
  * - 每 55 米一个行进箭头
  * - 「你」白底琥珀圈 + 深色三角；偏离路径 >18m 画红色虚线并提示
  * - 右下角指北针（指针按 -bearing 旋转）
@@ -38,12 +38,12 @@ export const FOG_FADE_METERS: number = 46;
 export const FOG_STEP_METERS: number = 3;
 
 /** 已走部分颜色 / 线宽 / 不透明度 */
-export const PATH_BEHIND_COLOR: string = '#C9A98A';
+export const PATH_BEHIND_COLOR: string = '#AEB8D6';
 export const PATH_BEHIND_WIDTH: number = 7;
 export const PATH_BEHIND_OPACITY: number = 0.55;
 
 /** 前方部分颜色 / 线宽 */
-export const PATH_AHEAD_COLOR: string = '#E89B4C';
+export const PATH_AHEAD_COLOR: string = '#5B6CFF';
 export const PATH_AHEAD_WIDTH: number = 9;
 
 /** 行进箭头间距（米） */
@@ -62,7 +62,7 @@ export const OFF_ROUTE_HYSTERESIS_METERS: number = 4;
 export const FOG_HIDE_REMAINING_METERS: number = 60;
 
 /** 偏离提示文案 */
-export const OFF_ROUTE_COLOR: string = '#D25C3A';
+export const OFF_ROUTE_COLOR: string = '#FF6B6B';
 
 /** 「剩余 < 60m」时的替代文案 */
 export const NEARBY_COPY: string = '就在附近 · 抬头看看周围';
@@ -398,7 +398,15 @@ export interface FogChevron {
  * @param here 当前位置（WGS-84）
  * @param layout 画布布局
  */
-export function fogGeometry(line: RouteLine, here: GeoPoint, layout: FogLayout): FogGeometry {
+/**
+ * @param upBearing 地图「朝上」的方向（设备罗盘）。不传则用路线行进方向（旧行为）。
+ */
+export function fogGeometry(
+  line: RouteLine,
+  here: GeoPoint,
+  layout: FogLayout,
+  upBearing?: number
+): FogGeometry {
   const empty: FogGeometry = {
     segments: [],
     chevrons: [],
@@ -426,10 +434,11 @@ export function fogGeometry(line: RouteLine, here: GeoPoint, layout: FogLayout):
     return empty;
   }
 
+  const up: number = upBearing !== undefined ? upBearing : progress.bearing;
   const window: FogWindow = fogWindow(progress.walked, total);
   empty.remaining = Math.round(window.remaining);
   empty.offRoute = Math.round(progress.offRoute);
-  empty.compassRotation = -progress.bearing;
+  empty.compassRotation = -up;
 
   // 保密：接近终点整段隐藏
   if (window.hidden) {
@@ -442,8 +451,8 @@ export function fogGeometry(line: RouteLine, here: GeoPoint, layout: FogLayout):
     return empty;
   }
 
-  // 画布坐标换算：行进方向朝上
-  const bearingRad: number = progress.bearing * Math.PI / 180;
+  // 画布坐标换算：朝上方向 = 设备朝向（有罗盘）或行进方向
+  const bearingRad: number = up * Math.PI / 180;
   const sinB: number = Math.sin(bearingRad);
   const cosB: number = Math.cos(bearingRad);
   const kx: number = Math.cos(progress.snapped.latitude * Math.PI / 180) * 111320;

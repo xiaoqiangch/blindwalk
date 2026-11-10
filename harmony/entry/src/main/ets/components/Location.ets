@@ -11,6 +11,7 @@
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { geoLocationManager } from '@kit.LocationKit';
+import { sensor } from '@kit.SensorServiceKit';
 import { GeoPoint } from '../core/types';
 
 const LOCATION_PERMISSIONS: Permissions[] = [
@@ -74,12 +75,69 @@ export function getCurrentLocationOnce(timeoutMs: number): Promise<GeoPoint> {
  * 持续监听位置变化（旅程页用）。
  * 返回的句柄在组件 aboutToDisappear 里必须 stop()。
  */
+/**
+ * 罗盘：@ohos.sensor 的 ORIENTATION（alpha 绕 z 轴逆时针，0=北）。
+ * 地图「朝上」= 设备朝向，这样用户转身时地图跟着转。
+ * ⚠️ 待 DevEco 验证：sensor.on(sensor.SensorId.ORIENTATION) 的 API 12 写法。
+ */
+export class CompassWatcher {
+  private active: boolean = false;
+  private heading: number = -1;
+  private listener: (data: sensor.OrientationResponse) => void;
+
+  constructor(private onHeading: (heading: number) => void) {
+    this.listener = (data: sensor.OrientationResponse) => {
+      const alpha: number = data.alpha;
+      if (typeof alpha !== 'number' || isNaN(alpha)) {
+        return;
+      }
+      const raw: number = ((360 - alpha) % 360 + 360) % 360;
+      if (this.heading < 0) {
+        this.heading = raw;
+      } else {
+        const delta: number = ((raw - this.heading + 540) % 360) - 180;
+        this.heading = (this.heading + delta * 0.35 + 360) % 360;
+      }
+      this.onHeading(this.heading);
+    };
+  }
+
+  start(): boolean {
+    if (this.active) {
+      return true;
+    }
+    try {
+      sensor.on(sensor.SensorId.ORIENTATION, this.listener, { interval: 100000000 });
+      this.active = true;
+      return true;
+    } catch (err) {
+      this.active = false;
+      return false;
+    }
+  }
+
+  stop(): void {
+    if (!this.active) {
+      return;
+    }
+    try {
+      sensor.off(sensor.SensorId.ORIENTATION, this.listener);
+    } catch (err) {
+      /* ignore */
+    }
+    this.active = false;
+  }
+}
+
 export class GeoWatcher {
   private active: boolean = false;
   private listener: (location: geoLocationManager.Location) => void;
   private request: geoLocationManager.LocationRequest;
 
+  private onPollPoint: (point: GeoPoint) => void;
+
   constructor(onPoint: (point: GeoPoint) => void) {
+    this.onPollPoint = onPoint;
     this.request = {
       priority: geoLocationManager.LocationRequestPriority.FIRST_FIX,
       scenario: geoLocationManager.LocationRequestScenario.UNSET,
@@ -91,6 +149,7 @@ export class GeoWatcher {
         latitude: location.latitude,
         longitude: location.longitude
       };
+      this.lastFixAt = Date.now();
       onPoint(point);
     };
   }
@@ -102,6 +161,7 @@ export class GeoWatcher {
     try {
       geoLocationManager.on('locationChange', this.request, this.listener);
       this.active = true;
+      this.startPollFallback();
       return true;
     } catch (err) {
       const error = err as BusinessError;

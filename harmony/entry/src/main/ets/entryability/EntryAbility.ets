@@ -29,7 +29,7 @@ export default class EntryAbility extends UIAbility {
       }
       try {
         // 奶油纸底色：状态栏 / 手势条区域与页面同色
-        windowStage.getMainWindowSync().setWindowBackgroundColor('#F5EEE2');
+        windowStage.getMainWindowSync().setWindowBackgroundColor('#F3F5FB');
       } catch (error) {
         const failure = error as BusinessError;
         hilog.warn(DOMAIN, TAG, 'setWindowBackgroundColor failed: %{public}s', JSON.stringify(failure));

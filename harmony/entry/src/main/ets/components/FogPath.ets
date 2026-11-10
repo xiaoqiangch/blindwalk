@@ -38,6 +38,8 @@ export struct BwFogPath {
   @Prop @Watch('onDataChanged') hereLon: number = 0;
   /** 画布高度 */
   @Prop viewHeight: number = 196;
+  /** 设备朝向（0–360）。<0 表示没有罗盘，按路线方向朝上 */
+  @Prop @Watch('onDataChanged') heading: number = -1;
   /** 说明文案变化时通知外层（UI 展示在画布下方） */
   onCaption: (text: string) => void = () => {
   };
@@ -72,11 +74,12 @@ export struct BwFogPath {
       fetchedAt: 0
     };
     const layout: FogLayout = defaultLayout(this.canvasWidth, this.viewHeight);
+    const up: number | undefined = this.heading >= 0 ? this.heading : undefined;
     const geometry: FogGeometry = fogGeometry(
       { points: route.points, distanceMeters: route.distanceMeters },
       { latitude: this.hereLat, longitude: this.hereLon },
       layout
-    );
+    , up);
     this.geometry = geometry;
     this.emitCaption(geometry.caption);
     this.draw();
@@ -148,7 +151,7 @@ export struct BwFogPath {
     // ---------- 3. 偏离路径的红色虚线 ----------
     const deviateTo: FogPoint | undefined = geometry.deviateTo;
     if (deviateTo !== undefined) {
-      ctx.strokeStyle = '#D25C3A';
+      ctx.strokeStyle = '#FF6B6B';
       ctx.globalAlpha = 0.7;
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
@@ -207,7 +210,7 @@ export struct BwFogPath {
     ctx.translate(x, y);
     ctx.rotate(rotation * Math.PI / 180);
     // 北：红
-    ctx.fillStyle = '#D25C3A';
+    ctx.fillStyle = '#FF6B6B';
     ctx.beginPath();
     ctx.moveTo(0, -9);
     ctx.lineTo(4, 0);
@@ -216,7 +219,7 @@ export struct BwFogPath {
     ctx.closePath();
     ctx.fill();
     // 南：灰
-    ctx.fillStyle = '#C9C0B2';
+    ctx.fillStyle = '#C7CEDB';
     ctx.beginPath();
     ctx.moveTo(0, 9);
     ctx.lineTo(4, 0);

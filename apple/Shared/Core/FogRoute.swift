@@ -147,12 +147,15 @@ public struct FogFrame: Hashable, Sendable {
     public let isHidden: Bool
 
     /// 剩余 < 60m 时返回 isHidden=true 的空 frame（只显示「就在附近」），不画任何路径
-    public static func make(route: WalkingRoute, here: GeoPoint) -> FogFrame? {
+    /// upBearing：地图「朝上」的方向。传设备朝向（罗盘）时，转身地图会跟着转；
+    /// 不传则退回路线行进方向（旧行为）。
+    public static func make(route: WalkingRoute, here: GeoPoint, upBearing: Double? = nil) -> FogFrame? {
         guard route.points.count >= 2 else { return nil }
         let progress = RouteMath.progress(route: route, here: here)
+        let up = upBearing ?? progress.bearing
         if progress.remaining < hideBelowMeters || progress.remaining <= 25 {
             return FogFrame(
-                ahead: 0, behind: 0, bearing: progress.bearing, walked: progress.walked,
+                ahead: 0, behind: 0, bearing: up, walked: progress.walked,
                 routeRemaining: progress.remaining, userLateral: 0,
                 segments: [], chevrons: [], isHidden: true
             )
@@ -162,7 +165,7 @@ public struct FogFrame: Hashable, Sendable {
         let behind = max(0, min(behindMeters, progress.walked - 5))
         if ahead <= 0 {
             return FogFrame(
-                ahead: 0, behind: 0, bearing: progress.bearing, walked: progress.walked,
+                ahead: 0, behind: 0, bearing: up, walked: progress.walked,
                 routeRemaining: progress.remaining, userLateral: 0,
                 segments: [], chevrons: [], isHidden: true
             )
@@ -170,7 +173,7 @@ public struct FogFrame: Hashable, Sendable {
 
         let start = max(0, progress.walked - behind)
         let end = min(route.distanceMeters, progress.walked + ahead)
-        let radians = progress.bearing * .pi / 180
+        let radians = up * .pi / 180
         let sinB = sin(radians)
         let cosB = cos(radians)
         let kx = cos(progress.snapped.latitude * .pi / 180) * 111_320.0
@@ -214,7 +217,7 @@ public struct FogFrame: Hashable, Sendable {
         return FogFrame(
             ahead: ahead,
             behind: behind,
-            bearing: progress.bearing,
+            bearing: up,
             walked: progress.walked,
             routeRemaining: progress.remaining,
             userLateral: user.lateral,

@@ -2087,12 +2087,12 @@ test('迷雾：几何数据（已走/前方颜色、箭头间距、两端渐隐�
   assert.ok(behind.length > 0, '应该有已走部分');
   assert.ok(ahead.length > 0, '应该有前方部分');
   for (let i = 0; i < behind.length; i += 1) {
-    assert.equal(behind[i].color, '#C9A98A');
+    assert.equal(behind[i].color, '#AEB8D6');
     assert.equal(behind[i].width, 7);
     assert.ok(behind[i].opacity <= 0.55 + 0.001, '已走部分不透明度 ≤ 0.55');
   }
   for (let i = 0; i < ahead.length; i += 1) {
-    assert.equal(ahead[i].color, '#E89B4C');
+    assert.equal(ahead[i].color, '#5B6CFF');
     assert.equal(ahead[i].width, 9);
   }
   // 两端渐隐：窗口最边上一条应明显更透明
@@ -2604,6 +2604,30 @@ test('路线：解析 Valhalla（距离 / 转向序列 / 累计里程）', (): v
   assert.equal(route.maneuvers[2].direction, 'arrive');
   assert.equal(parseValhalla({}), undefined);
   assert.equal(parseValhalla({ trip: { legs: [] } }), undefined);
+});
+
+test('迷雾路径：传 upBearing 时地图随朝向旋转（转身地图跟着转）', () => {
+  // 一条正北方向 200m 的直线路线
+  const line = {
+    points: [[118.78, 32.06], [118.78, 32.0618]] as number[][],
+    distanceMeters: 200
+  };
+  const here = { latitude: 32.06, longitude: 118.78 };
+  const layout = defaultLayout(320, 196);
+
+  const northUp = fogGeometry(line, here, layout);
+  const eastUp = fogGeometry(line, here, layout, 90);
+
+  // 路线朝北（bearing≈0）：朝上时路径竖直；朝向改为东（90°）后应旋转 90°
+  assert.ok(Math.abs(northUp.compassRotation) < 5, '无罗盘时按路线方向（≈0°）');
+  assert.ok(Math.abs(eastUp.compassRotation + 90) < 5, '朝向 90° 时指北针转 -90°');
+  assert.notEqual(northUp.segments.length, 0);
+  assert.notEqual(eastUp.segments.length, 0);
+  // 屏幕坐标应明显不同（旋转生效）：取同一段的中点比较
+  const a = northUp.segments[Math.floor(northUp.segments.length / 2)];
+  const b = eastUp.segments[Math.floor(eastUp.segments.length / 2)];
+  const samePoint: boolean = Math.abs(a.x1 - b.x1) < 0.5 && Math.abs(a.y1 - b.y1) < 0.5;
+  assert.equal(samePoint, false, '几何应随朝向旋转');
 });
 
 test('路线：取路线带 10 分钟缓存；失败返回 undefined（不阻塞）', async (): Promise<void> => {

@@ -4,19 +4,19 @@ import SwiftUI
 public enum BWTheme {
 
     // 颜色
-    public static let ink = Color(hex: 0x171410)
-    public static let ink2 = Color(hex: 0x6B6357)
-    public static let ink3 = Color(hex: 0xA69C8C)
-    public static let cream = Color(hex: 0xF5EEE2)
-    public static let paper = Color(hex: 0xFFFBF3)
-    public static let paper2 = Color(hex: 0xFBF4E9)
-    public static let line = Color(hex: 0xE8DECC)
-    public static let amber = Color(hex: 0xE89B4C)
-    public static let amberDeep = Color(hex: 0xC97B2E)
-    public static let ember = Color(hex: 0xD25C3A)
-    public static let teal = Color(hex: 0x2E7D78)
-    public static let plum = Color(hex: 0x6B5B9E)
-    public static let gold = Color(hex: 0xB98A1F)
+    public static let ink = Color(hex: 0x111827)
+    public static let ink2 = Color(hex: 0x4B5563)
+    public static let ink3 = Color(hex: 0x9CA3AF)
+    public static let cream = Color(hex: 0xF3F5FB)
+    public static let paper = Color(hex: 0xFFFFFF)
+    public static let paper2 = Color(hex: 0xEEF1F9)
+    public static let line = Color(hex: 0xE2E7F2)
+    public static let amber = Color(hex: 0x5B6CFF)
+    public static let amberDeep = Color(hex: 0x3D4FE0)
+    public static let ember = Color(hex: 0xFF6B6B)
+    public static let teal = Color(hex: 0x14B8A6)
+    public static let plum = Color(hex: 0x8B5CF6)
+    public static let gold = Color(hex: 0xF59E0B)
 
     // 尺寸
     public static let pagePadding: CGFloat = 20
@@ -59,7 +59,7 @@ public enum BWTheme {
     // 稀有度
     public static func rarityColor(_ rarity: Rarity) -> Color {
         switch rarity {
-        case .common: return Color(hex: 0x8B9484)
+        case .common: return Color(hex: 0x94A3B8)
         case .rare: return teal
         case .epic: return plum
         case .hidden: return gold

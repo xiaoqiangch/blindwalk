@@ -196,6 +196,8 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
     private(set) var remainingMeters: Int?
     private(set) var bearingDegrees: Double?
     private(set) var headingDegrees: Double?
+    private var fixWatchdog: Timer?
+    private var lastFixAt = Date()
     private(set) var authorizationStatus: LocationAuthorization = .notDetermined
     private(set) var horizontalAccuracy: Double?
     /// 是否已经拿到过至少一个有效定位点
@@ -258,6 +260,8 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
         isRunning = false
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
+        fixWatchdog?.invalidate()
+        fixWatchdog = nil
     }
 
     @discardableResult
@@ -282,6 +286,20 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
         manager.startUpdatingLocation()
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
+        }
+        startFixWatchdog()
+    }
+
+    /// 定位看门狗：CoreLocation 在静止/信号差时可能长时间不回调，
+    /// 用户已经走了很远但界面不动。超过 5 秒没有新定位就主动 requestLocation 一次。
+    private func startFixWatchdog() {
+        fixWatchdog?.invalidate()
+        lastFixAt = Date()
+        fixWatchdog = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
+            guard let self, self.isRunning else { return }
+            guard Date().timeIntervalSince(self.lastFixAt) > 5 else { return }
+            self.manager.requestLocation()
+            self.lastFixAt = Date()
         }
     }
 
@@ -366,6 +384,7 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let latest = locations.last else { return }
+        lastFixAt = Date()
 
         // 精度为负 = 无效点；时间太旧 = 缓存兜底点，直接丢
         guard latest.horizontalAccuracy >= 0 else { return }

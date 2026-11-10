@@ -6,7 +6,7 @@
  *
  * 迷雾路径（docs/parity.md §3 / core/fog.ts）：
  * - heading-up；前方 min(260, 剩余-25)m；后方 min(140, 已走-5)m；两端 46m 渐隐
- * - 已走 #C9A98A / 前方 #E89B4C；每 55m 箭头；「你」白底琥珀圈；右下指北针
+ * - 已走 #AEB8D6 / 前方 #5B6CFF；每 55m 箭头；「你」白底琥珀圈；右下指北针
  * - 剩余 < 60m 整段隐藏，只显示「就在附近 · 抬头看看周围」
  *
  * 保密规则（产品灵魂）：本页**绝不渲染 currentPlace.name**。
@@ -35,7 +35,7 @@ import {
 } from '../components/Common';
 import { BwAbstractMap } from '../components/AbstractMap';
 import { BwFogPath } from '../components/FogPath';
-import { GeoWatcher } from '../components/Location';
+import { CompassWatcher, GeoWatcher } from '../components/Location';
 import { bwSleep } from '../components/Async';
 import { activeSession, emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import {
@@ -84,6 +84,8 @@ export struct JourneyView {
 
   private timerId: number = -1;
   private watcher: GeoWatcher | undefined = undefined;
+  private compass: CompassWatcher | undefined = undefined;
+  @State private heading: number = -1;
 
   aboutToAppear(): void {
     this.load();
@@ -111,6 +113,7 @@ export struct JourneyView {
   }
 
   aboutToDisappear(): void {
+    this.stopCompass();
     if (this.timerId >= 0) {
       clearInterval(this.timerId);
       this.timerId = -1;
@@ -196,6 +199,27 @@ export struct JourneyView {
     }
     this.watcher = watcher;
     this.watchFailed = false;
+    this.startCompass();
+  }
+
+  /** 罗盘：让迷雾路径跟随「你面朝的方向」转，而不是只按路线方向 */
+  private startCompass(): void {
+    if (this.compass !== undefined) {
+      return;
+    }
+    const compass: CompassWatcher = new CompassWatcher((heading: number) => {
+      this.heading = heading;
+    });
+    if (compass.start()) {
+      this.compass = compass;
+    }
+  }
+
+  private stopCompass(): void {
+    if (this.compass !== undefined) {
+      this.compass.stop();
+      this.compass = undefined;
+    }
   }
 
   private onGeoPoint(point: GeoPoint): void {
@@ -467,6 +491,7 @@ export struct JourneyView {
           hereLat: this.fixLat,
           hereLon: this.fixLon,
           viewHeight: this.mapHeight(),
+          heading: this.heading,
           onCaption: (text: string) => {
             this.fogCaption = text;
           }

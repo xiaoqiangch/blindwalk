@@ -15,20 +15,20 @@ import { Area, Rarity } from '../core/types';
 // ============================================================
 
 export class BWColor {
-  static readonly ink: string = '#171410';
-  static readonly ink2: string = '#6B6357';
-  static readonly ink3: string = '#A69C8C';
-  static readonly cream: string = '#F5EEE2';
-  static readonly paper: string = '#FFFBF3';
-  static readonly paper2: string = '#FBF4E9';
-  static readonly line: string = '#E8DECC';
-  static readonly amber: string = '#E89B4C';
-  static readonly amberDeep: string = '#C97B2E';
-  static readonly ember: string = '#D25C3A';
-  static readonly teal: string = '#2E7D78';
-  static readonly plum: string = '#6B5B9E';
-  static readonly gold: string = '#B98A1F';
-  static readonly common: string = '#8B9484';
+  static readonly ink: string = '#111827';
+  static readonly ink2: string = '#4B5563';
+  static readonly ink3: string = '#9CA3AF';
+  static readonly cream: string = '#F3F5FB';
+  static readonly paper: string = '#FFFFFF';
+  static readonly paper2: string = '#EEF1F9';
+  static readonly line: string = '#E2E7F2';
+  static readonly amber: string = '#5B6CFF';
+  static readonly amberDeep: string = '#3D4FE0';
+  static readonly ember: string = '#FF6B6B';
+  static readonly teal: string = '#14B8A6';
+  static readonly plum: string = '#8B5CF6';
+  static readonly gold: string = '#F59E0B';
+  static readonly common: string = '#94A3B8';
 
   // 带 alpha 的常用变体（ArkUI 的 string 颜色支持 #AARRGGBB）
   static readonly inkSoft: string = '#14171410';
@@ -44,7 +44,7 @@ export class BWColor {
   static readonly shadowSoft: string = '#0D171410';
   static readonly shadowLift: string = '#29171410';
   static readonly scrim: string = '#59171410';
-  static readonly stage: string = '#171410';
+  static readonly stage: string = '#111827';
   static readonly stageBar: string = '#14FFFBF3';
   static readonly stageClose: string = '#14FFFBF3';
   static readonly stageCloseBorder: string = '#24FFFBF3';
@@ -52,11 +52,11 @@ export class BWColor {
   static readonly creamOnStageDim: string = '#6BF5EEE2';
 
   // 牛皮纸（盲盒主卡 / 盒体插画）
-  static readonly kraftTop: string = '#FBF4E9';
-  static readonly kraftMid: string = '#FFFBF3';
-  static readonly kraftBottom: string = '#F2D9B2';
-  static readonly kraftLid: string = '#F2D8AF';
-  static readonly kraftBody: string = '#FAEBD7';
+  static readonly kraftTop: string = '#EEF1F9';
+  static readonly kraftMid: string = '#FFFFFF';
+  static readonly kraftBottom: string = '#D6DDF3';
+  static readonly kraftLid: string = '#D6DDF3';
+  static readonly kraftBody: string = '#E8ECFB';
   static readonly kraftLine: string = '#CC171410';
   static readonly kraftAmberLight: string = '#BFE89B4C';
 }

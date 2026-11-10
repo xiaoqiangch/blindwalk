@@ -11,10 +11,12 @@ struct FogPathView: View {
     let route: WalkingRoute?
     let here: GeoPoint?
     let remainingMeters: Int
+    /// 设备朝向（罗盘）。有值时地图跟着你转身；没有则按路线方向朝上。
+    var heading: Double? = nil
 
     private var frame: FogFrame? {
         guard let route, let here else { return nil }
-        return FogFrame.make(route: route, here: here)
+        return FogFrame.make(route: route, here: here, upBearing: heading)
     }
 
     var body: some View {
@@ -103,7 +105,7 @@ struct FogPathView: View {
         if abs(frame.userLateral) > FogFrame.deviationMeters {
             return "你离路径约 \(Int(abs(frame.userLateral).rounded())) 米 · 前方 \(Int(frame.routeRemaining.rounded())) 米"
         }
-        return "迷雾模式 · 只看见前后一段"
+        return heading == nil ? "迷雾模式 · 只看见前后一段" : "跟随你的朝向 · 转身地图也会转"
     }
 
     // MARK: Canvas 绘制
@@ -128,7 +130,7 @@ struct FogPathView: View {
         }
 
         // 1. 已走 / 前方路径（逐段透明度渐隐）
-        let behindColor = Color(hex: 0xC9A98A)
+        let behindColor = Color(hex: 0xAEB8D6)
         let aheadColor = BWTheme.amber
         for index in 0..<max(0, frame.segments.count - 1) {
             let a = frame.segments[index]
