@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v40';
+  var APP_VERSION = 'v41';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2173,13 +2173,25 @@
     var deviated = Math.abs(uLateral) > 18;
     var pathHeadX = cX;
     var pathHeadY = CY;
+    // 你的箭头方向：跟随模式恒朝上；北朝上时按你的实际朝向旋转
+    var arrowRot = 0;
+    if (!follow) {
+      var nowH = Date.now();
+      if (ui.deviceHeading !== null && ui.deviceHeading !== undefined && ui.headingAt && nowH - ui.headingAt < HEADING_FRESH_MS) {
+        arrowRot = ui.deviceHeading - b;
+      } else if (ui.moveHeading !== null && ui.moveHeading !== undefined && ui.moveHeadingAt && nowH - ui.moveHeadingAt < 15000) {
+        arrowRot = ui.moveHeading - b;
+      }
+    }
     arrowG.innerHTML =
       (deviated ? '<line x1="' + pathHeadX + '" y1="' + pathHeadY + '" x2="' + ax.toFixed(1) + '" y2="' + ay +
         '" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>' : '') +
       '<g transform="translate(' + ax.toFixed(1) + ',' + ay + ')">' +
       '<circle r="17" fill="#5B6CFF" opacity=".22"/>' +
       '<circle r="12" fill="#FFFFFF" stroke="#5B6CFF" stroke-width="2.5"/>' +
+      '<g transform="rotate(' + arrowRot.toFixed(1) + ')">' +
       '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#111827"/>' +
+      '</g>' +
       '</g>';
 
     // 指北针：画布上方是行进方向，所以北方向 = -bearing
