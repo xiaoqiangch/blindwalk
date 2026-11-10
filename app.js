@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v35';
+  var APP_VERSION = 'v36';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1532,8 +1532,11 @@
             '<button type="button" class="btn btn--ghost btn--block" data-action="account-register">注册并登录</button>' +
           '</div>' +
           '<p class="dbg__hint">账号是可选的。不登录也能用，数据留在本机。<br>' +
-          '云端账号需要把 <code>account</code> 服务跑起来（<code>bash scripts/start-account.sh</code>），' +
-          '并且用 http 地址打开 App（HTTPS 页面不能调本地 http 服务）。</p>' +
+          '云端账号两种方式：<br>' +
+          '① 本机跑 <code>bash scripts/start-account.sh</code>，服务地址填 <code>http://127.0.0.1:8803</code>' +
+          '（需用 http 页面打开 App）；<br>' +
+          '② 公网用 Cloudflare Worker（<code>serverless/cloudflare/</code>，HTTPS），' +
+          '把 <code>https://xxx.workers.dev</code> 填进来即可，GitHub Pages 上也能登录。</p>' +
         '</div>';
 
     return '<div class="page dbg">' +
