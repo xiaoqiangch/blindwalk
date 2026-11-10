@@ -65,18 +65,25 @@ export function parseCookies(header) {
 
 /**
  * 会话 Cookie。
- * 注意：本地开发是 http，不能加 Secure；部署到 HTTPS 时设置 BW_COOKIE_SECURE=1，
- * 否则浏览器不会在跨站/HTTPS 请求里回传 Secure Cookie。
+ * - 本地 http：`SameSite=Lax`，不加 Secure
+ * - 公网 HTTPS 且前端在别的域（如 GitHub Pages）：必须 `SameSite=None; Secure`，
+ *   否则浏览器不会在跨站请求里回传 Cookie，表现为"登录成功但立刻又变未登录"。
+ *   通过 `options.crossSite`（= BW_COOKIE_CROSS_SITE=1）开启。
  */
+function sameSiteAttr(options) {
+  if (options.crossSite === true) return '; SameSite=None';
+  return '; SameSite=Lax';
+}
+
 export function sessionCookie(token, options = {}) {
-  const secure = options.secure === true ? '; Secure' : '';
+  const secure = options.secure === true || options.crossSite === true ? '; Secure' : '';
   return SESSION_COOKIE + '=' + encodeURIComponent(token) +
-    '; HttpOnly; SameSite=Lax; Path=/; Max-Age=' + String(SESSION_MAX_AGE_SECONDS) + secure;
+    '; HttpOnly' + sameSiteAttr(options) + '; Path=/; Max-Age=' + String(SESSION_MAX_AGE_SECONDS) + secure;
 }
 
 export function clearSessionCookie(options = {}) {
-  const secure = options.secure === true ? '; Secure' : '';
-  return SESSION_COOKIE + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' + secure;
+  const secure = options.secure === true || options.crossSite === true ? '; Secure' : '';
+  return SESSION_COOKIE + '=; HttpOnly' + sameSiteAttr(options) + '; Path=/; Max-Age=0' + secure;
 }
 
 /** 请求来源 IP（默认取 socket；BW_TRUST_PROXY=1 时才信 X-Forwarded-For） */

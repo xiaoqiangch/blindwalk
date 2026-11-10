@@ -65,6 +65,9 @@ Environment=PORT=8803
 Environment=HOST=127.0.0.1
 Environment=BW_DATA_DIR=$DATA_DIR/account
 Environment=BW_ALLOWED_ORIGINS=https://$DOMAIN,https://xiaoqiangch.github.io,http://127.0.0.1:*
+Environment=BW_COOKIE_SECURE=1
+Environment=BW_COOKIE_CROSS_SITE=1
+Environment=BW_TRUST_PROXY=1
 ExecStart=/usr/local/bin/node $REMOTE_DIR/account/server/index.mjs
 Restart=always
 RestartSec=3
@@ -170,6 +173,10 @@ NGINX
 ln -sf /etc/nginx/sites-available/blindwalk /etc/nginx/sites-enabled/blindwalk
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx && echo 'nginx ok'"
+
+# 补丁脚本：/check 自检页 + 备用端口 8443（幂等）
+scp -q scripts/server/patch-nginx.mjs "$HOST:/opt/blindwalk/patch-nginx.mjs"
+ssh "$HOST" "node /opt/blindwalk/patch-nginx.mjs && nginx -t && systemctl reload nginx"
 
 echo "== 5) HTTPS（首次会申请证书）=="
 ssh "$HOST" "certbot --nginx -d $DOMAIN --non-interactive --agree-tos --register-unsafely-without-email --redirect --keep-until-expiring 2>&1 | tail -4 || true"

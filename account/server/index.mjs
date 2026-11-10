@@ -194,12 +194,12 @@ export function createServer(options = {}) {
   const limiter = options.rateLimiter || new LoginRateLimiter({ now: now });
   const trustProxy = boolEnv(env.BW_TRUST_PROXY);
   const cookieSecure = boolEnv(env.BW_COOKIE_SECURE);
+  // 前端与账号服务不同域（GitHub Pages 等）时必须开：SameSite=None; Secure
+  const cookieCrossSite = boolEnv(env.BW_COOKIE_CROSS_SITE);
+  const cookieOptions = { secure: cookieSecure, crossSite: cookieCrossSite };
+
   const allowedOrigins = String(env.BW_ALLOWED_ORIGINS || '').trim();
   const version = '1';
-
-  function cookieOptions() {
-    return { secure: cookieSecure };
-  }
 
   function sessionTokenFromRequest(req) {
     const cookies = parseCookies(req.headers ? req.headers.cookie : undefined);
@@ -222,7 +222,7 @@ export function createServer(options = {}) {
       ok: true,
       user: { id: user.id, username: user.username, createdAt: user.createdAt }
     }, {
-      'Set-Cookie': sessionCookie(token, cookieOptions())
+      'Set-Cookie': sessionCookie(token, cookieOptions)
     });
   }
 
@@ -284,7 +284,7 @@ export function createServer(options = {}) {
       const token = sessionTokenFromRequest(req);
       if (token !== undefined) store.deleteSession(token);
       sendJson(req, res, 200, { ok: true }, {
-        'Set-Cookie': clearSessionCookie(cookieOptions())
+        'Set-Cookie': clearSessionCookie(cookieOptions)
       });
       return;
     }
@@ -331,7 +331,7 @@ export function createServer(options = {}) {
       }
       store.deleteUserCascade(current.user.id);
       sendJson(req, res, 200, { ok: true }, {
-        'Set-Cookie': clearSessionCookie(cookieOptions())
+        'Set-Cookie': clearSessionCookie(cookieOptions)
       });
       return;
     }

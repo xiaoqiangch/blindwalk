@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v42';
+  var APP_VERSION = 'v43';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1496,8 +1496,13 @@
     try {
       var raw = localStorage.getItem(ACCOUNT_STORE);
       var cfg = raw ? JSON.parse(raw) : null;
-      return cfg && typeof cfg === 'object' ? cfg : { baseUrl: 'http://127.0.0.1:8803', user: null };
-    } catch (e) { return { baseUrl: 'http://127.0.0.1:8803', user: null }; }
+      if (cfg && typeof cfg === 'object') return cfg;
+    } catch (e) { /* ignore */ }
+    // 默认账号地址：同源优先（自有服务器）；否则用已部署的公网账号服务
+    var fallback = /^https?:$/.test(location.protocol) && !/\.github\.io$/.test(location.hostname)
+      ? location.origin
+      : 'https://xqlounge.top';
+    return { baseUrl: fallback, user: null };
   }
 
   function saveAccountConfig(cfg) {
@@ -2795,6 +2800,18 @@
         '<span>' + esc(item.def.name) + '</span></a>';
     }).join('');
 
+    var accCfg = accountConfig();
+    var accUser = accCfg.user;
+    var accountCard =
+      '<button type="button" class="acccard" data-action="go-account" aria-label="账号">' +
+      '<span class="acccard__icon" aria-hidden="true">' + (accUser ? '👤' : '☁️') + '</span>' +
+      '<span class="acccard__text">' +
+      '<span class="acccard__title">' + (accUser ? '已登录 · ' + esc(accUser.username) : '登录 / 注册账号') + '</span>' +
+      '<span class="acccard__sub">' + (accUser ? '进度已可跨设备同步 · 点这里管理' : '把卡片和进度存到云端，换手机也不丢（可选，不登录也能用）') + '</span>' +
+      '</span>' +
+      '<span class="acccard__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
+      '</button>';
+
     var settings = '<div class="settings">' +
       '<button type="button" class="setting" data-action="toggle-setting" data-key="sound" aria-label="音效">' +
       '<span class="setting__label">音效</span>' +
@@ -2814,10 +2831,6 @@
       '</button>' +
       '<button type="button" class="setting setting--danger" data-action="clear-data" aria-label="清除演示数据">' +
       '<span class="setting__label">清除演示数据</span>' +
-      '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
-      '</button>' +
-      '<button type="button" class="setting" data-action="go-account" aria-label="账号">' +
-      '<span class="setting__label">账号 <em class="acc__state">' + (accountConfig().user ? esc(accountConfig().user.username) : '未登录') + '</em></span>' +
       '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
       '</button>' +
       '<button type="button" class="setting" data-action="go-datasource" aria-label="数据源">' +
@@ -2850,11 +2863,12 @@
       '<div><b>' + profile.streakDays + '</b><span>连续天数</span></div>' +
       '</div>' +
       '</section>' +
+      accountCard +
       '<div class="section-head"><h2>成就</h2><a href="#/achievements" style="font-size:10.5px;color:var(--ink-3);text-decoration:none" aria-label="查看全部成就">全部成就 ›</a></div>' +
       '<div class="strip">' + strip + '</div>' +
       '<div class="section-head"><h2>设置</h2></div>' +
       settings +
-      '<p class="version">BlindWalk 0.1 · 原型</p>' +
+      '<p class="version">步谜 StepRiddle ' + APP_VERSION + '</p>' +
       '</div>';
   }
 
