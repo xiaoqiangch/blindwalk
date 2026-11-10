@@ -3581,3 +3581,50 @@ body[data-sheet="1"] .toast,
 @supports not (bottom: env(safe-area-inset-bottom)) {
   body[data-sheet="1"] .toast { bottom: 112px; }
 }
+
+/* ============================================================
+   37. 「我的」页账号卡片（显眼入口）
+   ============================================================ */
+
+.acccard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 14px 0 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, #EEF1FF 0%, #FFFFFF 70%);
+  text-align: left;
+  cursor: pointer;
+}
+
+.acccard:active { transform: scale(.99); }
+
+.acccard__icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(91, 108, 255, .12);
+  font-size: 19px;
+}
+
+.acccard__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.acccard__title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.acccard__sub {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3, #9CA3AF);
+}
+
+.acccard__chev { margin-left: auto; color: var(--ink-3, #9CA3AF); flex: none; }

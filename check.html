@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网络自检 · 步谜</title>
+<style>
+  body { margin:0; padding:24px 18px; background:#F3F5FB; color:#111827;
+         font:15px/1.6 -apple-system,"PingFang SC","Noto Sans SC",sans-serif; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { margin:0 0 18px; color:#4B5563; font-size:13px; }
+  .card { background:#fff; border:1px solid #E2E7F2; border-radius:18px;
+          padding:16px; margin-bottom:12px; }
+  .row { display:flex; justify-content:space-between; gap:12px; font-size:14px;
+         padding:7px 0; border-bottom:1px dashed #E2E7F2; }
+  .row:last-child { border-bottom:0; }
+  .k { color:#6B7280; flex:none; }
+  .v { text-align:right; word-break:break-all; }
+  .ok { color:#0E9F6E; font-weight:600; }
+  .bad { color:#E02424; font-weight:600; }
+  .big { font-size:16px; font-weight:700; margin:6px 0 10px; }
+  code { background:#EEF1F9; padding:1px 5px; border-radius:6px; font-size:12.5px; }
+  .btn { display:block; width:100%; padding:14px; margin-top:10px; border:0;
+         border-radius:14px; background:#5B6CFF; color:#fff; font-size:16px; font-weight:600; }
+</style>
+</head>
+<body>
+<h1>网络自检</h1>
+<p class="sub">在手机上打开这个页面，把结果截图发给开发者即可定位问题。</p>
+
+<div class="card">
+  <div class="big" id="verdict">正在检测…</div>
+  <div class="row"><span class="k">当前页面</span><span class="v" id="proto">—</span></div>
+  <div class="row"><span class="k">HTTPS 443</span><span class="v" id="https">检测中…</span></div>
+  <div class="row"><span class="k">HTTPS 8443（备用）</span><span class="v" id="https8443">检测中…</span></div>
+  <div class="row"><span class="k">HTTPS 图片</span><span class="v" id="img">检测中…</span></div>
+  <div class="row"><span class="k">浏览器</span><span class="v" id="ua">—</span></div>
+  <div class="row"><span class="k">时间</span><span class="v" id="clock">—</span></div>
+</div>
+
+<div class="card">
+  <div class="row"><span class="k">建议</span><span class="v" id="advice">—</span></div>
+</div>
+
+<button class="btn" onclick="location.reload()">重新检测</button>
+
+<script>
+(function () {
+  var proto = document.getElementById('proto');
+  var httpsEl = document.getElementById('https');
+  var imgEl = document.getElementById('img');
+  var verdict = document.getElementById('verdict');
+  var advice = document.getElementById('advice');
+
+  proto.textContent = location.protocol + '//' + location.host;
+  document.getElementById('ua').textContent = navigator.userAgent;
+  document.getElementById('clock').textContent = new Date().toLocaleString();
+
+  var httpsOk = false;
+  var imgOk = false;
+  var httpsErr = '';
+
+  function done() {
+    if (httpsOk) {
+      verdict.innerHTML = '<span class="ok">✅ HTTPS（443）连接正常</span>';
+      advice.textContent = '如果 App 仍打不开，请把这张截图发给开发者。';
+    } else if (https8443Ok) {
+      verdict.innerHTML = '<span class="ok">✅ 443 被拦，但 8443 可用</span>';
+      advice.textContent = '请改用 https://' + location.hostname + ':8443/ 打开 App（443 被你的网络拦了）。';
+    } else {
+      verdict.innerHTML = '<span class="bad">❌ HTTPS 连接失败</span>';
+      advice.textContent = '可能是运营商/网络拦截了 443 端口，或证书不被信任。请换 Wi-Fi / 4G 再试，并截图。';
+    }
+  }
+
+  // 1) 测 HTTPS API（带超时）
+  var started = Date.now();
+  var ctrl = window.AbortController ? new AbortController() : null;
+  var timer = setTimeout(function () {
+    if (!httpsOk) {
+      httpsEl.innerHTML = '<span class="bad">超时（5 秒无响应）</span>';
+      httpsErr = 'timeout';
+      done();
+    }
+    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+  }, 5000);
+
+  fetch('https://' + location.hostname + '/api/health', {
+    cache: 'no-store', signal: ctrl ? ctrl.signal : undefined
+  }).then(function (r) {
+    clearTimeout(timer);
+    httpsOk = r.ok;
+    httpsEl.innerHTML = r.ok
+      ? '<span class="ok">✅ 200 · ' + (Date.now() - started) + 'ms</span>'
+      : '<span class="bad">HTTP ' + r.status + '</span>';
+    done();
+  }).catch(function (err) {
+    clearTimeout(timer);
+    httpsErr = err && (err.name + ' ' + err.message);
+    httpsEl.innerHTML = '<span class="bad">失败：' + (httpsErr || '未知') + '</span>';
+    done();
+  });
+
+  // 1b) 测备用端口 8443（有些运营商只拦 443）
+  var https8443Ok = false;
+  (function () {
+    var el = document.getElementById('https8443');
+    var c2 = window.AbortController ? new AbortController() : null;
+    var t2 = setTimeout(function () {
+      el.innerHTML = '<span class="bad">超时</span>';
+      if (c2) { try { c2.abort(); } catch (e) {} }
+    }, 5000);
+    fetch('https://' + location.hostname + ':8443/api/health', {
+      cache: 'no-store', signal: c2 ? c2.signal : undefined
+    }).then(function (r) {
+      clearTimeout(t2);
+      https8443Ok = r.ok;
+      el.innerHTML = r.ok ? '<span class="ok">✅ 可用（可改用 https://' + location.hostname + ':8443/）</span>'
+                          : '<span class="bad">HTTP ' + r.status + '</span>';
+    }).catch(function (err) {
+      clearTimeout(t2);
+      el.innerHTML = '<span class="bad">不可用：' + (err && err.name ? err.name : '失败') + '</span>';
+    });
+  })();
+
+  // 2) 测 HTTPS 图片（不依赖 CORS，能单独验证 TLS）
+  var img = new Image();
+  img.onload = function () {
+    imgOk = true;
+    imgEl.innerHTML = '<span class="ok">✅ 加载成功</span>';
+  };
+  img.onerror = function () {
+    imgEl.innerHTML = '<span class="bad">加载失败（TLS/网络）</span>';
+  };
+  img.src = 'https://' + location.hostname + '/icons/app-180.png?x=' + Date.now();
+})();
+</script>
+</body>
+</html>
