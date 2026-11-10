@@ -66,6 +66,10 @@
 - **开**：地图「上」= 设备朝向（罗盘 > 移动方向 > 路线方向）
 - **关**：地图固定**北朝上**（upBearing = 0），罗盘/移动方向都不影响旋转
 
+**旋转规则（北朝上时必须做，否则线全朝上）**：
+- 行进箭头：屏幕角度 = 该处路线切向 − 地图朝上方向
+- 「你」的箭头：屏幕角度 = 设备朝向 − 地图朝上方向（跟随模式恒为 0）
+
 Web：旅程页路径卡左上角胶囊可点击快速切换（`data-action="toggle-map-orientation"`），
 「我的 → 地图跟随我转身」有开关；iOS：`@AppStorage("bw.mapFollowsHeading")`；
 鸿蒙：`@StorageLink('mapFollowsHeading')` + `PersistentStorage.persistProp`。
