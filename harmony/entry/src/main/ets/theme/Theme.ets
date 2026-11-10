@@ -33,9 +33,9 @@ export class BWColor {
   // 带 alpha 的常用变体（ArkUI 的 string 颜色支持 #AARRGGBB）
   static readonly inkSoft: string = '#14171410';
   static readonly lineSoft: string = '#80E8DECC';
-  static readonly amberSoft: string = '#24E89B4C';
-  static readonly amberSoftStrong: string = '#3DE89B4C';
-  static readonly amberBorder: string = '#99E89B4C';
+  static readonly amberSoft: string = '#245B6CFF';
+  static readonly amberSoftStrong: string = '#3D5B6CFF';
+  static readonly amberBorder: string = '#995B6CFF';
   static readonly tealSoft: string = '#242E7D78';
   static readonly paperTranslucent: string = '#CCFFFBF3';
   static readonly paperHalf: string = '#80FFFBF3';
@@ -58,7 +58,7 @@ export class BWColor {
   static readonly kraftLid: string = '#D6DDF3';
   static readonly kraftBody: string = '#E8ECFB';
   static readonly kraftLine: string = '#CC171410';
-  static readonly kraftAmberLight: string = '#BFE89B4C';
+  static readonly kraftAmberLight: string = '#BF5B6CFF';
 }
 
 // ============================================================

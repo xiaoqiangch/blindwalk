@@ -72,14 +72,14 @@ private extension UIColor {
 /// 牛皮纸色板：web 里 `.boxcard` / `.levelcard` / 卡片缩略图用的暖纸色，
 /// 由 `paper2` 与 `amberDeep` 混出来，避免新增 token。
 enum BWKraft {
-    /// 混色基准用 `gold`（偏土黄）而不是瓶色调的 amber，牛皮纸才不发粉。
-    static let light = Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.13)
-    static let mid = Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.26)
-    static let deep = Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.36)
+    /// 现代冷调：用主色（靛蓝）做渐变，取代原来的牛皮纸暖黄。
+    static let light = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.10)
+    static let mid = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.20)
+    static let deep = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)
 
     /// 牛皮纸盒体 / 盒盖（web: #DFC49B / #EAD6B2）
-    static let boxBody = Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.40)
-    static let boxLid = Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.25)
+    static let boxBody = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.34)
+    static let boxLid = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.22)
 
     /// 主卡渐层（web: linear-gradient(152deg, #F3E4CB → #EAD4B0 → #DFC59B)）
     static var cardGradient: LinearGradient {
@@ -94,9 +94,9 @@ enum BWKraft {
     static var levelGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.12),
-                Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.24),
-                Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.36)
+                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.10),
+                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.20),
+                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -106,7 +106,7 @@ enum BWKraft {
     /// 缩略图渐层（web: linear-gradient(160deg, #F2E4CC, #E3CCA6)）
     static var thumbGradient: LinearGradient {
         LinearGradient(
-            colors: [mid, Color.bwMix(BWTheme.paper2, BWTheme.gold, 0.36)],
+            colors: [mid, Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )

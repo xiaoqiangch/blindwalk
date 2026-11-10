@@ -270,6 +270,15 @@
 
 **Key 安全**：iOS 的 `mapkeys.json` 由 `scripts/inject-ios-mapkeys.sh` 从后台 DB 生成，已 gitignore；后台 DB 也不进仓库。主仓无任何真实 Key。
 
+### 2026-11-10 08:10 · GPS 实时性 + 地图跟随转身 + 冷调换肤
+
+| 项 | 结果 |
+|---|---|
+| GPS 刷新慢 | 根因：`watchPosition` 在部分浏览器/WebView 只推一次；Web 改为**每 1.8s 主动 getCurrentPosition**（maximumAge 0），导航文本刷新节流 600→350ms；iOS 加定位看门狗（5s 无回调主动 requestLocation）；鸿蒙加 3s 轮询兜底 |
+| 地图不跟着转身 | 根因：迷雾路径用**路线方向**朝上。改为**设备罗盘**朝上：Web（deviceorientationabsolute / iOS webkitCompassHeading，大角度直接跟上，小角度低通）、iOS（CLLocationManager heading → FogFrame.upBearing）、鸿蒙（@ohos.sensor ORIENTATION → fogGeometry upBearing） |
+| 配色 | 从暖褐奶油 → **冷调近白 + 靛蓝主色 + 薄荷/珊瑚/紫罗兰点缀**；三端 token 同步，清掉所有残留暖色（含盒体插画、卡片渐变、缩略图底色） |
+| 验证 | Web 模拟行走：12 次移动全部在 ~1.5s 内更新；转向 90° 指北针立即旋转；iOS BUILD SUCCEEDED + 装两台模拟器；鸿蒙 101/101 + 25 文件 0 error |
+
 ## 5. 风险与对策
 
 | 风险 | 影响 | 对策 |
