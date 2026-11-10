@@ -3628,3 +3628,113 @@ body[data-sheet="1"] .toast,
 }
 
 .acccard__chev { margin-left: auto; color: var(--ink-3, #9CA3AF); flex: none; }
+
+/* ============================================================
+   38. 图鉴 · 附近惊喜的隐晦提示
+   ============================================================ */
+
+.hintbox {
+  margin: 14px 0 6px;
+  padding: 14px 14px 10px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  background: linear-gradient(150deg, #F4F6FF 0%, #FFFFFF 62%);
+}
+
+.hintbox__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hintbox__head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hintbox__sub {
+  font-size: 11.5px;
+  color: var(--ink-3, #9CA3AF);
+}
+
+.hintcard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(91, 108, 255, .18);
+  background: #FFFFFF;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hintcard:active { transform: scale(.99); }
+
+.hintcard__emoji {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(91, 108, 255, .1);
+  font-size: 17px;
+}
+
+.hintcard__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.hintcard__title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.hintcard__copy {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2, #4B5563);
+}
+
+.hintcard__meta {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--ink-3, #9CA3AF);
+}
+
+.hintcard__go { margin-left: auto; flex: none; color: var(--ink-3, #9CA3AF); }
+
+.hintbox__note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-3, #9CA3AF);
+}
+
+.hintbox__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--amber);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hintbox__cta {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(91, 108, 255, .35);
+  background: rgba(91, 108, 255, .05);
+  color: var(--amber-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
