@@ -291,6 +291,21 @@
 | 客户端 | 同源自动识别账号地址；iOS/鸿蒙默认账号地址改为 https://xqlounge.top |
 | 部署脚本 | `scripts/deploy-server.sh`（幂等，含权限修正、systemd、nginx、certbot、验证） |
 
+### 2026-11-10 20:45 · 图鉴「附近惊喜隐晦提示」三端完成
+
+| 端 | 状态 |
+|---|---|
+| Web | ✅ v46（`nearbyHintsHTML` + `start-seek-journey`）|
+| iOS | ✅ 已构建安装（`nearbyHintsSection` + `SeekSurpriseView(focusID:)`）|
+| 鸿蒙 | ✅ 26 文件 0 error / 117 测试（`core/hints.ts` + `SeekPanel.ets`）|
+
+**保密设计（三端统一）**：提示卡只给「距离粗档 + 通用氛围句 + emoji」，不含地名 / 作者昵称 / 照片 / 坐标 / 精确米数。
+鸿蒙额外加了静态守卫：直接读 `areaWord`/`photoUri`/`photoHash`/`authorName` 会报错，且每道防线都做了变异测试。
+
+**顺带修复**：`geoDistance()` 只读 `b.lng`，而定位回调给的是 `lon` → NaN → 所有惊喜距离显示「位置未知」。已兼容三种字段名。
+
+**已知缺口**：鸿蒙的「这样拍一张」（相机 + dHash 对比）和埋惊喜 UI 尚未移植；`.hap` 需 DevEco 才能编译验证。
+
 ## 5. 风险与对策
 
 | 风险 | 影响 | 对策 |
