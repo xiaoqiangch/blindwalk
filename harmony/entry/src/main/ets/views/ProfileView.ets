@@ -47,6 +47,8 @@ export struct ProfileView {
   @State private snapshot: AppSnapshot = emptySnapshot();
   @State private soundOn: boolean = true;
   @State private hapticOn: boolean = true;
+  /** 地图朝向：true=跟随我转身；false=固定北朝上（全局持久化） */
+  @StorageLink('mapFollowsHeading') private mapFollowsHeading: boolean = true;
   @State private modal: string = '';
   @State private toastText: string = '';
 
@@ -296,6 +298,28 @@ export struct ProfileView {
           .selectedColor(BWColor.amberDeep)
           .onChange((isOn: boolean) => {
             this.hapticOn = isOn;
+          })
+      }
+
+      Divider().strokeWidth(1).color(BWColor.line)
+
+      Row({ space: 12 }) {
+        Column({ space: 2 }) {
+          Text('地图跟随我转身')
+            .fontSize(BWFont.bodySm)
+            .fontColor(BWColor.ink)
+          Text(this.mapFollowsHeading ? '开 · 转身地图会转' : '关 · 地图固定北朝上')
+            .fontSize(BWFont.micro)
+            .fontColor(BWColor.ink3)
+        }
+        .alignItems(HorizontalAlign.Start)
+
+        Blank()
+
+        Toggle({ type: ToggleType.Switch, isOn: this.mapFollowsHeading })
+          .selectedColor(BWColor.amberDeep)
+          .onChange((isOn: boolean) => {
+            this.mapFollowsHeading = isOn;
           })
       }
       .width('100%')

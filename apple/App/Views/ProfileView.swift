@@ -8,6 +8,8 @@ struct ProfileView: View {
 
     @AppStorage("bw.soundEnabled") private var soundEnabled = true
     @AppStorage("bw.hapticsEnabled") private var hapticsEnabled = true
+    /// 地图朝向：true=跟随我转身；false=固定北朝上
+    @AppStorage("bw.mapFollowsHeading") private var mapFollowsHeading = true
 
     @State private var toast: BWToast?
     @State private var showClearConfirm = false
@@ -279,6 +281,25 @@ struct ProfileView: View {
                     .tint(BWTheme.amber)
                     .scaleEffect(0.86)
                     .frame(width: 44)
+                }
+
+                BWHairline()
+
+                settingRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("地图跟随我转身")
+                            .font(.system(size: 14.5))
+                            .foregroundStyle(BWTheme.ink)
+                        Text(mapFollowsHeading ? "开 · 转身地图会转" : "关 · 地图固定北朝上")
+                            .font(.system(size: 12))
+                            .foregroundStyle(BWTheme.ink3)
+                    }
+                    Spacer(minLength: 0)
+                    Toggle("", isOn: $mapFollowsHeading)
+                        .labelsHidden()
+                        .tint(BWTheme.amber)
+                        .scaleEffect(0.86)
+                        .frame(width: 44)
                 }
 
                 BWHairline()

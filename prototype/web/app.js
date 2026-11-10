@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v39';
+  var APP_VERSION = 'v40';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -316,7 +316,7 @@
       surprises: [],
       pendingBury: null,
       pendingSeek: null,
-      settings: { sound: true, haptic: true }
+      settings: { sound: true, haptic: true, mapFollowsHeading: true }
     };
   }
 
@@ -1970,7 +1970,7 @@
       '<text x="0" y="-18" text-anchor="middle" font-size="11" fill="#9CA3AF">北</text>' +
       '</g>' +
       '</svg>' +
-      '<p class="pathview__cap" data-path-cap>迷雾模式 · 只看见前后一段</p>' +
+      '<button type="button" class="pathview__cap" data-path-cap data-action="toggle-map-orientation">迷雾模式 · 只看见前后一段</button>' +
       '</section>';
   }
 
@@ -2060,9 +2060,10 @@
     }
 
     var pts = state.route.points;
-    // 地图「朝上」：新鲜罗盘 > 移动方向 > 路线方向
-    var upInfo = upBearingFor(progress.bearing || 0);
-    var hasCompass = upInfo.source !== 'route';
+    // 地图「朝上」：用户选择「北朝上」时固定 0°；否则 罗盘 > 移动方向 > 路线方向
+    var follow = state.settings.mapFollowsHeading !== false;
+    var upInfo = follow ? upBearingFor(progress.bearing || 0) : { value: 0, source: 'north' };
+    var hasCompass = upInfo.source !== 'route' && upInfo.source !== 'north';
     var b = upInfo.value;
     var rad = b * Math.PI / 180;
     var sinB = Math.sin(rad);
@@ -2192,6 +2193,8 @@
         cap.textContent = '跟随你的朝向 · 转身地图也会转';
       } else if (upInfo.source === 'move') {
         cap.textContent = '跟随移动方向 · 没有罗盘也能转（走起来更准）';
+      } else if (upInfo.source === 'north') {
+        cap.textContent = '北朝上 · 点这里改成跟随朝向';
       } else {
         cap.textContent = '迷雾模式 · 只看见前后一段';
       }
@@ -2774,6 +2777,10 @@
       '<button type="button" class="setting" data-action="toggle-setting" data-key="sound" aria-label="音效">' +
       '<span class="setting__label">音效</span>' +
       '<span class="switch" role="switch" aria-checked="' + !!state.settings.sound + '" aria-label="音效开关"></span>' +
+      '</button>' +
+      '<button type="button" class="setting" data-action="toggle-setting" data-key="mapFollowsHeading" aria-label="地图跟随朝向">' +
+      '<span class="setting__label">地图跟随我转身 <em class="acc__state">' + (state.settings.mapFollowsHeading ? '开' : '关（北朝上）') + '</em></span>' +
+      '<span class="setting__chev" aria-hidden="true">' + ICON.chevron + '</span>' +
       '</button>' +
       '<button type="button" class="setting" data-action="toggle-setting" data-key="haptic" aria-label="触感">' +
       '<span class="setting__label">触感</span>' +
@@ -4030,6 +4037,14 @@
       case 'toggle-setting':
         toggleSetting(target.getAttribute('data-key'));
         break;
+      case 'toggle-map-orientation': {
+        state.settings.mapFollowsHeading = state.settings.mapFollowsHeading === false;
+        save();
+        render();
+        if (state.session && currentRoute() === '/journey') drawPathView(state.session);
+        showToast(state.settings.mapFollowsHeading ? '地图跟随你的朝向' : '地图固定北朝上', '🧭', { duration: 1600 });
+        break;
+      }
       case 'privacy':
         openPrivacyModal();
         break;

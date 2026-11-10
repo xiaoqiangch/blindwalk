@@ -86,6 +86,7 @@ export struct JourneyView {
   private watcher: GeoWatcher | undefined = undefined;
   private compass: CompassWatcher | undefined = undefined;
   @State private heading: number = -1;
+  @StorageLink('mapFollowsHeading') private mapFollowsHeading: boolean = true;
   @State private compassHeading: number = -1;
 
   aboutToAppear(): void {
@@ -500,7 +501,7 @@ export struct JourneyView {
           hereLat: this.fixLat,
           hereLon: this.fixLon,
           viewHeight: this.mapHeight(),
-          heading: this.heading,
+          heading: this.mapFollowsHeading ? this.heading : 0,
           onCaption: (text: string) => {
             this.fogCaption = text;
           }

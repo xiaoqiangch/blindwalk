@@ -31,6 +31,7 @@ struct JourneyView: View {
     @State private var demoService = SimulatedLocationService()
     /// 真实定位服务，首次 onAppear 才创建（避免 View 反复初始化时重复建 CLLocationManager）
     @State private var liveService: LiveLocationService?
+    @AppStorage("bw.mapFollowsHeading") private var mapFollowsHeading = true
 
     /// 当前定位模式
     @State private var locationMode: JourneyLocationMode = .waiting
@@ -387,7 +388,7 @@ struct JourneyView: View {
                     route: route,
                     here: currentPoint,
                     remainingMeters: session.remainingMeters,
-                    heading: lastReading?.headingDegrees
+                    heading: mapFollowsHeading ? lastReading?.headingDegrees : 0
                 )
             } else {
                 JourneyMapView(

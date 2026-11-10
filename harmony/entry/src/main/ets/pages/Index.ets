@@ -76,6 +76,8 @@ struct Index {
   @State private curatedCount: number = 0;
 
   aboutToAppear(): void {
+    // 地图朝向开关：AppStorage 全局共享 + 持久化（重启后保持）
+    PersistentStorage.persistProp('mapFollowsHeading', true);
     this.bootstrap();
   }
 

@@ -59,6 +59,17 @@
 - **剩余 < 60 米**：整段隐藏，只显示「就在附近 · 抬头看看周围」
 - 绝对不画终点、不画街道名
 
+## 3.1 地图朝向开关（三端一致）
+
+设置项「地图跟随我转身」（默认开）：
+
+- **开**：地图「上」= 设备朝向（罗盘 > 移动方向 > 路线方向）
+- **关**：地图固定**北朝上**（upBearing = 0），罗盘/移动方向都不影响旋转
+
+Web：旅程页路径卡左上角胶囊可点击快速切换（`data-action="toggle-map-orientation"`），
+「我的 → 地图跟随我转身」有开关；iOS：`@AppStorage("bw.mapFollowsHeading")`；
+鸿蒙：`@StorageLink('mapFollowsHeading')` + `PersistentStorage.persistProp`。
+
 ## 4. 账号（三端一致）
 
 接口见 `account/docs/API.md`：`register / login / logout / me / PUT me/profile / DELETE me`。

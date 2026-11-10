@@ -3425,6 +3425,9 @@ button, .btn {
   position: absolute;
   left: 12px;
   top: 10px;
+  border: 1px solid rgba(228, 217, 198, .9);
+  cursor: pointer;
+  font-family: inherit;
   margin: 0;
   padding: 3px 9px;
   border-radius: 999px;
