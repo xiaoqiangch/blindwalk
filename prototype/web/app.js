@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v44';
+  var APP_VERSION = 'v45';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -1621,8 +1621,626 @@
           '</div>' +
           '<p class="dbg__hint">账号是可选的。不登录也能用，数据留在本机。<br>' +
           '默认已连公网账号服务 <code>' + esc(cfg.baseUrl) + '</code>，直接注册即可。<br>' +
-          '只在浏览器禁用第三方 Cookie 时（Safari 默认如此）跨域登录才会失败；' +
-          '此时用 <code>https://xqlounge.top</code> 打开 App 就是同源登录。</p>' +
+          '如果浏览器禁用了第三方 Cookie（Safari 默认如此），跨域登录会失败 —— ' +
+          '此时用 <code>https://xqlounge.top</code> 打开 App 即为同源登录。</p>' +
+        '</div>';
+
+    return '<div class="page dbg">' +
+      '<header class="pagehead"><div><h2 class="pagehead__title">账号</h2>' +
+      '<p class="pagehead__sub">' + esc(accountStatusText()) + '</p></div>' +
+      '<button type="button" class="iconbtn" data-action="go-profile" aria-label="返回我的">' + ICON.back + '</button>' +
+      '</header>' +
+      (mixedBlocked
+        ? '<section class="locblock" role="alert">' +
+            '<p class="locblock__title">当前页面是 HTTPS，连不上 http 的本地账号服务</p>' +
+            '<p class="locblock__text">浏览器会以「混合内容」拦掉请求。两种办法：<br>' +
+            '① 用 http 打开 App（本地 <code>python3 serve.py</code>，访问 <code>http://&lt;电脑IP&gt;:8799</code>）；<br>' +
+            '② 把账号服务部署到 HTTPS 域名，再把地址改成 https://…</p>' +
+          '</section>'
+        : '') +
+      '<section class="dbg__card">' + rows + '</section>' +
+      '<section class="dbg__card dbg__actions">' + form + '</section>' +
+      '</div>';
+  }
+
+  /** 数据源页：Key 由后台统一配置，这里只做状态展示（用户无需/无法自己填 Key） */
+  function datasourceHTML() {
+    var st = (window.BW_PROVIDERS && window.BW_PROVIDERS.status)
+      ? window.BW_PROVIDERS.status()
+      : { sources: [], keys: {} };
+    var meta = state.mapKeysMeta || {};
+    var sourceLabel = meta.source === 'pages' ? '随 App 发布下发'
+      : meta.source === 'admin' ? '后台接口下发'
+      : meta.source === 'none' ? '未配置（只用免费源）' : '加载中…';
+
+    var list = '<div class="dbg__row"><span class="dbg__k">高德地图</span><span class="dbg__v">' +
+      (st.keys && st.keys.amap ? '已由后台配置 ✓' : '后台未配置') + '</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">百度地图</span><span class="dbg__v">' +
+      (st.keys && st.keys.baidu ? '已由后台配置 ✓' : '后台未配置') + '</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">OpenStreetMap</span><span class="dbg__v">免费 · 始终可用</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">中文维基百科</span><span class="dbg__v">免费 · 带实景照片</span></div>' +
+      '<div class="dbg__row"><span class="dbg__k">Key 来源</span><span class="dbg__v">' + esc(sourceLabel) + '</span></div>';
+
+    var last = (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport) ? window.BW_PROVIDERS.lastReport() : null;
+    var report = '';
+    if (last && last.sources && last.sources.length) {
+      report = '<div class="dbg__row"><span class="dbg__k">上次抓取</span><span class="dbg__v">' +
+        last.sources.map(function (x) {
+          return esc(x.label || x.id) + '：' + (x.ok ? (x.count + ' 条') : (x.reason || x.error || '失败'));
+        }).join('；') + '</span></div>';
+    }
+
+    return '<div class="page dbg">' +
+      '<header class="pagehead"><div><h2 class="pagehead__title">数据源</h2>' +
+      '<p class="pagehead__sub">Key 由后台统一管理，你不需要填写</p></div>' +
+      '<button type="button" class="iconbtn" data-action="go-profile" aria-label="返回我的">' + ICON.back + '</button>' +
+      '</header>' +
+      '<section class="dbg__card">' + list + report + '</section>' +
+      '<section class="dbg__card">' +
+        '<p class="dbg__hint">地图服务商的 Key 由管理后台统一配置并下发，所有用户共用。<br>' +
+        '客户端只用免费源（OpenStreetMap + 维基百科）也能正常抽真实地点。<br>' +
+        '需要替换 Key？在后台「地图 Key」页修改，重启 App 后自动生效。</p>' +
+        '<div class="dbg__actions">' +
+          '<button type="button" class="btn btn--ghost btn--block" data-action="reload-mapkeys">重新加载 Key</button>' +
+          '<button type="button" class="btn btn--quiet btn--block" data-action="ds-test">用当前位置测一次抓取</button>' +
+        '</div>' +
+      '</section>' +
+      '</div>';
+  }
+
+  /** 定位受阻提示：只有「真实地点」或「明确选演示」两条路 */
+  function locationBlockedHTML() {
+    if (!ui.locationBlocked) return '';
+    var reasonText = ui.locationReason === 'denied'
+      ? '你把定位权限拒绝了'
+      : ui.locationReason === 'timeout'
+        ? '定位超时了（室内/地下常见）'
+        : '浏览器没有给出位置';
+    return '<section class="locblock" role="alert">' +
+      '<p class="locblock__title">没拿到你的位置，抽不了真实地点</p>' +
+      '<p class="locblock__text">' + esc(reasonText) + '。真实盲盒必须知道你在哪。</p>' +
+      '<div class="locblock__actions">' +
+      '<button type="button" class="btn btn--primary" data-action="retry-location">再试一次定位</button>' +
+      '<button type="button" class="btn btn--ghost" data-action="manual-location">手动输入位置</button>' +
+      '</div>' +
+      '<button type="button" class="locblock__demo" data-action="start-demo">不定位，先看演示（虚构地点）</button>' +
+      '</section>';
+  }
+
+  /** 真实地点搜索失败：明确告知 + 提供扩大范围/手动位置/演示 三条路（绝不偷偷用虚构地点） */
+  function searchFailedHTML() {
+    if (!ui.searchFailed) return '';
+    var reason = ui.searchFailed.reason || 'no-real-place';
+    var text = reason === 'network'
+      ? '网络不给力，地图数据没取到（可能是 OSM/高德都被挡住或超时）'
+      : '这一带暂时没有适合走过去的真实地点';
+    var report = ui.searchFailed.report;
+    var detail = '';
+    if (report && report.sources && report.sources.length) {
+      detail = '<ul class="locblock__list">' +
+        report.sources.map(function (x) {
+          return '<li>' + esc(x.label || x.id) + '：' +
+            (x.ok ? ('找到 ' + x.count + ' 个') : esc(x.error || x.reason || '失败')) + '</li>';
+        }).join('') + '</ul>';
+    }
+    return '<section class="locblock" role="alert">' +
+      '<p class="locblock__title">没找到真实地点，这次不抽了</p>' +
+      '<p class="locblock__text">' + esc(text) + '。不会用虚构地点糊弄你。' +
+      '试试：换「60 分钟」把范围放大，或改个区域（河边/老城区）。</p>' +
+      detail +
+      '<div class="locblock__actions">' +
+      '<button type="button" class="btn btn--primary" data-action="search-wider">扩大范围再找</button>' +
+      '<button type="button" class="btn btn--ghost" data-action="manual-location">换个位置</button>' +
+      '</div>' +
+      '<button type="button" class="locblock__demo" data-action="start-demo">改成演示模式（虚构地点）</button>' +
+      '</section>';
+  }
+
+  function sheetHTML() {
+    var durations = D.DURATIONS.map(function (duration) {
+      return '<button type="button" data-action="select-duration" data-value="' + duration.id + '"' +
+        ' aria-pressed="' + (ui.duration === duration.id) + '" aria-label="' + esc(duration.title) + '">' +
+        '<b>' + esc(duration.main) + '</b><em>' + esc(duration.sub) + '</em></button>';
+    }).join('');
+
+    var moods = D.MOODS.map(function (mood) {
+      return '<button type="button" class="mood" data-action="select-mood" data-value="' + mood.id + '"' +
+        ' aria-pressed="' + (ui.mood === mood.id) + '" aria-label="' + esc(mood.title + '：' + mood.subtitle) + '">' +
+        '<span class="mood__emoji" aria-hidden="true">' + mood.emoji + '</span>' +
+        '<span class="mood__text"><span class="mood__title">' + esc(mood.title) + '</span>' +
+        '<span class="mood__sub">' + esc(mood.subtitle) + '</span></span>' +
+        '</button>';
+    }).join('');
+
+    var areas = D.AREAS.map(function (area) {
+      return '<button type="button" class="chipbtn" data-action="select-area" data-value="' + area.id + '"' +
+        ' aria-pressed="' + (ui.area === area.id) + '" aria-label="区域：' + esc(area.label) + '">' + esc(area.label) + '</button>';
+    }).join('');
+
+    return '<div class="scrim" data-action="close-setup" aria-hidden="true"></div>' +
+      '<section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">' +
+      '<div class="sheet__grabber" aria-hidden="true"></div>' +
+      '<h2 class="sheet__title" id="sheet-title">这次的盲盒，你想要什么？</h2>' +
+      '<p class="sheet__sub">选完就出发，目的地保密。</p>' +
+      '<div class="field"><span class="field__label">时长</span><div class="segmented">' + durations + '</div></div>' +
+      '<div class="field"><span class="field__label">心情</span><div class="moods">' + moods + '</div></div>' +
+      '<div class="field"><span class="field__label">区域</span><div class="areachips">' + areas + '</div></div>' +
+      '<div class="sheet__actions">' +
+      locationBlockedHTML() +
+      searchFailedHTML() +
+      '<button type="button" class="btn btn--primary btn--block" data-action="shake" aria-label="摇一个盲盒">摇一个盲盒</button>' +
+      '<button type="button" class="btn btn--quiet" data-action="close-setup" aria-label="今天不想出门">今天不想出门</button>' +
+      '</div>' +
+      '</section>';
+  }
+
+  function bearingFor(remaining) {
+    if (remaining >= 361) return '↖';
+    if (remaining >= 241) return '↑';
+    if (remaining >= 121) return '↗';
+    return '→';
+  }
+
+  function clueMarkup(place, index, unlockedCount, remaining) {
+    var text = (place.hints && place.hints[index]) ||
+      [place.hint1, place.hint2, place.hint3][index] || '';
+    if (index < unlockedCount) {
+      var fresh = ui.newHint === index ? ' clue--new' : '';
+      return '<div class="clue' + fresh + '"><span class="clue__mark" aria-hidden="true">✅</span><span>' + esc(text) + '</span></div>';
+    }
+    var lockedText = index === 1
+      ? '再走 ' + Math.max(0, remaining - D.HINT_THRESHOLDS[1]) + ' 米，解锁第二条线索'
+      : '到了你就知道';
+    var lockAttr = index === 1 ? ' data-clue-locked-index="1"' : (index === 2 ? ' data-clue-locked-index="2"' : '');
+    return '<div class="clue clue--locked"><span class="clue__mark" aria-hidden="true">🔒</span><span' + lockAttr + '>' + esc(lockedText) + '</span></div>';
+  }
+
+  function journeyHTML() {
+    var session = state.session;
+    var backBtn = '<button type="button" class="iconbtn" data-action="back-home" aria-label="返回首页">' + ICON.back + '</button>';
+
+    if (!session || !placeOf(session.placeID)) {
+      return '<div class="journey">' +
+        '<div class="journey__top">' + backBtn +
+        '<div class="journey__topinfo"><span class="micro">盲盒进行中</span><span class="journey__timer">--:--:--</span></div>' +
+        '</div>' +
+        '<div class="empty" style="flex:1;justify-content:center">' +
+        emptyArtSVG() +
+        '<p>还没有正在进行的盲盒。</p>' +
+        '<span>让城市替你选一个。</span>' +
+        '<a class="btn btn--primary" href="#/setup" style="height:44px;margin-top:10px;padding:0 26px;font-size:14px">开一个盲盒</a>' +
+        '</div></div>';
+    }
+
+    var place = placeOf(session.placeID);
+    var remaining = session.remainingMeters;
+    var unlocked = session.unlockedHintCount;
+    var elapsed = ui.paused ? ui.pausedElapsed : Math.max(0, Date.now() - session.startedAt);
+    var walkCopy = D.WALK_COPY[place.area] || '顺着灯走，别急';
+    var areaLabel = placeAreaWord(place);
+
+    var clues = [0, 1, 2].map(function (index) {
+      return clueMarkup(place, index, unlocked, remaining);
+    }).join('');
+
+    var arrived = session.phase === 'arrived';
+
+    return '<div class="journey">' +
+      '<div class="journey__top">' + backBtn +
+      '<div class="journey__topinfo">' +
+      '<span class="micro">盲盒进行中</span>' +
+      '<span class="journey__timer">' + fmtElapsed(elapsed) + '</span>' +
+      '</div>' +
+      '<button type="button" class="journey__pause" data-action="pause" aria-pressed="' + ui.paused + '" aria-label="' + (ui.paused ? '继续计时' : '暂停计时') + '">' + (ui.paused ? '继续' : '暂停') + '</button>' +
+      '</div>' +
+      '<div class="journey__status">' + realStatusHTML() + '</div>' +
+      (isRealSession(session) ? pathViewHTML() : '') +
+      navCardHTML(session) +
+      '<div class="journey__side">' +
+      '<div class="journey__clues" aria-label="线索">' + clues + '</div>' +
+      navUpcomingHTML(session) +
+      '</div>' +
+      '<div class="journey__actions">' +
+      (arrived
+        ? '<button type="button" class="btn btn--primary btn--block" data-action="collect" aria-label="揭晓盲盒">揭晓盲盒</button>'
+        : (isRealSession(session)
+          ? '<button type="button" class="btn btn--primary btn--block" data-action="reveal-now" aria-label="直接揭晓">走累了？直接揭晓</button>'
+          : '<button type="button" class="btn btn--primary btn--block" data-action="walk" aria-label="模拟步行 50 米">模拟步行 +50m<span class="demo-tag">演示</span></button>')) +
+      '<button type="button" class="btn btn--quiet" data-action="arrive" aria-label="我到了，直接揭晓">我到了</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  /* ============================================================
+     统一导航状态机
+     原则（解决用户反馈的「混乱」）：
+     1. 全页只有一个「剩余距离」数字，口径统一（有路线=沿路线剩余）
+     2. 全页只有一个箭头，含义固定 = 下一步动作
+     3. 转向提示有滞回，不会在阈值附近来回跳
+     ============================================================ */
+  function computeNav(session) {
+    var result = {
+      arrow: '↑',
+      main: '继续走',
+      sub: '',
+      remaining: session.remainingMeters,
+      minutes: Math.max(1, Math.round(session.remainingMeters / 75)),
+      hasRoute: false
+    };
+    if (!isRealSession(session) || !state.route) {
+      // 没有路线：不猜方向、不画箭头（避免指错），只给距离
+      if (isRealSession(session) && state.routeState === 'loading') {
+        result.arrow = '…';
+        result.main = '正在规划步行路线';
+        result.sub = '马上就好';
+      } else {
+        result.arrow = '·';
+        result.main = session.remainingMeters > 0 ? '按提示方向走过去' : '就在附近';
+        result.sub = '网络不通时只显示直线距离';
+      }
+      return result;
+    }
+
+    var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
+    var walked = progress ? progress.walked : (state.routeWalkedMeters || 0);
+    var routeRemaining = Math.max(0, Math.round(state.route.distanceMeters - walked));
+    result.hasRoute = true;
+    result.remaining = routeRemaining;
+    result.minutes = Math.max(1, Math.round(routeRemaining / 75));
+
+    var ms = state.route.maneuvers || [];
+    var current = 0;
+    while (current + 1 < ms.length && walked >= ms[current + 1].cumulative - 4) current += 1;
+    var next = ms[current + 1] || null;
+
+    if (!next) {
+      result.arrow = '◉';
+      result.main = routeRemaining <= 25 ? '就在前面' : '再走 ' + routeRemaining + ' 米';
+      result.sub = routeRemaining <= 25 ? '抬头看看周围' : '沿着这条路一直走';
+      return result;
+    }
+
+    var turnIn = Math.max(0, Math.round(next.cumulative - walked));
+    var direction = next.direction;
+    var label = next.label;
+
+    // 到达点
+    if (direction === 'arrive') {
+      result.arrow = '◉';
+      result.main = turnIn <= 25 ? '就在前面' : '再走 ' + turnIn + ' 米就到了';
+      result.sub = turnIn <= 25 ? '抬头看看周围' : '不用再拐弯';
+      return result;
+    }
+
+    var straight = (direction === 'straight' || direction === 'slight-left' || direction === 'slight-right');
+    if (straight) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = turnIn > 120 ? '继续直行' : '继续直行 ' + turnIn + ' 米';
+      result.sub = '保持在同一条路上';
+      return result;
+    }
+
+    // 转弯：≤12 米就是「现在」，12~45 米给提前量，>45 米先直行
+    // 滞回：一旦喊过「现在左拐」，直到真的走过这个转向点才换回
+    var lock = state.navTurnLock;
+    if (lock && lock.index === current + 1 && walked < next.cumulative + 8) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = '现在' + label;
+      result.sub = '拐过去继续走';
+      return result;
+    }
+    if (turnIn <= 12) {
+      state.navTurnLock = { index: current + 1 };
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = '现在' + label;
+      result.sub = '拐过去继续走';
+      return result;
+    }
+    if (turnIn <= 45) {
+      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.main = turnIn + ' 米后' + label;
+      result.sub = '注意路口';
+      return result;
+    }
+    result.arrow = '↑';
+    result.main = '继续直行';
+    result.sub = turnIn + ' 米后' + label;
+    return result;
+  }
+
+
+  /* ============================================================
+     路径视图（不露终点）
+     - 只画「当前位置往前 220 米」这一段，末端渐隐，绝不画终点
+     - 朝向：以路径前进方向为上（heading-up）
+     - 箭头：「你」的位置，随行走沿路径移动
+     - 距离终点 < 60 米时整段淡出，只留「快到了」
+     ============================================================ */
+  function pathViewHTML() {
+    return '<section class="pathview" data-pathview aria-label="需要走的路径">' +
+      '<svg class="pathview__svg" viewBox="0 0 320 196" preserveAspectRatio="xMidYMid meet" role="img" aria-label="前方路径示意图">' +
+
+      '<g data-path-grid></g>' +
+      '<g data-path-line></g>' +
+      '<g data-path-behind></g>' +
+      '<g data-path-chevrons></g>' +
+      '<g data-path-arrow></g>' +
+      '<g data-path-compass transform="translate(292,164)">' +
+      '<circle r="14" fill="#FFFFFF" stroke="#E2E7F2" stroke-width="1"/>' +
+      '<g data-compass-needle>' +
+      '<path d="M 0 -9 L 4 0 L 0 -2 L -4 0 Z" fill="#FF6B6B"/>' +
+      '<path d="M 0 9 L 4 0 L 0 2 L -4 0 Z" fill="#C7CEDB"/>' +
+      '</g>' +
+      '<text x="0" y="-18" text-anchor="middle" font-size="11" fill="#9CA3AF">北</text>' +
+      '</g>' +
+      '</svg>' +
+      '<button type="button" class="pathview__cap" data-path-cap data-action="toggle-map-orientation">迷雾模式 · 只看见前后一段</button>' +
+      '</section>';
+  }
+
+  /* 路径迷雾视图用的工具：累计距离表 + 按「沿路径里程」取点 */
+  var routeCum = null;
+
+  function buildRouteCum(route) {
+    var pts = route.points || [];
+    var cum = [0];
+    for (var i = 0; i < pts.length - 1; i += 1) {
+      var d = window.BW_GEO.distanceOf
+        ? window.BW_GEO.distanceOf({ lat: pts[i][1], lon: pts[i][0] }, { lat: pts[i + 1][1], lon: pts[i + 1][0] })
+        : 0;
+      cum.push(cum[cum.length - 1] + d);
+    }
+    routeCum = { pts: pts, cum: cum };
+    return routeCum;
+  }
+
+  function pointAtAlong(route, cumData, sMeters) {
+    if (!cumData) return null;
+    var pts = cumData.pts;
+    var cum = cumData.cum;
+    if (sMeters <= 0) return { lat: pts[0][1], lon: pts[0][0] };
+    for (var i = 0; i < cum.length - 1; i += 1) {
+      if (sMeters <= cum[i + 1]) {
+        var seg = cum[i + 1] - cum[i];
+        var t = seg > 0 ? (sMeters - cum[i]) / seg : 0;
+        return {
+          lat: pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t,
+          lon: pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t
+        };
+      }
+    }
+    var last = pts.length - 1;
+    return { lat: pts[last][1], lon: pts[last][0] };
+  }
+
+  var pathRedrawTimer = null;
+  function schedulePathRedraw() {
+    if (pathRedrawTimer) return;
+    pathRedrawTimer = window.setTimeout(function () {
+      pathRedrawTimer = null;
+      if (state.session && currentRoute() === '/journey') drawPathView(state.session);
+    }, 60);
+  }
+
+  /** 重画路径视图（由 patchNav / 罗盘 / 定位定时调用） */
+  function drawPathView(session) {
+    var host = document.querySelector('[data-pathview]');
+    if (!host) return;
+    var svg = host.querySelector('.pathview__svg');
+    if (!svg) return;
+    var line = svg.querySelector('[data-path-line]');
+    var chevrons = svg.querySelector('[data-path-chevrons]');
+    var arrowG = svg.querySelector('[data-path-arrow]');
+    var cap = host.querySelector('[data-path-cap]');
+
+
+    if (!session || !isRealSession(session)) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    if (!state.route || !state.route.points || state.route.points.length < 2) {
+      host.classList.add('pathview--empty');
+      line.setAttribute('d', '');
+      chevrons.innerHTML = '';
+      arrowG.innerHTML = '';
+      if (cap) cap.textContent = '正在规划路径…';
+      return;
+    }
+    host.classList.remove('pathview--empty');
+
+    var here = ui.lastFix || ui.myLocation;
+    var progress = window.BW_GEO.routeProgress(state.route, here);
+    if (!progress) return;
+
+    var routeRemaining = Math.max(0, state.route.distanceMeters - progress.walked);
+    // 保密：接近终点就整段淡出，不允许看见终点
+    if (routeRemaining < 60) {
+      line.setAttribute('d', '');
+      chevrons.innerHTML = '';
+      arrowG.innerHTML = '';
+      if (cap) cap.textContent = '就在附近 · 抬头看看周围';
+      return;
+    }
+
+    var pts = state.route.points;
+    // 地图「朝上」：用户选择「北朝上」时固定 0°；否则 罗盘 > 移动方向 > 路线方向
+    var follow = state.settings.mapFollowsHeading !== false;
+    var upInfo = follow ? upBearingFor(progress.bearing || 0) : { value: 0, source: 'north' };
+    var hasCompass = upInfo.source !== 'route' && upInfo.source !== 'north';
+    var b = upInfo.value;
+    var rad = b * Math.PI / 180;
+    var sinB = Math.sin(rad);
+    var cosB = Math.cos(rad);
+    var kx = Math.cos(progress.snappedLat * Math.PI / 180) * 111320;
+    var ky = 110540;
+    var CX = 160;
+    var CY = 168;
+    // 迷雾窗口：前后各一段；前方永远短于「剩余里程」，保证不露终点
+    var AHEAD = Math.min(260, Math.max(120, routeRemaining - 25));
+    var BEHIND = Math.min(140, Math.max(60, progress.walked - 5));
+    var FOG = 46;               // 两端渐隐的过渡长度（米）
+
+    if (!routeCum) buildRouteCum(state.route);
+
+    // 沿路径按 6 米插值，得到迷雾窗口内的点（含前后）
+    var local = [];
+    var startS = Math.max(0, progress.walked - BEHIND);
+    var endS = Math.min(state.route.distanceMeters, progress.walked + AHEAD);
+    for (var sPos = startS; sPos <= endS + 0.001; sPos += 3) {
+      var at = pointAtAlong(state.route, routeCum, sPos);
+      if (!at) continue;
+      var e = (at.lon - progress.snappedLon) * kx;
+      var n = (at.lat - progress.snappedLat) * ky;
+      local.push({
+        s: sPos,
+        along: e * sinB + n * cosB,
+        lateral: e * cosB - n * sinB
+      });
+    }
+    if (local.length < 2) return;
+
+    // 自适应缩放：竖向前方 148px，横向不超出画布
+    var scaleY = 148 / AHEAD;
+    var minLat = Infinity;
+    var maxLat = -Infinity;
+    for (var q = 0; q < local.length; q += 1) {
+      if (local[q].lateral < minLat) minLat = local[q].lateral;
+      if (local[q].lateral > maxLat) maxLat = local[q].lateral;
+    }
+    var halfSpan = Math.max(12, Math.max(Math.abs(minLat), Math.abs(maxLat)) + 8);
+    var scaleX = Math.min(scaleY, 118 / halfSpan);
+    var midLat = (minLat + maxLat) / 2;
+    var cX = Math.max(46, Math.min(274, CX - midLat * scaleX));
+
+    function toScreenLocal(along, lateral) {
+      return { x: cX + lateral * scaleX, y: CY - along * scaleY };
+    }
+
+    // 逐段绘制：两端透明度渐隐，未走过的后半段更淡（探索感）
+    var behindG = svg.querySelector('[data-path-behind]');
+    var aheadParts = '';
+    var behindParts = '';
+    for (var r2 = 0; r2 < local.length - 1; r2 += 1) {
+      var a = local[r2];
+      var b2 = local[r2 + 1];
+      var pa = toScreenLocal(a.along, a.lateral);
+      var pb = toScreenLocal(b2.along, b2.lateral);
+      // 距窗口两端的距离 → 透明度
+      var da = Math.min(a.s - startS, endS - a.s);
+      var db = Math.min(b2.s - startS, endS - b2.s);
+      var op = Math.min(1, Math.max(0, Math.min(da, db) / FOG));
+      if (op <= 0.02) continue;
+      var isBehind = (a.s < progress.walked);
+      var ddx = pb.x - pa.x;
+      var ddy = pb.y - pa.y;
+      var dlen = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+      var ux = ddx / dlen;
+      var uy = ddy / dlen;
+      var ext = 0.9;   // 两端各延一点，避免 butt 端点留下细缝
+      var seg = '<line x1="' + (pa.x - ux * ext).toFixed(1) + '" y1="' + (pa.y - uy * ext).toFixed(1) +
+        '" x2="' + (pb.x + ux * ext).toFixed(1) + '" y2="' + (pb.y + uy * ext).toFixed(1) +
+        '" stroke="' + (isBehind ? '#AEB8D6' : '#5B6CFF') + '" stroke-width="' + (isBehind ? 7 : 9) +
+        '" stroke-linecap="butt" stroke-opacity="' + (op * (isBehind ? 0.55 : 1)).toFixed(2) + '"/>';
+      if (isBehind) behindParts += seg;
+      else aheadParts += seg;
+    }
+    line.innerHTML = aheadParts;
+    if (behindG) behindG.innerHTML = behindParts;
+    var PX_PER_M = scaleY;
+    var CX_USE = cX;
+
+    // 前方每 55 米一个行进箭头
+    var chev = '';
+    for (var mm = 40; mm <= AHEAD - 10; mm += 55) {
+      var at2 = pointAtAlong(state.route, routeCum, progress.walked + mm);
+      if (!at2) continue;
+      var e3 = (at2.lon - progress.snappedLon) * kx;
+      var n3 = (at2.lat - progress.snappedLat) * ky;
+      var sp = toScreenLocal(e3 * sinB + n3 * cosB, e3 * cosB - n3 * sinB);
+      var op2 = Math.min(1, Math.max(0, (AHEAD - mm) / FOG));
+      // 该处的路线切向 → 箭头的屏幕旋转角（北朝上模式下必须旋转，否则全部朝上）
+      var ahead2 = pointAtAlong(state.route, routeCum, progress.walked + mm + 3);
+      var ang = 0;
+      if (ahead2) {
+        var lat1r = at2.lat * Math.PI / 180;
+        var lat2r = ahead2.lat * Math.PI / 180;
+        var dLonr = (ahead2.lon - at2.lon) * Math.PI / 180;
+        var yy = Math.sin(dLonr) * Math.cos(lat2r);
+        var xx = Math.cos(lat1r) * Math.sin(lat2r) - Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLonr);
+        var tangent = (Math.atan2(yy, xx) * 180 / Math.PI + 360) % 360;
+        ang = tangent - b;
+      }
+      chev += '<path d="M -5 3 L 0 -4 L 5 3" transform="translate(' + sp.x.toFixed(1) + ',' + sp.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')" fill="none" stroke="rgba(17,24,39,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
+    }
+    chevrons.innerHTML = chev;
+
+    // 你的箭头（偏离路径时画虚线连回路径）
+    var userLat = here ? here.lat : progress.snappedLat;
+    var userLon = here ? (here.lon !== undefined ? here.lon : here.lng) : progress.snappedLon;
+    var ue = (userLon - progress.snappedLon) * kx;
+    var un = (userLat - progress.snappedLat) * ky;
+    var uLateral = ue * cosB - un * sinB;
+    var ax = cX + uLateral * scaleX;
+    var ay = CY;
+    var deviated = Math.abs(uLateral) > 18;
+    var pathHeadX = cX;
+    var pathHeadY = CY;
+    // 你的箭头方向：跟随模式恒朝上；北朝上时按你的实际朝向旋转
+    var arrowRot = 0;
+    if (!follow) {
+      var nowH = Date.now();
+      if (ui.deviceHeading !== null && ui.deviceHeading !== undefined && ui.headingAt && nowH - ui.headingAt < HEADING_FRESH_MS) {
+        arrowRot = ui.deviceHeading - b;
+      } else if (ui.moveHeading !== null && ui.moveHeading !== undefined && ui.moveHeadingAt && nowH - ui.moveHeadingAt < 15000) {
+        arrowRot = ui.moveHeading - b;
+      }
+    }
+    arrowG.innerHTML =
+      (deviated ? '<line x1="' + pathHeadX + '" y1="' + pathHeadY + '" x2="' + ax.toFixed(1) + '" y2="' + ay +
+        '" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4 4" opacity=".7"/>' : '') +
+      '<g transform="translate(' + ax.toFixed(1) + ',' + ay + ')">' +
+      '<circle r="17" fill="#5B6CFF" opacity=".22"/>' +
+      '<circle r="12" fill="#FFFFFF" stroke="#5B6CFF" stroke-width="2.5"/>' +
+      '<g transform="rotate(' + arrowRot.toFixed(1) + ')">' +
+      '<path d="M 0 -8 L 6 5 L 0 2 L -6 5 Z" fill="#111827"/>' +
+      '</g>' +
+      '</g>';
+
+    // 指北针：画布上方是行进方向，所以北方向 = -bearing
+    var compassNote = svg.querySelector('[data-compass-note]');
+    var needle = svg.querySelector('[data-compass-needle]');
+    if (needle) needle.setAttribute('transform', 'rotate(' + (-b).toFixed(1) + ')');
+    if (cap) {
+      if (deviated) {
+        cap.textContent = '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米';
+      } else if (upInfo.source === 'compass') {
+        cap.textContent = '跟随你的朝向 · 转身地图也会转';
+      } else if (upInfo.source === 'move') {
+        cap.textContent = '跟随移动方向 · 没有罗盘也能转（走起来更准）';
+      } else if (upInfo.source === 'north') {
+        cap.textContent = '北朝上 · 点这里改成跟随朝向';
+      } else {
+        cap.textContent = '迷雾模式 · 只看见前后一段';
+      }
+    }
+
+    // 罗盘可用时，让 UI 上的「你」箭头始终朝上（地图已按朝向旋转）
+    if (hasCompass && compassNote) {
+      compassNote.textContent = '跟随朝向';
+    }
+  }
+
+  /** 导航卡（整页唯一的距离数字与箭头都在这里） */
+  function navCardHTML(session) {
+    var nav = computeNav(session);
+    state.navSnapshot = nav;
+    state.clueSnapshot = session.unlockedHintCount;
+    return '<section class="navcard" data-nav="1">' +
+      '<div class="navcard__top">' +
+      '<div class="navcard__arrow" data-nav-arrow aria-hidden="true">' + nav.arrow + '</div>' +
+      '<div class="navcard__text">' +
+      '<p class="navcard__main" data-nav-main>' + esc(nav.main) + '</p>' +
       '<p class="navcard__sub" data-nav-sub>' + esc(nav.sub) + '</p>' +
       '</div>' +
       '</div>' +
