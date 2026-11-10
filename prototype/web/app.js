@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v38';
+  var APP_VERSION = 'v39';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -634,6 +634,15 @@
     ui.myLocation = here;
     ui.lastFix = { lat: here.lat, lon: here.lon, accuracy: pos.coords.accuracy };
     ui.geoErrorCount = 0;
+    // 用连续两个定位点推算行进方向（没有罗盘时地图靠它跟着你转）
+    if (ui.prevFix && ui.prevFix.lat !== undefined) {
+      var moved = window.BW_GEO && window.BW_GEO.distanceOf
+        ? window.BW_GEO.distanceOf(ui.prevFix, here) : null;
+      if (moved !== null && moved !== undefined && moved >= 2.5) {
+        applyMoveHeading(bearingBetween(ui.prevFix, here));
+      }
+    }
+    ui.prevFix = here;
     startGeoRecheck();
     var target = session.coordinate;
     var d = window.BW_GEO && window.BW_GEO.distanceOf
@@ -678,7 +687,40 @@
      - iOS Safari：webkitCompassHeading（需用户手势后 requestPermission）
      - 都没有：退回路线方向（保持旧行为）
      ============================================================ */
-  var HEADING_STORE = 0.28;     // 低通滤波系数，越小越稳
+  var HEADING_STORE = 0.5;      // 低通滤波系数（越大越跟手）
+  var HEADING_FRESH_MS = 2500;  // 罗盘事件多久内算"新鲜"
+
+  /** 从两个定位点算行进方向（0=北，顺时针）；没有罗盘时用它让地图跟着你转 */
+  function bearingBetween(from, to) {
+    var lat1 = from.lat * Math.PI / 180;
+    var lat2 = to.lat * Math.PI / 180;
+    var dLon = (to.lon - from.lon) * Math.PI / 180;
+    var y = Math.sin(dLon) * Math.cos(lat2);
+    var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  function applyMoveHeading(raw) {
+    if (raw === null || raw === undefined || isNaN(raw)) return;
+    var h = ((raw % 360) + 360) % 360;
+    ui.moveHeading = h;
+    ui.moveHeadingAt = Date.now();
+    if (currentRoute() === '/journey') schedulePathRedraw();
+  }
+
+  /** 当前用于「地图朝上」的方向：新鲜罗盘 > 移动方向 > 路线方向 */
+  function upBearingFor(routeBearing) {
+    var now = Date.now();
+    if (ui.deviceHeading !== null && ui.deviceHeading !== undefined &&
+        ui.headingAt && now - ui.headingAt < HEADING_FRESH_MS) {
+      return { value: ui.deviceHeading, source: 'compass' };
+    }
+    if (ui.moveHeading !== null && ui.moveHeading !== undefined &&
+        ui.moveHeadingAt && now - ui.moveHeadingAt < 15000) {
+      return { value: ui.moveHeading, source: 'move' };
+    }
+    return { value: routeBearing, source: 'route' };
+  }
 
   function applyHeading(raw) {
     var h = null;
@@ -688,8 +730,9 @@
       ui.deviceHeading = h;
       return;
     }
+    ui.headingAt = Date.now();
     var delta = ((h - ui.deviceHeading + 540) % 360) - 180;
-    if (Math.abs(delta) < 0.4) return;
+    if (Math.abs(delta) < 1.5) return;
     // 大角度转身（>45°）直接跟上，避免"转了半天地图才动"；小角度做平滑防抖
     if (Math.abs(delta) > 45) {
       ui.deviceHeading = h;
@@ -722,7 +765,7 @@
     if (!ui.headingTimer) {
       ui.headingTimer = window.setInterval(function () {
         if (currentRoute() === '/journey') schedulePathRedraw();
-      }, 350);
+      }, 200);
     }
   }
 
@@ -757,6 +800,8 @@
     // 不会立刻推初始值，用户会一直看到抽盒时的旧距离，直到 GPS 变化才更新。
     if (navigator.geolocation.getCurrentPosition) {
       navigator.geolocation.getCurrentPosition(function (pos) {
+        ui.lastFixSource = 'poll';
+        ui.lastFixAt = Date.now();
         applyFixToSession(pos);
       }, function () { /* 失败就等 watch */ }, {
         enableHighAccuracy: true, maximumAge: 0, timeout: 8000
@@ -830,7 +875,7 @@
           }
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 4000 });
       }
-    }, 1800);
+    }, 1200);
   }
 
   function onWalk() {
@@ -1241,6 +1286,22 @@
       ['是否真实定位', isRealSession(session) ? '是' : '否'],
       ['定位权限', ui.geoPermission || '未请求 / 未知'],
       ['最近定位精度', ui.lastFix && typeof ui.lastFix.accuracy === 'number' ? Math.round(ui.lastFix.accuracy) + ' 米' : '还没有定位读数'],
+      ['定位刷新', (function () {
+        if (!ui.lastFixAt) return '还没有定位读数';
+        var age = Math.round((Date.now() - ui.lastFixAt) / 1000);
+        var src = ui.lastFixSource || 'watch';
+        return '每 ' + (src === 'poll' ? '1.2' : '实时') + ' 秒 · 最近一次 ' + age + ' 秒前';
+      })()],
+      ['地图朝向来源', (function () {
+        var now = Date.now();
+        if (ui.deviceHeading !== null && ui.deviceHeading !== undefined && ui.headingAt && now - ui.headingAt < 2500) {
+          return '罗盘 ' + Math.round(ui.deviceHeading) + '°（转身地图会转）';
+        }
+        if (ui.moveHeading !== null && ui.moveHeading !== undefined && ui.moveHeadingAt && now - ui.moveHeadingAt < 15000) {
+          return '移动方向 ' + Math.round(ui.moveHeading) + '°（没有罗盘时的兜底）';
+        }
+        return '路线方向（没有罗盘、也还没走动）';
+      })()],
       ['当前坐标', ui.lastFix
         ? ui.lastFix.lat.toFixed(5) + ', ' + ui.lastFix.lon.toFixed(5)
         : (ui.myLocation ? ui.myLocation.lat.toFixed(5) + ', ' + ui.myLocation.lon.toFixed(5) : '还没有定位读数')],
@@ -1999,9 +2060,10 @@
     }
 
     var pts = state.route.points;
-    // 地图「朝上」的方向：优先你手机的朝向（转身地图就转），没有罗盘才用路线方向
-    var hasCompass = ui.deviceHeading !== null && ui.deviceHeading !== undefined;
-    var b = hasCompass ? ui.deviceHeading : (progress.bearing || 0);
+    // 地图「朝上」：新鲜罗盘 > 移动方向 > 路线方向
+    var upInfo = upBearingFor(progress.bearing || 0);
+    var hasCompass = upInfo.source !== 'route';
+    var b = upInfo.value;
     var rad = b * Math.PI / 180;
     var sinB = Math.sin(rad);
     var cosB = Math.cos(rad);
@@ -2126,8 +2188,10 @@
     if (cap) {
       if (deviated) {
         cap.textContent = '你离路径约 ' + Math.round(Math.abs(uLateral)) + ' 米 · 前方 ' + Math.round(routeRemaining) + ' 米';
-      } else if (hasCompass) {
+      } else if (upInfo.source === 'compass') {
         cap.textContent = '跟随你的朝向 · 转身地图也会转';
+      } else if (upInfo.source === 'move') {
+        cap.textContent = '跟随移动方向 · 没有罗盘也能转（走起来更准）';
       } else {
         cap.textContent = '迷雾模式 · 只看见前后一段';
       }
@@ -2173,12 +2237,12 @@
       }
     }
     var now = Date.now();
-    if (ui.navPatchAt && now - ui.navPatchAt < 350) {
+    if (ui.navPatchAt && now - ui.navPatchAt < 200) {
       if (!ui.navPatchTimer) {
         ui.navPatchTimer = window.setTimeout(function () {
           ui.navPatchTimer = null;
           patchNav(state.session);
-        }, 380);
+        }, 220);
       }
       return;
     }

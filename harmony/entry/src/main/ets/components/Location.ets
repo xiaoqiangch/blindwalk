@@ -141,8 +141,8 @@ export class GeoWatcher {
     this.request = {
       priority: geoLocationManager.LocationRequestPriority.FIRST_FIX,
       scenario: geoLocationManager.LocationRequestScenario.UNSET,
-      timeInterval: 3,
-      distanceInterval: 5
+      timeInterval: 1,
+      distanceInterval: 2
     };
     this.listener = (location: geoLocationManager.Location) => {
       const point: GeoPoint = {
@@ -150,6 +150,7 @@ export class GeoWatcher {
         longitude: location.longitude
       };
       this.lastFixAt = Date.now();
+      this.updateMoveHeading(point);
       onPoint(point);
     };
   }

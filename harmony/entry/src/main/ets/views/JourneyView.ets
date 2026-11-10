@@ -86,6 +86,7 @@ export struct JourneyView {
   private watcher: GeoWatcher | undefined = undefined;
   private compass: CompassWatcher | undefined = undefined;
   @State private heading: number = -1;
+  @State private compassHeading: number = -1;
 
   aboutToAppear(): void {
     this.load();
@@ -208,6 +209,7 @@ export struct JourneyView {
       return;
     }
     const compass: CompassWatcher = new CompassWatcher((heading: number) => {
+      this.compassHeading = heading;
       this.heading = heading;
     });
     if (compass.start()) {
@@ -225,6 +227,13 @@ export struct JourneyView {
   private onGeoPoint(point: GeoPoint): void {
     this.fixLat = point.latitude;
     this.fixLon = point.longitude;
+    // 没罗盘（或罗盘还没就绪）时，用移动方向让地图跟着转
+    if (this.compassHeading < 0 && this.watcher !== undefined) {
+      const move = this.watcher.heading();
+      if (move >= 0) {
+        this.heading = move;
+      }
+    }
     const store = getStore();
     store.setLastKnownOrigin(point);
     const events: QuestEvent[] = store.updateGeoLocation(point);

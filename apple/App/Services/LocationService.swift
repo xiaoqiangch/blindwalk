@@ -198,6 +198,9 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
     private(set) var headingDegrees: Double?
     private var fixWatchdog: Timer?
     private var lastFixAt = Date()
+    /// 用连续两个定位点推算的行进方向（真机没罗盘/罗盘未就绪时用）
+    private var moveHeading: Double?
+    private var previousPoint: GeoPoint?
     private(set) var authorizationStatus: LocationAuthorization = .notDetermined
     private(set) var horizontalAccuracy: Double?
     /// 是否已经拿到过至少一个有效定位点
@@ -227,7 +230,7 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 5
+        manager.distanceFilter = 3
         manager.activityType = .fitness
         manager.headingFilter = 5
         manager.headingOrientation = .portrait
@@ -345,12 +348,22 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude
         )
+        // 朝向优先级：设备罗盘（真机）> CoreLocation course（移动中有效）> 两点推算
+        var upHeading = headingDegrees
+        if upHeading == nil || upHeading == -1 {
+            let course = location.course
+            if course >= 0 && course.isFinite {
+                upHeading = course
+            } else {
+                upHeading = moveHeading
+            }
+        }
         let reading = LocationReading(
             timestamp: Date(),
             origin: origin,
             remainingMeters: remainingMeters.map(Double.init),
             bearingDegrees: bearingDegrees,
-            headingDegrees: headingDegrees,
+            headingDegrees: upHeading,
             horizontalAccuracy: horizontalAccuracy
         )
 
@@ -385,6 +398,22 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let latest = locations.last else { return }
         lastFixAt = Date()
+
+        // 移动方向：走了 ≥2.5m 才更新，避免站着时抖动
+        let point = GeoPoint(latitude: latest.coordinate.latitude, longitude: latest.coordinate.longitude)
+        if let previous = previousPoint {
+            let moved = GeoMath.distance(from: previous, to: point)
+            if moved >= 2.5 {
+                let raw = GeoMath.bearing(from: previous, to: point)
+                if let current = moveHeading {
+                    let delta = ((raw - current + 540).truncatingRemainder(dividingBy: 360)) - 180
+                    moveHeading = (current + delta * 0.6 + 360).truncatingRemainder(dividingBy: 360)
+                } else {
+                    moveHeading = raw
+                }
+            }
+        }
+        previousPoint = point
 
         // 精度为负 = 无效点；时间太旧 = 缓存兜底点，直接丢
         guard latest.horizontalAccuracy >= 0 else { return }
