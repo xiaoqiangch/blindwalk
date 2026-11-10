@@ -2628,6 +2628,19 @@ test('迷雾路径：传 upBearing 时地图随朝向旋转（转身地图跟着
   const b = eastUp.segments[Math.floor(eastUp.segments.length / 2)];
   const samePoint: boolean = Math.abs(a.x1 - b.x1) < 0.5 && Math.abs(a.y1 - b.y1) < 0.5;
   assert.equal(samePoint, false, '几何应随朝向旋转');
+
+  // 北朝上（upBearing=0）时，画布上方=正北；行进箭头角度应等于路线方向，而不是 0
+  const northFixed = fogGeometry(line, here, layout, 0);
+  assert.equal(Math.abs(northFixed.compassRotation) < 0.001, true, '北朝上时指北针指北');
+  const firstChevron = northFixed.chevrons[0];
+  assert.ok(firstChevron !== undefined, '应有行进箭头');
+  assert.ok(Math.abs(firstChevron.angle) < 10, '正北向路线在北朝上时箭头朝上');
+
+  // 跟随朝向且设备朝东（90°）时，「你」的箭头应为 0°（屏幕上方）
+  const followEast = fogGeometry(line, here, layout, 90, 90);
+  assert.equal(Math.round(followEast.userRotation), 0, '跟随模式箭头恒朝上');
+  const northEast = fogGeometry(line, here, layout, 0, 90);
+  assert.equal(Math.round(northEast.userRotation), 90, '北朝上模式箭头按朝向旋转');
 });
 
 test('路线：取路线带 10 分钟缓存；失败返回 undefined（不阻塞）', async (): Promise<void> => {

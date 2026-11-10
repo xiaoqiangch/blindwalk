@@ -501,7 +501,8 @@ export struct JourneyView {
           hereLat: this.fixLat,
           hereLon: this.fixLon,
           viewHeight: this.mapHeight(),
-          heading: this.mapFollowsHeading ? this.heading : 0,
+          heading: this.heading,
+          northUp: !this.mapFollowsHeading,
           onCaption: (text: string) => {
             this.fogCaption = text;
           }

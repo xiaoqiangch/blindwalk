@@ -38,8 +38,10 @@ export struct BwFogPath {
   @Prop @Watch('onDataChanged') hereLon: number = 0;
   /** 画布高度 */
   @Prop viewHeight: number = 196;
-  /** 设备朝向（0–360）。<0 表示没有罗盘，按路线方向朝上 */
+  /** 设备朝向（0–360）。<0 表示没有罗盘 */
   @Prop @Watch('onDataChanged') heading: number = -1;
+  /** true = 固定北朝上（地图不跟随朝向旋转） */
+  @Prop @Watch('onDataChanged') northUp: boolean = false;
   /** 说明文案变化时通知外层（UI 展示在画布下方） */
   onCaption: (text: string) => void = () => {
   };
@@ -74,12 +76,16 @@ export struct BwFogPath {
       fetchedAt: 0
     };
     const layout: FogLayout = defaultLayout(this.canvasWidth, this.viewHeight);
-    const up: number | undefined = this.heading >= 0 ? this.heading : undefined;
+    // 地图朝上方向：北朝上 = 0；否则用设备朝向（没有就退回路线方向）
+    const up: number | undefined = this.northUp ? 0 : (this.heading >= 0 ? this.heading : undefined);
+    const deviceHeading: number | undefined = this.heading >= 0 ? this.heading : undefined;
     const geometry: FogGeometry = fogGeometry(
       { points: route.points, distanceMeters: route.distanceMeters },
       { latitude: this.hereLat, longitude: this.hereLon },
-      layout
-    , up);
+      layout,
+      up,
+      deviceHeading
+    );
     this.geometry = geometry;
     this.emitCaption(geometry.caption);
     this.draw();

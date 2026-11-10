@@ -388,7 +388,8 @@ struct JourneyView: View {
                     route: route,
                     here: currentPoint,
                     remainingMeters: session.remainingMeters,
-                    heading: mapFollowsHeading ? lastReading?.headingDegrees : 0
+                    heading: lastReading?.headingDegrees,
+                    northUp: !mapFollowsHeading
                 )
             } else {
                 JourneyMapView(

@@ -126,6 +126,8 @@ public struct FogChevron: Hashable, Sendable {
     public let along: Double
     public let lateral: Double
     public let opacity: Double
+    /// 屏幕上的朝向角度（0 = 正上方）。北朝上模式下箭头要按路线切向旋转。
+    public let angle: Double
 }
 
 public struct FogFrame: Hashable, Sendable {
@@ -209,7 +211,13 @@ public struct FogFrame: Hashable, Sendable {
             let routePoint = RouteMath.point(atAlong: progress.walked + offset, route: route)
             let coord = local(routePoint)
             let opacity = min(1, max(0, (ahead - offset) / fadeMeters))
-            chevrons.append(FogChevron(along: coord.along, lateral: coord.lateral, opacity: opacity))
+            // 路线切向 - 地图朝上方向 = 屏幕上箭头要旋转的角度
+            let nextPoint = RouteMath.point(atAlong: progress.walked + offset + 3, route: route)
+            let tangent = GeoMath.bearing(from: routePoint, to: nextPoint)
+            var angle = tangent - up
+            while angle > 180 { angle -= 360 }
+            while angle < -180 { angle += 360 }
+            chevrons.append(FogChevron(along: coord.along, lateral: coord.lateral, opacity: opacity, angle: angle))
             offset += chevronSpacing
         }
 

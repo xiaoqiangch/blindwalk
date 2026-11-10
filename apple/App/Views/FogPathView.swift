@@ -11,12 +11,15 @@ struct FogPathView: View {
     let route: WalkingRoute?
     let here: GeoPoint?
     let remainingMeters: Int
-    /// 设备朝向（罗盘）。有值时地图跟着你转身；没有则按路线方向朝上。
+    /// 设备朝向（罗盘）。用于让「你」的箭头正确指向你面朝的方向。
     var heading: Double? = nil
+    /// true = 固定北朝上（忽略 heading 旋转地图）
+    var northUp: Bool = false
 
     private var frame: FogFrame? {
         guard let route, let here else { return nil }
-        return FogFrame.make(route: route, here: here, upBearing: heading)
+        let up = northUp ? 0 : heading
+        return FogFrame.make(route: route, here: here, upBearing: up)
     }
 
     var body: some View {
@@ -153,11 +156,13 @@ struct FogPathView: View {
         for chevron in frame.chevrons {
             let center = point(along: chevron.along, lateral: chevron.lateral)
             var path = Path()
-            path.move(to: CGPoint(x: center.x - 5, y: center.y + 3))
-            path.addLine(to: CGPoint(x: center.x, y: center.y - 4))
-            path.addLine(to: CGPoint(x: center.x + 5, y: center.y + 3))
+            path.move(to: CGPoint(x: -5, y: 3))
+            path.addLine(to: CGPoint(x: 0, y: -4))
+            path.addLine(to: CGPoint(x: 5, y: 3))
+            var transform = CGAffineTransform(translationX: center.x, y: center.y)
+            transform = transform.rotated(by: chevron.angle * .pi / 180)
             context.stroke(
-                path,
+                path.applying(transform),
                 with: .color(BWTheme.ink.opacity(0.50 * chevron.opacity)),
                 style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round)
             )
@@ -182,13 +187,20 @@ struct FogPathView: View {
         context.fill(ring, with: .color(BWTheme.paper))
         context.stroke(ring, with: .color(BWTheme.amber), lineWidth: 2.5)
 
+        // 「你」的箭头：朝向 = 设备朝向 - 地图朝上方向（北朝上时按你的实际方向旋转）
+        var arrowRotation = 0.0
+        if northUp, let heading {
+            arrowRotation = heading - frame.bearing
+        }
         var arrow = Path()
-        arrow.move(to: CGPoint(x: userX, y: userY - 8))
-        arrow.addLine(to: CGPoint(x: userX + 6, y: userY + 5))
-        arrow.addLine(to: CGPoint(x: userX, y: userY + 2))
-        arrow.addLine(to: CGPoint(x: userX - 6, y: userY + 5))
+        arrow.move(to: CGPoint(x: 0, y: -8))
+        arrow.addLine(to: CGPoint(x: 6, y: 5))
+        arrow.addLine(to: CGPoint(x: 0, y: 2))
+        arrow.addLine(to: CGPoint(x: -6, y: 5))
         arrow.closeSubpath()
-        context.fill(arrow, with: .color(BWTheme.ink))
+        var arrowTransform = CGAffineTransform(translationX: userX, y: userY)
+        arrowTransform = arrowTransform.rotated(by: arrowRotation * .pi / 180)
+        context.fill(arrow.applying(arrowTransform), with: .color(BWTheme.ink))
     }
 }
 

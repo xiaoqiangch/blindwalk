@@ -368,6 +368,8 @@ export interface FogGeometry {
   deviateTo?: FogPoint;
   /** 指北针旋转角度（度；画布上方是行进方向，所以是 -bearing） */
   compassRotation: number;
+  /** 「你」的箭头旋转角度（北朝上模式下按你的实际朝向旋转；跟随模式为 0） */
+  userRotation: number;
   /** 说明文案 */
   caption: string;
   /** 是否整段隐藏 */
@@ -405,7 +407,8 @@ export function fogGeometry(
   line: RouteLine,
   here: GeoPoint,
   layout: FogLayout,
-  upBearing?: number
+  upBearing?: number,
+  deviceHeading?: number
 ): FogGeometry {
   const empty: FogGeometry = {
     segments: [],
@@ -413,6 +416,7 @@ export function fogGeometry(
     userX: layout.centerX,
     userY: layout.centerY,
     compassRotation: 0,
+    userRotation: 0,
     caption: FOG_CAPTION,
     hidden: false,
     remaining: 0,
@@ -435,10 +439,14 @@ export function fogGeometry(
   }
 
   const up: number = upBearing !== undefined ? upBearing : progress.bearing;
+  const userRotation: number = deviceHeading !== undefined && deviceHeading >= 0
+    ? deviceHeading - up
+    : 0;
   const window: FogWindow = fogWindow(progress.walked, total);
   empty.remaining = Math.round(window.remaining);
   empty.offRoute = Math.round(progress.offRoute);
   empty.compassRotation = -up;
+  empty.userRotation = userRotation;
 
   // 保密：接近终点整段隐藏
   if (window.hidden) {
@@ -550,7 +558,7 @@ export function fogGeometry(
 
       // 该处的行进朝向（相对「画布上方」）
       const localBearing: number = segmentBearing(before.latitude, before.longitude, after.latitude, after.longitude);
-      const angle: number = localBearing - progress.bearing;
+      const angle: number = localBearing - up;
 
       let opacity: number = (window.ahead - offset) / window.fade;
       if (opacity > 1) opacity = 1;
