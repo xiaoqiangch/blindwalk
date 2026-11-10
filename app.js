@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v41';
+  var APP_VERSION = 'v42';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -726,11 +726,12 @@
     var h = null;
     if (raw === null || raw === undefined || isNaN(raw)) return;
     h = ((raw % 360) + 360) % 360;
+    ui.headingAt = Date.now();   // 第一次事件也要记时间，否则"新鲜度"判断会把它丢掉
     if (ui.deviceHeading === null || ui.deviceHeading === undefined) {
       ui.deviceHeading = h;
+      if (currentRoute() === '/journey') schedulePathRedraw();
       return;
     }
-    ui.headingAt = Date.now();
     var delta = ((h - ui.deviceHeading + 540) % 360) - 180;
     if (Math.abs(delta) < 1.5) return;
     // 大角度转身（>45°）直接跟上，避免"转了半天地图才动"；小角度做平滑防抖
@@ -2155,10 +2156,19 @@
       var n3 = (at2.lat - progress.snappedLat) * ky;
       var sp = toScreenLocal(e3 * sinB + n3 * cosB, e3 * cosB - n3 * sinB);
       var op2 = Math.min(1, Math.max(0, (AHEAD - mm) / FOG));
-      chev += '<path d="M ' + (sp.x - 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
-        ' L ' + sp.x.toFixed(1) + ' ' + (sp.y - 4).toFixed(1) +
-        ' L ' + (sp.x + 5).toFixed(1) + ' ' + (sp.y + 3).toFixed(1) +
-        '" fill="none" stroke="rgba(17,24,39,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
+      // 该处的路线切向 → 箭头的屏幕旋转角（北朝上模式下必须旋转，否则全部朝上）
+      var ahead2 = pointAtAlong(state.route, routeCum, progress.walked + mm + 3);
+      var ang = 0;
+      if (ahead2) {
+        var lat1r = at2.lat * Math.PI / 180;
+        var lat2r = ahead2.lat * Math.PI / 180;
+        var dLonr = (ahead2.lon - at2.lon) * Math.PI / 180;
+        var yy = Math.sin(dLonr) * Math.cos(lat2r);
+        var xx = Math.cos(lat1r) * Math.sin(lat2r) - Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLonr);
+        var tangent = (Math.atan2(yy, xx) * 180 / Math.PI + 360) % 360;
+        ang = tangent - b;
+      }
+      chev += '<path d="M -5 3 L 0 -4 L 5 3" transform="translate(' + sp.x.toFixed(1) + ',' + sp.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')" fill="none" stroke="rgba(17,24,39,.5)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="' + op2.toFixed(2) + '"/>';
     }
     chevrons.innerHTML = chev;
 
