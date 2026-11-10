@@ -1889,13 +1889,13 @@ test('账号：注册成功写 Cookie 与用户名；失败给人类可读原因
     body: JSON.stringify({ ok: true, user: { id: 'u1', username: '阿澈', createdAt: 1 } }),
     headers: { 'set-cookie': 'bw_uid=tok1; HttpOnly; Path=/' }
   }));
-  const result = await register(client, kv, 'http://127.0.0.1:8803', '阿澈澈', 'secret123');
+  const result = await register(client, kv, ACCOUNT_BASE_DEFAULT, '阿澈澈', 'secret123');
   assert.equal(result.ok, true);
   if (result.value !== undefined) assert.equal(result.value.username, '阿澈');
   const config = readAccountConfig(kv);
   assert.equal(config.user !== undefined, true);
   assert.equal(config.cookie, 'bw_uid=tok1');
-  assert.equal(config.baseUrl, 'http://127.0.0.1:8803');
+  assert.equal(config.baseUrl, 'https://xqlounge.top');
 
   const bad = new FakeHttp((): HttpResponse => ({
     status: 401,
@@ -1989,7 +1989,7 @@ test('账号：错误码文案 + 地址规范化', (): void => {
   assert.equal(accountErrorText('UNKNOWN', '兜底'), '兜底');
   assert.equal(normalizeBaseUrl('  http://127.0.0.1:8803/  '), 'http://127.0.0.1:8803');
   assert.equal(normalizeBaseUrl(''), ACCOUNT_BASE_DEFAULT);
-  assert.equal(ACCOUNT_BASE_DEFAULT, 'http://127.0.0.1:8803');
+  assert.equal(ACCOUNT_BASE_DEFAULT, 'https://xqlounge.top');
 });
 
 // ============================================================

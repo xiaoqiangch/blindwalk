@@ -7,7 +7,7 @@
  * 契约：account/docs/API.md（register / login / logout / me / PUT me/profile / DELETE me）
  * 网络与 Cookie 管理在 core/account.ts（鸿蒙 http 不自动存 Cookie，这里手动带）。
  *
- * 服务地址可配，默认 http://127.0.0.1:8803。
+ * 服务地址可配，默认 https://xqlounge.top（公网）。
  */
 
 import { promptAction } from '@kit.ArkUI';
@@ -283,7 +283,7 @@ export struct BwAccountPanel {
       }
       .width('100%')
 
-      Text('本地开发默认 http://127.0.0.1:8803。登录是可选的，不登录也能正常用。')
+      Text('默认连公网 https://xqlounge.top。登录是可选的，不登录也能正常用。')
         .fontSize(BWFont.microSm)
         .fontColor(BWColor.ink3)
         .width('100%')

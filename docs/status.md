@@ -279,6 +279,18 @@
 | 配色 | 从暖褐奶油 → **冷调近白 + 靛蓝主色 + 薄荷/珊瑚/紫罗兰点缀**；三端 token 同步，清掉所有残留暖色（含盒体插画、卡片渐变、缩略图底色） |
 | 验证 | Web 模拟行走：12 次移动全部在 ~1.5s 内更新；转向 90° 指北针立即旋转；iOS BUILD SUCCEEDED + 装两台模拟器；鸿蒙 101/101 + 25 文件 0 error |
 
+### 2026-11-10 10:20 · 完整版部署到自有服务器
+
+| 项 | 结果 |
+|---|---|
+| 服务器 | xqlounge.top（Ubuntu 24.04 / 1.6G 内存 / 9G 空闲） |
+| 运行时 | Node 22.23.4 + nginx 1.24 + certbot（Let's Encrypt，自动续期） |
+| Web | https://xqlounge.top/ 200，Service Worker 正常，mapkeys.json 已注入 |
+| 账号 | 同源 `/api/*`，注册/登录/同步实测通过；数据 `/var/lib/blindwalk/account/` |
+| 后台 | `/admin/`（nginx 剥前缀），登录/POI/地图 Key 实测通过；数据 `/var/lib/blindwalk/admin/` |
+| 客户端 | 同源自动识别账号地址；iOS/鸿蒙默认账号地址改为 https://xqlounge.top |
+| 部署脚本 | `scripts/deploy-server.sh`（幂等，含权限修正、systemd、nginx、certbot、验证） |
+
 ## 5. 风险与对策
 
 | 风险 | 影响 | 对策 |

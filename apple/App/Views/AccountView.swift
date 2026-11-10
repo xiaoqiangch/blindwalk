@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - 账号（docs/parity.md §4 / account/docs/API.md）
 //
 // 未登录：本地单机可用；登录后：同步到账号 / 从账号恢复 / 退出 / 删除账号。
-// 服务地址可配置，默认 http://127.0.0.1:8803。
+// 服务地址可配置，默认 https://xqlounge.top。
 
 struct AccountView: View {
 
@@ -149,7 +149,7 @@ struct AccountView: View {
 
     private var loginCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            field("账号服务地址", text: $baseURL, placeholder: "http://127.0.0.1:8803", secure: false)
+            field("账号服务地址", text: $baseURL, placeholder: "https://xqlounge.top", secure: false)
             field("用户名", text: $username, placeholder: "3–24 个字符", secure: false)
             field("密码", text: $password, placeholder: "至少 6 位", secure: true)
 
@@ -284,7 +284,7 @@ struct AccountView: View {
     }
 
     private var hintCard: some View {
-        Text("账号是可选的。不登录也能用，数据留在本机。\n云端账号需要把 account 服务跑起来（bash scripts/start-account.sh）；模拟器可直接连 http://127.0.0.1:8803。")
+        Text("账号是可选的。不登录也能用，数据留在本机。\n默认连公网 https://xqlounge.top（已部署），单元测试/本地开发也可改成 http://127.0.0.1:8803。")
             .font(.system(size: 13))
             .foregroundStyle(BWTheme.ink3)
             .fixedSize(horizontal: false, vertical: true)

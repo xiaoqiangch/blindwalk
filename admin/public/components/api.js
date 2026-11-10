@@ -5,6 +5,10 @@
 (function () {
   'use strict';
 
+  // 部署在 /admin 子路径时（如 https://xqlounge.top/admin/），API 也要带同样的前缀，
+  // 反向代理会剥掉 /admin 再转给后台服务。
+  const PREFIX = location.pathname.indexOf('/admin') === 0 ? '/admin' : '';
+
   async function request(method, path, body) {
     const init = { method: method, headers: {} };
     if (body !== undefined) {
@@ -13,7 +17,7 @@
     }
     let response;
     try {
-      response = await fetch(path, init);
+      response = await fetch(PREFIX + path, init);
     } catch (error) {
       const err = new Error('网络请求失败：' + (error && error.message ? error.message : String(error)));
       err.code = 'NETWORK';

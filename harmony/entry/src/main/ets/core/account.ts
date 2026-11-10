@@ -20,7 +20,7 @@ import { KeyValueStore } from './contract';
 import { HttpClient, HttpMethod, errorText } from './http';
 
 /** 账号服务默认地址（本地开发；设置里可改） */
-export const ACCOUNT_BASE_DEFAULT: string = 'http://127.0.0.1:8803';
+export const ACCOUNT_BASE_DEFAULT: string = 'https://xqlounge.top';
 
 /** 账号配置 / 会话的存储键 */
 export const ACCOUNT_CONFIG_KEY: string = 'blindwalk.account.v1';

@@ -4,7 +4,8 @@ import Observation
 // MARK: - 账号服务（account/docs/API.md）
 //
 // Cookie 会话（HttpOnly）；未登录时完全本地可用。
-// 默认服务地址 http://127.0.0.1:8803，可在「我的 → 账号」里改。
+// 默认服务地址 https://xqlounge.top（公网，已部署），可在「我的 → 账号」里改；
+// 本地开发可改成 http://127.0.0.1:8803。
 // 同步是「整包覆盖」：profile + surprises + settings。
 
 struct AccountUser: Codable, Hashable, Sendable {
@@ -34,7 +35,7 @@ final class AccountService {
     static let shared = AccountService()
 
     private static let storeKey = "bw.account.v1"
-    private static let defaultBaseURL = "http://127.0.0.1:8803"
+    private static let defaultBaseURL = "https://xqlounge.top"
 
     var baseURL: String
     var user: AccountUser?

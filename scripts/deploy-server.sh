@@ -41,6 +41,16 @@ rm -f "$MAPKEYS_TMP"
 echo "== 2.5) 修正权限（macOS rsync 会带 600，nginx 读不了）=="
 ssh "$HOST" "chown -R www-data:www-data $REMOTE_DIR/web && chmod -R a+rX $REMOTE_DIR/web && echo '   权限已修正'"
 
+echo "== 2.6) 同步后台（POI/Key 管理）=="
+ssh "$HOST" "mkdir -p $REMOTE_DIR/admin $DATA_DIR/admin"
+rsync -az --exclude 'data' --exclude 'node_modules' --exclude 'tests' --exclude '*.md' \
+  admin/ "$HOST:$REMOTE_DIR/admin/"
+ssh "$HOST" "chown -R root:root $REMOTE_DIR/admin && echo '   后台文件已同步'"
+if [ -f admin/data/blindwalk.db ]; then
+  # 复制策展 POI 与地图 Key（数据库本身不进 git，也不会进公网）
+  scp -q admin/data/blindwalk.db "$HOST:$DATA_DIR/admin/blindwalk.db" && echo "   已同步后台数据库（含策展 POI / 地图 Key）"
+fi
+
 echo "== 3) 创建 systemd 服务（账号）=="
 ssh "$HOST" "cat > /etc/systemd/system/blindwalk-account.service <<'UNIT'
 [Unit]
@@ -69,6 +79,36 @@ systemctl enable --now blindwalk-account
 sleep 1
 systemctl is-active blindwalk-account"
 
+echo "== 3.5) 创建 systemd 服务（后台）=="
+ADMIN_PASS="$(/opt/homebrew/bin/node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))")"
+ssh "$HOST" "cat > /etc/systemd/system/blindwalk-admin.service <<'UNIT'
+[Unit]
+Description=Bumia admin backend
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$REMOTE_DIR/admin
+Environment=NODE_ENV=production
+Environment=PORT=8802
+Environment=HOST=127.0.0.1
+Environment=BW_DATA_DIR=$DATA_DIR/admin
+Environment=BW_ADMIN_PASSWORD=$ADMIN_PASS
+ExecStart=/usr/local/bin/node $REMOTE_DIR/admin/server/index.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now blindwalk-admin
+sleep 1
+systemctl is-active blindwalk-admin"
+printf '后台管理密码（请保存）：%s\n' "$ADMIN_PASS"
+
 echo "== 4) 配置 nginx =="
 ssh "$HOST" "cat > /etc/nginx/sites-available/blindwalk <<'NGINX'
 server {
@@ -91,6 +131,16 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header Cookie \$http_cookie;
         add_header Cache-Control \"no-store\" always;
+    }
+
+    # 后台管理（/admin 前缀会被剥掉再转给 8802）
+    location /admin/ {
+        proxy_pass http://127.0.0.1:8802/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     # Service Worker / 入口页不缓存，避免更新不生效
@@ -117,8 +167,8 @@ ssh "$HOST" "certbot --nginx -d $DOMAIN --non-interactive --agree-tos --register
 
 echo "== 6) 验证 =="
 sleep 2
-curl -s -m 10 -o /dev/null -w "  首页        https=%{http_code}\n" "https://$DOMAIN/" || true
-curl -s -m 10 -w "\n" "https://$DOMAIN/api/health" | head -2
+curl -s -m 10 --noproxy '*' -o /dev/null -w "  首页        https=%{http_code}\n" "https://$DOMAIN/" || true
+curl -s -m 10 --noproxy '*' -w "\n" "https://$DOMAIN/api/health" | head -2
 echo
 echo "✅ 部署完成：https://$DOMAIN/"
 echo "   账号服务同源：https://$DOMAIN/api/health"

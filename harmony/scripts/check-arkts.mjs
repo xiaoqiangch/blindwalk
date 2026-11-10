@@ -463,7 +463,7 @@ function checkParity() {
     fail('功能对齐', '缺少 core/account.ts（账号）');
   } else {
     expectIn('功能对齐', 'core/account.ts', account, [
-      'http://127.0.0.1:8803',
+      'https://xqlounge.top',
       '/api/auth/register',
       '/api/auth/login',
       '/api/auth/logout',
