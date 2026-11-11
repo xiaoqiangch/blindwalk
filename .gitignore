@@ -25,3 +25,6 @@ prototype/web/mapkeys.json
 
 # iOS 构建时注入的地图 Key（由 scripts/inject-ios-mapkeys.sh 生成，绝不提交）
 apple/App/Resources/mapkeys.json
+
+# 截图不入库（200MB+，本地保留供文档引用）
+screenshots/
