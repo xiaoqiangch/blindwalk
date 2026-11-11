@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v47';
+  var APP_VERSION = 'v48';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2717,6 +2717,54 @@
       .catch(function () { state.remoteSurprises = []; return []; });
   }
 
+  /** 把一条本地惊喜上传到服务器（让别人的「附近的惊喜」能看到） */
+  function uploadSurprise(item) {
+    var cfg = accountConfig();
+    var base = (cfg.baseUrl || '').replace(/\/$/, '');
+    if (!base || !item || !item.location) return Promise.resolve(false);
+    var body = {
+      lat: item.location.lat,
+      lon: (item.location.lon !== undefined ? item.location.lon : item.location.lng),
+      areaLabel: item.areaLabel || '',
+      message: item.message || '',
+      clues: item.clues || [],
+      radiusMeters: item.radiusMeters || 60,
+      authorEmoji: item.authorEmoji || '🫥',
+      photoData: item.photoData || null,
+      photoHash: item.photoHash || null
+    };
+    return fetch(base + '/api/surprises', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) return false;
+      if (item) item.uploaded = true;
+      return true;
+    }).catch(function () { return false; });
+  }
+
+  /** 把本地所有还没上传的惊喜一次性补传（历史数据迁移用） */
+  function uploadLocalSurprises() {
+    var me = state.profile.displayName;
+    var pending = (state.surprises || []).filter(function (s) {
+      return s.authorName === me && s.status === 'waiting' && !s.uploaded;
+    });
+    if (!pending.length) return Promise.resolve({ ok: 0, total: 0 });
+    var chain = Promise.resolve();
+    var okCount = 0;
+    pending.forEach(function (item) {
+      chain = chain.then(function () {
+        return uploadSurprise(item).then(function (ok) { if (ok) okCount += 1; });
+      });
+    });
+    return chain.then(function () {
+      save();
+      return { ok: okCount, total: pending.length };
+    });
+  }
+
   function nearbyHintsHTML() {
     var list = nearbySurpriseHints(3);
     if (!list.length) {
@@ -3366,6 +3414,10 @@
     };
     state.surprises = state.surprises || [];
     state.surprises.unshift(item);
+    // 埋完就上传到服务器，别人的「附近惊喜」才能看到（失败也不影响本地）
+    uploadSurprise(item).then(function (ok) {
+      if (ok) { item.uploaded = true; save(); }
+    });
     state.profile.xp = (state.profile.xp || 0) + 30;
     var newly = syncAchievements();
     save();
@@ -3373,6 +3425,17 @@
   }
 
   /* ---- 完成一次「找到并复刻」 ---- */
+  /** 找到远端惊喜后通知服务器（本地埋的跳过） */
+  function claimRemoteSurprise(item) {
+    if (!item || !item.remote) return Promise.resolve(false);
+    var cfg = accountConfig();
+    var base = (cfg.baseUrl || '').replace(/\/$/, '');
+    if (!base) return Promise.resolve(false);
+    return fetch(base + '/api/surprises/' + encodeURIComponent(item.id) + '/find', {
+      method: 'POST', credentials: 'include'
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+
   function completeSurpriseFind(id, photoData, photoHash, similarity) {
     var item = surpriseByID(id);
     if (!item || item.status !== 'waiting') return null;
@@ -3598,6 +3661,14 @@
         '<span class="mine__state mine__state--on">相似度 ' + Math.round((s.matchScore || 0) * 100) + '%</span></span></div>';
     }).join('');
 
+    var pendingUpload = mine.filter(function (s) {
+      return s.status === 'waiting' && !s.uploaded;
+    }).length;
+    var uploadBar = pendingUpload > 0
+      ? '<button type="button" class="btn btn--ghost btn--block" data-action="upload-surprises" ' +
+        'aria-label="把本地惊喜同步到服务器">把本地 ' + pendingUpload + ' 个惊喜同步到服务器（让别人也能找到）</button>'
+      : '';
+
     var mineEmpty = '<div class="empty"><p>你还没埋过惊喜。</p><button class="btn btn--primary" data-action="go-bury">埋下一个</button></div>';
     var foundEmpty = '<div class="empty"><p>还没找到别人的惊喜。</p><button class="btn btn--ghost" data-action="go-seek">去寻宝</button></div>';
 
@@ -3606,6 +3677,7 @@
       '<header class="page__hero"><h2>我的惊喜</h2><p>你埋下的，和你找到的。</p></header>' +
       '<div class="section-head"><h2>我埋的</h2><span class="micro">' + mine.length + ' 个</span></div>' +
       (mine.length ? '<div class="minelist">' + mineRows + '</div>' : mineEmpty) +
+      uploadBar +
       '<div class="section-head"><h2>我找到的</h2><span class="micro">' + found.length + ' 个</span></div>' +
       (found.length ? '<div class="minelist">' + foundRows + '</div>' : foundEmpty) +
       '</section>';
@@ -3697,6 +3769,12 @@
     computeSeekSimilarity(item, dataURL, hash).then(function (outcome) {
       var result = completeSurpriseFind(item.id, dataURL, hash, outcome.similarity);
       if (!result) { showToast('这个惊喜已经不在了', '⚠️'); return; }
+      // 远端惊喜：达标后通知服务器（谁先到算谁的）
+      if (result.passed) {
+        claimRemoteSurprise(item).then(function (ok) {
+          if (!ok && item.remote) showToast('服务器上已被别人抢先找到', '⏱️', { duration: 2600 });
+        });
+      }
       ui.seekShot = {
         dataURL: dataURL,
         similarity: outcome.similarity,
@@ -4524,6 +4602,15 @@
         } else {
           navigate('/seek-detail');
         }
+        break;
+      }
+      case 'upload-surprises': {
+        showToast('正在同步到服务器…', '☁️', { duration: 1800 });
+        uploadLocalSurprises().then(function (res) {
+          if (!res.total) { showToast('没有需要同步的惊喜', 'ℹ️'); return; }
+          showToast('已同步 ' + res.ok + '/' + res.total + ' 个', res.ok ? '✅' : '⚠️', { duration: 2600 });
+          render();
+        });
         break;
       }
       case 'go-surprises':
