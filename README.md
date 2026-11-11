@@ -17,6 +17,26 @@
 
 ---
 
+
+## 仓库结构
+
+| 分支 | 内容 | 说明 |
+|---|---|---|
+| **`main`** | 全部源码（Web / iOS / 鸿蒙 / 后台 / 账号服务 / 文档） | 开发主干，默认分支 |
+| `gh-pages` | 只有 `prototype/web/` 的发布快照 | GitHub Pages 自动部署用，**不要直接改** |
+
+> 截图（`screenshots/`，200MB+）不入库，只保留在开发机本地；
+> 地图 Key、数据库、`.env` 等敏感文件均已 gitignore。
+
+## 在线地址
+
+| 入口 | 说明 |
+|---|---|
+| **https://xqlounge.top/** | 完整版（自有服务器 + 同源账号 + 后台），需备案后 443 才稳定 |
+| https://xiaoqiangch.github.io/blindwalk/ | 静态版（GitHub Pages，账号走跨域） |
+| https://xqlounge.top/admin | 兴趣点后台（POI / 地图 Key 管理） |
+
+
 ## 一、立即体验（1 分钟）
 
 **方式 A（最简单）**：双击打开 `prototype/web/index.html`，或在浏览器中打开：
