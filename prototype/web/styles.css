@@ -3738,3 +3738,48 @@ body[data-sheet="1"] .toast,
   font-weight: 650;
   cursor: pointer;
 }
+
+/* ============================================================
+   39. 图鉴网格里的「附近惊喜」卡（锁着，点我开始找）
+   ============================================================ */
+
+.fcard--seek {
+  position: relative;
+  justify-content: center;
+  gap: 3px;
+  border: 1px dashed rgba(91, 108, 255, .45);
+  background: linear-gradient(160deg, #F4F6FF 0%, #FFFFFF 70%);
+  text-align: center;
+}
+
+.fcard--seek .fcard__emoji {
+  font-size: 22px;
+  opacity: .9;
+}
+
+.fcard__lockmark {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  font-size: 11px;
+  opacity: .75;
+}
+
+.fcard__words {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink);
+  letter-spacing: .01em;
+}
+
+.fcard__dist {
+  font-size: 10.5px;
+  color: var(--ink-3, #9CA3AF);
+}
+
+.fcard__go {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--amber);
+}

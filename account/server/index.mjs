@@ -36,6 +36,13 @@ import {
   sessionCookie,
   verifyPassword
 } from './auth.mjs';
+import {
+  SurpriseError,
+  createSurprise,
+  listNearby,
+  listMine,
+  claimSurprise
+} from './surprises.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const SERVER_DIR = path.dirname(__filename);
@@ -149,6 +156,10 @@ function sendError(req, res, error) {
     sendJson(req, res, error.status, payload);
     return;
   }
+  if (error instanceof SurpriseError) {
+    sendJson(req, res, error.status, { error: error.message, code: error.code });
+    return;
+  }
   const message = error && error.message ? String(error.message) : '服务器内部错误';
   sendJson(req, res, 500, { error: message, code: 'INTERNAL' });
 }
@@ -226,7 +237,7 @@ export function createServer(options = {}) {
     });
   }
 
-  async function handleApi(req, res, pathname) {
+  async function handleApi(req, res, pathname, searchParams) {
     const method = req.method || 'GET';
 
     if (pathname === '/api/health' && method === 'GET') {
@@ -336,6 +347,34 @@ export function createServer(options = {}) {
       return;
     }
 
+    // ---------- 惊喜（跨用户共享，「附近的惊喜」的数据来源） ----------
+    if (pathname === '/api/surprises' && method === 'GET') {
+      let viewer = null;
+      try { viewer = requireUser(req).user; } catch (_) { viewer = null; }
+      sendJson(req, res, 200, listNearby(store, searchParams, viewer));
+      return;
+    }
+
+    if (pathname === '/api/surprises' && method === 'POST') {
+      const current = requireUser(req);
+      const body = await readBody(req);
+      sendJson(req, res, 200, createSurprise(store, current.user, body, now));
+      return;
+    }
+
+    if (pathname === '/api/surprises/mine' && method === 'GET') {
+      const current = requireUser(req);
+      sendJson(req, res, 200, listMine(store, current.user));
+      return;
+    }
+
+    if (pathname.startsWith('/api/surprises/') && pathname.endsWith('/find') && method === 'POST') {
+      const current = requireUser(req);
+      const id = decodeURIComponent(pathname.slice('/api/surprises/'.length, -'/find'.length));
+      sendJson(req, res, 200, claimSurprise(store, current.user, id, now));
+      return;
+    }
+
     throw new ApiError('接口不存在：' + method + ' ' + pathname, 'NOT_FOUND', 404);
   }
 
@@ -360,7 +399,7 @@ export function createServer(options = {}) {
       return;
     }
 
-    handleApi(req, res, parsedUrl.pathname).catch((error) => sendError(req, res, error));
+    handleApi(req, res, parsedUrl.pathname, parsedUrl.searchParams).catch((error) => sendError(req, res, error));
   });
 
   server.store = store;

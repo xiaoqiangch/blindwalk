@@ -37,6 +37,29 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+-- 用户埋下的惊喜（跨用户共享，这是「附近的惊喜」的数据来源）
+CREATE TABLE IF NOT EXISTS surprises (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  author_emoji TEXT,
+  lat REAL NOT NULL,
+  lon REAL NOT NULL,
+  area_label TEXT,
+  message TEXT,
+  clues TEXT NOT NULL,
+  radius_meters REAL NOT NULL DEFAULT 60,
+  photo_data TEXT,
+  photo_hash TEXT,
+  status TEXT NOT NULL DEFAULT 'waiting',
+  finder_name TEXT,
+  found_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_surprises_geo ON surprises(lat, lon);
+CREATE INDEX IF NOT EXISTS idx_surprises_status ON surprises(status);
+CREATE INDEX IF NOT EXISTS idx_surprises_user ON surprises(user_id);
 `;
 
 /** 打开 SQLite（WAL）并建表 */
@@ -187,4 +210,94 @@ export class AccountStore {
       throw error;
     }
   }
+
+  // ---------- 惊喜（跨用户共享） ----------
+
+  createSurprise(item) {
+    this.db.prepare(
+      `INSERT INTO surprises
+       (id, user_id, author_name, author_emoji, lat, lon, area_label, message, clues,
+        radius_meters, photo_data, photo_hash, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?)`
+    ).run(
+      item.id, item.userId, item.authorName, item.authorEmoji || null,
+      item.lat, item.lon, item.areaLabel || null, item.message || null,
+      JSON.stringify(item.clues || []), item.radiusMeters || 60,
+      item.photoData || null, item.photoHash || null, item.createdAt
+    );
+    return this.getSurprise(item.id);
+  }
+
+  getSurprise(id) {
+    const row = this.db.prepare('SELECT * FROM surprises WHERE id = ?').get(id);
+    return toPlainSurprise(row);
+  }
+
+  /**
+   * 附近的待寻惊喜（不含自己的），按距离由调用方排序。
+   * 用经纬度做粗筛（1 度 ≈ 111km），避免全表扫描后算距离。
+   */
+  listNearbySurprises(lat, lon, radiusMeters, excludeUserId) {
+    const latDelta = radiusMeters / 111320;
+    const lonDelta = radiusMeters / (111320 * Math.max(0.2, Math.cos(lat * Math.PI / 180)));
+    const rows = this.db.prepare(
+      `SELECT * FROM surprises
+       WHERE status = 'waiting'
+         AND lat BETWEEN ? AND ?
+         AND lon BETWEEN ? AND ?
+         AND (? IS NULL OR user_id <> ?)
+       ORDER BY created_at DESC
+       LIMIT 80`
+    ).all(lat - latDelta, lat + latDelta, lon - lonDelta, lon + lonDelta, excludeUserId, excludeUserId);
+    return rows.map(toPlainSurprise).filter(Boolean);
+  }
+
+  listMySurprises(userId) {
+    const rows = this.db.prepare(
+      'SELECT * FROM surprises WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).all(userId);
+    return rows.map(toPlainSurprise).filter(Boolean);
+  }
+
+  /** 认领：只有 waiting 的才能被找到；返回是否抢到 */
+  markSurpriseFound(id, finderName, foundAt) {
+    const result = this.db.prepare(
+      `UPDATE surprises SET status = 'found', finder_name = ?, found_at = ?
+       WHERE id = ? AND status = 'waiting'`
+    ).run(finderName, foundAt, id);
+    return Number(result.changes) > 0;
+  }
+
+  countSurprises() {
+    const row = this.db.prepare('SELECT COUNT(*) AS c FROM surprises').get();
+    return row ? Number(row.c) : 0;
+  }
+}
+
+/** SQLite 行 → 普通对象（惊喜） */
+function toPlainSurprise(row) {
+  if (!row) return null;
+  let clues = [];
+  try {
+    const parsed = JSON.parse(String(row.clues || '[]'));
+    if (Array.isArray(parsed)) clues = parsed.map(String);
+  } catch (_) { clues = []; }
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    authorName: String(row.author_name),
+    authorEmoji: row.author_emoji ? String(row.author_emoji) : '🫥',
+    lat: Number(row.lat),
+    lon: Number(row.lon),
+    areaLabel: row.area_label ? String(row.area_label) : '',
+    message: row.message ? String(row.message) : '',
+    clues,
+    radiusMeters: Number(row.radius_meters) || 60,
+    photoData: row.photo_data ? String(row.photo_data) : null,
+    photoHash: row.photo_hash ? String(row.photo_hash) : null,
+    status: String(row.status),
+    finderName: row.finder_name ? String(row.finder_name) : null,
+    foundAt: row.found_at === null || row.found_at === undefined ? null : Number(row.found_at),
+    createdAt: Number(row.created_at)
+  };
 }

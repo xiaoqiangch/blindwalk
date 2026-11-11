@@ -7,7 +7,7 @@
 
   var D = window.BW_DATA;
   var STORE_KEY = 'blindwalk:v1';
-  var APP_VERSION = 'v46';
+  var APP_VERSION = 'v47';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
   var ROUTES = ['/home', '/setup', '/journey', '/reveal', '/cards', '/social', '/profile', '/debug',
@@ -2638,6 +2638,18 @@
     return { text: '不在附近，需要专程去', far: true };
   }
 
+  /** 1–2 个模糊提示词（不含地名/照片/作者），按 id 哈希稳定选择 */
+  var HINT_KEYWORD_POOL = [
+    ['树多', '安静'], ['有风', '开阔'], ['旧楼', '窄巷'], ['灯暖', '人少'],
+    ['临水', '台阶'], ['转角', '长椅'], ['高处', '远景'], ['砖墙', '树荫'],
+    ['半开', '隐蔽'], ['有光', '不吵']
+  ];
+  function hintKeywords(id) {
+    var seed = 0;
+    for (var i = 0; i < id.length; i += 1) seed = (seed * 31 + id.charCodeAt(i)) % 9973;
+    return HINT_KEYWORD_POOL[seed % HINT_KEYWORD_POOL.length];
+  }
+
   /** 隐晦提示：氛围描述，不含地名、不含作者之外的任何识别信息 */
   var HINT_ATMOSPHERE = [
     '那儿光线不错，适合停下来喘口气。',
@@ -2666,6 +2678,43 @@
     });
     // 不论远近都提示：远的就写"在比较远的地方"，让用户自己决定要不要去
     return list.slice(0, limit || 3);
+  }
+
+  /** 从账号服务拉「附近别人埋的惊喜」。失败就静默跳过（只用本地的） */
+  function loadNearbySurprises(lat, lon, radius) {
+    var cfg = accountConfig();
+    var base = (cfg.baseUrl || '').replace(/\/$/, '');
+    if (!base || typeof lat !== 'number' || typeof lon !== 'number') return Promise.resolve([]);
+    var url = base + '/api/surprises?lat=' + lat.toFixed(6) + '&lon=' + lon.toFixed(6) +
+      '&radius=' + (radius || 5000);
+    return fetch(url, { credentials: 'include', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.items)) return [];
+        state.remoteSurprises = data.items.map(function (item) {
+          return {
+            id: item.id,
+            remote: true,
+            authorName: '有人',
+            authorEmoji: item.authorEmoji || '🫥',
+            photoData: null,
+            photoHash: null,
+            message: '',
+            location: item.location ? { lat: item.location.lat, lon: item.location.lon } : null,
+            areaLabel: item.areaLabel || '',
+            clues: item.clues || [],
+            radiusMeters: item.radiusMeters || 60,
+            seekerPoints: 80,
+            authorPoints: 40,
+            createdAt: item.createdAt || Date.now(),
+            status: 'waiting',
+            distanceMeters: typeof item.distanceMeters === 'number' ? item.distanceMeters : null
+          };
+        });
+        if (currentRoute() === '/cards') render();
+        return state.remoteSurprises;
+      })
+      .catch(function () { state.remoteSurprises = []; return []; });
   }
 
   function nearbyHintsHTML() {
@@ -2728,6 +2777,20 @@
       return allPlaces.indexOf(a) - allPlaces.indexOf(b);
     });
 
+    // 附近别人埋的惊喜：直接混进图鉴网格（带锁图标 + 1~2 个提示词 + 距离）
+    var seekCards = nearbySurpriseHints(2).map(function (s) {
+      var bucket = distanceBucket(s._dist);
+      var words = hintKeywords(s.id).slice(0, 2);
+      return '<button type="button" class="fcard fcard--seek" data-action="start-seek-journey" data-id="' + esc(s.id) + '"' +
+        ' aria-label="附近有个惊喜，' + esc(bucket.text) + '，点我开始找">' +
+        '<span class="fcard__lockmark" aria-hidden="true">🔒</span>' +
+        '<span class="fcard__emoji" aria-hidden="true">' + (s.authorEmoji || '🎁') + '</span>' +
+        '<span class="fcard__words">' + words.map(function (w) { return esc(w); }).join(' · ') + '</span>' +
+        '<span class="fcard__dist">' + esc(bucket.text) + '</span>' +
+        '<span class="fcard__go">开始找 ›</span>' +
+        '</button>';
+    }).join('');
+
     var grid = filtered.map(function (place) {
       var card = cardMap[place.id];
       if (!card) {
@@ -2763,9 +2826,8 @@
       '</header>' +
       '<p class="collectstats">已收集 <b>' + profile.cards.length + '</b>/' + D.PLACES.length +
       '<i>·</i>稀有 <b>' + rareCount() + '</b><i>·</i>隐藏 <b>' + hiddenCount() + '</b></p>' +
-      nearbyHintsHTML() +
       '<div class="filters" role="group" aria-label="筛选卡片">' + filters + '</div>' +
-      '<div class="fcards">' + grid + '</div>' +
+      '<div class="fcards">' + seekCards + grid + '</div>' +
       '</div>';
   }
 
@@ -3254,7 +3316,13 @@
 
   function explorableSurprises() {
     var me = state.profile.displayName;
-    return waitingSurprises().filter(function (s) { return s.authorName !== me; });
+    var local = waitingSurprises().filter(function (s) { return s.authorName !== me; });
+    var remote = (state.remoteSurprises || []).filter(function (s) {
+      // 本地已存在的（自己埋的）不重复出现
+      for (var i = 0; i < local.length; i += 1) if (local[i].id === s.id) return false;
+      return true;
+    });
+    return local.concat(remote);
   }
 
   function surpriseByID(id) {
@@ -3730,9 +3798,14 @@
           navigator.geolocation.getCurrentPosition(function (pos) {
             ui.myLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
             ui.lastFix = { lat: ui.myLocation.lat, lon: ui.myLocation.lon, accuracy: pos.coords.accuracy };
-            if (currentRoute() === '/cards') render();
+            // 拿到定位再拉「附近别人埋的惊喜」，否则没有坐标可查
+            loadNearbySurprises(ui.myLocation.lat, ui.myLocation.lon, 5000).then(function () {
+              if (currentRoute() === '/cards') render();
+            });
           }, function () { /* 拿不到就显示"位置未知"，不阻塞 */ },
             { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 });
+        } else if (ui.myLocation) {
+          loadNearbySurprises(ui.myLocation.lat, ui.myLocation.lon, 5000);
         }
         break;
       case '/social':
