@@ -380,22 +380,6 @@ struct ProfileView: View {
                 BWHairline()
 
                 settingLink {
-                    showAccount = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("账号")
-                            .font(.system(size: 14.5))
-                            .foregroundStyle(BWTheme.ink)
-                        Spacer(minLength: 0)
-                        Text(account.user?.username ?? "未登录")
-                            .font(BWType.caption(11))
-                            .foregroundStyle(BWTheme.ink3)
-                    }
-                }
-
-                BWHairline()
-
-                settingLink {
                     showToast("当前使用模拟步行；接入后端坐标后可切真实定位。", icon: "location")
                 } label: {
                     HStack(spacing: 8) {
