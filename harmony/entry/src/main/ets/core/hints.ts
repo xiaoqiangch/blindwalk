@@ -24,6 +24,7 @@
 
 import { BuriedSurprise, GeoPoint } from './types';
 import { distance } from './geo';
+import { isMySurprise } from './surprise';
 
 // ============================================================
 // 常量
@@ -195,7 +196,8 @@ export function nearbyHints(
   for (let i = 0; i < surprises.length; i += 1) {
     const item: BuriedSurprise = surprises[i];
     if (item.found) continue;
-    if (item.authorName === myName) continue;
+    // 自己埋的排除（用 isMine 标记，改名后也认得出来）
+    if (isMySurprise(item, myName)) continue;
     const entry: Entry = { surprise: item };
     if (origin !== undefined) {
       entry.meters = distance(origin, item.location);
