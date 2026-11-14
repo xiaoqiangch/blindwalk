@@ -407,6 +407,13 @@ export struct CityMapView {
           this.ready = true;
           this.draw();
         })
+        .onAreaChange((oldValue: Area, newValue: Area) => {
+          const next: number = parseFloat(newValue.width.toString());
+          if (Math.abs(next - this.canvasWidth) > 1) {
+            this.canvasWidth = next;
+            this.draw();
+          }
+        })
     }
     .width('100%')
     .backgroundColor(WAColor.cream)
@@ -514,13 +521,6 @@ export struct CityMapView {
     }
     .width('100%')
     .height('100%')
-    .onAreaChange((oldValue: Area, newValue: Area) => {
-      const next: number = parseFloat(newValue.width.toString());
-      if (Math.abs(next - this.canvasWidth) > 1) {
-        this.canvasWidth = next;
-        this.draw();
-      }
-    })
   }
 }
 
