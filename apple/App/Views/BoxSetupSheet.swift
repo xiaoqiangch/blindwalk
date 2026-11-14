@@ -27,8 +27,8 @@ struct BoxSetupSheet: View {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                    Text("这次的盲盒，你想要什么？")
-                        .font(.system(size: 20, weight: .bold))
+                    Text("这次的盲盒")
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(BWTheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -36,7 +36,7 @@ struct BoxSetupSheet: View {
                         .font(.system(size: 13.5))
                         .foregroundStyle(BWTheme.ink3)
                         .padding(.top, 4)
-                        .padding(.bottom, 18)
+                        .padding(.bottom, 20)
 
                     durationSection
                     moodSection.padding(.top, 15)
@@ -95,11 +95,7 @@ struct BoxSetupSheet: View {
             }
             .padding(4)
             .background(BWTheme.paper2)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
 
@@ -108,9 +104,9 @@ struct BoxSetupSheet: View {
         return Button {
             selectDuration(duration)
         } label: {
-            VStack(spacing: 1) {
+            VStack(spacing: 2) {
                 Text("\(duration.rawValue) 分钟")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: selected ? .medium : .regular))
                     .foregroundStyle(selected ? BWTheme.ink : BWTheme.ink2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -120,15 +116,14 @@ struct BoxSetupSheet: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .frame(height: 50)
             .background {
                 if selected {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(BWTheme.paper)
-                        .shadow(color: BWTheme.ink.opacity(0.10), radius: 3, x: 0, y: 2)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(BWTheme.amber.opacity(0.55), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(BWTheme.amber.opacity(0.35), lineWidth: 1)
                         )
                 }
             }
@@ -165,15 +160,16 @@ struct BoxSetupSheet: View {
             selectMood(mood)
         } label: {
             HStack(spacing: 12) {
-                Text(mood.emoji)
-                    .font(.system(size: 17))
+                Image(systemName: mood.symbol)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(selected ? BWTheme.amberDeep : BWTheme.ink2)
                     .frame(width: 34, height: 34)
-                    .background(selected ? BWTheme.amber.opacity(0.16) : BWTheme.paper2)
-                    .clipShape(Circle())
+                    .background(selected ? BWTheme.amberSoft : BWTheme.paper2)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(mood.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(BWTheme.ink)
                     Text(mood.subtitle)
                         .font(.system(size: 12.5))
@@ -183,15 +179,21 @@ struct BoxSetupSheet: View {
                 }
 
                 Spacer(minLength: 0)
+
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(BWTheme.amberDeep)
+                }
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? BWTheme.amber.opacity(0.07) : BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(BWTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(selected ? BWTheme.amber.opacity(0.70) : BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous)
+                    .stroke(selected ? BWTheme.amber.opacity(0.45) : BWTheme.line, lineWidth: 1)
             )
         }
         .buttonStyle(BWPressEffectStyle())

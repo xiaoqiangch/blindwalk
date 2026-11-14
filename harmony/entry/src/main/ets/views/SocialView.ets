@@ -140,7 +140,10 @@ export struct SocialView {
           .fontWeight(FontWeight.Medium)
           .fontColor(BWColor.ink)
         Blank()
-        Text('📡')
+        SymbolGlyph($r('sys.symbol.arrowshape_turn_up_right'))
+          .fontSize(BWSize.iconSizeSm)
+          .fontColor([BWColor.ink2])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(16)
       }
       .width('100%')
@@ -186,14 +189,7 @@ export struct SocialView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(18)
-    .linearGradient({
-      angle: 135,
-      colors: [
-        ['#6BE89B4C', 0.0],
-        ['#33C97B2E', 0.55],
-        [BWColor.paper2, 1.0]
-      ]
-    })
+    .backgroundColor(BWColor.paper)
     .borderRadius(BWSize.cardRadius)
     .border({ width: 1, color: '#52E89B4C', radius: BWSize.cardRadius })
     .shadow({ radius: 18, color: BWColor.shadow, offsetX: 0, offsetY: 12 })
@@ -286,8 +282,10 @@ export struct SocialView {
     Button() {
       Row({ space: 4 }) {
         if (meta.icon.length > 0) {
-          Text(meta.icon)
+          SymbolGlyph($r('sys.symbol.' + meta.icon))
             .fontSize(BWFont.captionSm)
+            .fontColor([hasReacted(post, meta.key) ? BWColor.amber : BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         }
         Text(String(reactionCount(post, meta.key)))
           .fontSize(BWFont.captionSm)
@@ -319,12 +317,12 @@ export struct SocialView {
     Column({ space: 0 }) {
       Row({ space: 10 }) {
         Text(post.authorEmoji)
-          .fontSize(18)
+          .fontSize(BWFont.bodySm)
           .textAlign(TextAlign.Center)
-          .width(32)
-          .height(32)
+          .width(36)
+          .height(36)
           .backgroundColor(BWColor.paper2)
-          .borderRadius(16)
+          .borderRadius(18)
 
         Column({ space: 2 }) {
           Text(post.authorName)
@@ -424,6 +422,10 @@ export struct SocialView {
     .alignItems(HorizontalAlign.Start)
   }
 
+  private isWide(): boolean {
+    return this.winWidth >= BWSize.wideBreakpoint;
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column()
@@ -435,23 +437,52 @@ export struct SocialView {
         Column({ space: 0 }) {
           this.header()
 
-          Column() {
-            this.togetherCard()
-          }
-          .margin({ top: 14 })
+          if (this.isWide()) {
+            // 折叠屏展开态：左（同频码 + 排行榜） / 右（动态流）
+            Row({ space: 20 }) {
+              Column({ space: 0 }) {
+                this.togetherCard()
 
-          Column() {
-            this.boardSection()
-          }
-          .margin({ top: 18 })
+                Column() {
+                  this.boardSection()
+                }
+                .margin({ top: 18 })
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
 
-          Column() {
-            this.feedSection()
+              Column({ space: 0 }) {
+                this.feedSection()
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .padding({ top: 14 })
+            }
+            .width('100%')
+            .alignItems(VerticalAlign.Top)
+            .margin({ top: 14 })
+          } else {
+            Column({ space: 0 }) {
+              Column() {
+                this.togetherCard()
+              }
+              .margin({ top: 14 })
+
+              Column() {
+                this.boardSection()
+              }
+              .margin({ top: 18 })
+
+              Column() {
+                this.feedSection()
+              }
+              .margin({ top: 18 })
+            }
+            .width('100%')
           }
-          .margin({ top: 18 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
         .padding({
           left: BWSize.pagePadding,
           right: BWSize.pagePadding,

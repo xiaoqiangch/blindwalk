@@ -61,7 +61,7 @@ export struct JourneyView {
   @Prop winHeight: number = 800;
 
   /** 返回首页（保留旅程，首页可「继续」） */
-  onBack: () -> void = () => {
+  onBack: () => void = () => {
   };
   /** 到达：由 Index 打开揭晓全屏 */
   onArrived: () => void = () => {
@@ -404,7 +404,7 @@ export struct JourneyView {
   topBar() {
     Row({ space: 10 }) {
       BwIconButton({
-        glyph: '‹',
+        name: 'chevron_left',
         onTap: () => {
           this.onBack();
         }
@@ -509,7 +509,10 @@ export struct JourneyView {
         })
 
         Row({ space: 6 }) {
-          Text('👁')
+          SymbolGlyph($r('sys.symbol.eye'))
+            .fontSize(BWFont.caption)
+            .fontColor([BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(BWFont.microSm)
           Text(this.fogCaption)
             .fontSize(BWFont.micro)
@@ -537,7 +540,10 @@ export struct JourneyView {
       })
 
       Row({ space: 5 }) {
-        Text('👁')
+        SymbolGlyph($r('sys.symbol.eye'))
+          .fontSize(BWFont.caption)
+          .fontColor([BWColor.ink3])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(BWFont.microSm)
         Text((this.isRealMode() ? '真实位置 · ' : '') + '目的地保密中 · 还有 ' +
           this.remainingMeters() + ' 米')
@@ -641,15 +647,25 @@ export struct JourneyView {
           .stroke(this.isClueUnlocked(index) ? '#662E7D78' : BWColor.line)
           .strokeWidth(1)
 
-        Text(this.isClueUnlocked(index) ? '✓' : String(index + 1))
-          .fontSize(BWFont.microSm)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.isClueUnlocked(index) ? BWColor.teal : BWColor.ink3)
+        if (this.isClueUnlocked(index)) {
+          SymbolGlyph($r('sys.symbol.checkmark'))
+            .fontSize(BWFont.micro)
+            .fontColor([BWColor.teal])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        } else {
+          Text(String(index + 1))
+            .fontSize(BWFont.microSm)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(BWColor.ink3)
+        }
       }
 
       if (this.isClueUnlocked(index)) {
         Row({ space: 8 }) {
-          Text('✅')
+          SymbolGlyph($r('sys.symbol.checkmark_circle'))
+            .fontSize(BWFont.caption)
+            .fontColor([BWColor.teal])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(BWFont.caption)
           Text(this.clueText(index))
             .fontSize(BWFont.caption)
@@ -665,7 +681,10 @@ export struct JourneyView {
         .shadow({ radius: 10, color: BWColor.shadowSoft, offsetX: 0, offsetY: 6 })
       } else {
         Row({ space: 8 }) {
-          Text('🔒')
+          SymbolGlyph($r('sys.symbol.lock'))
+            .fontSize(BWFont.caption)
+            .fontColor([BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(BWFont.captionSm)
           Text(this.lockedClueCopy(index))
             .fontSize(BWFont.caption)

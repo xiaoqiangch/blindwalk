@@ -11,7 +11,8 @@
  */
 
 import { SourceReport } from '../core/http';
-import { searchFailText, sourceReportLines } from '../core/search';
+import { sourceReportLines } from '../core/search';
+import { searchFailText } from '../core/parity';
 import { BWColor, BWFont, BWSize } from '../theme/Theme';
 import { BwPrimaryButton, BwQuietButton } from './Common';
 
@@ -38,7 +39,10 @@ export struct BwSearchFailedPanel {
   build() {
     Column({ space: 10 }) {
       Row({ space: 8 }) {
-        Text('🪔')
+        SymbolGlyph($r('sys.symbol.exclamationmark_triangle'))
+          .fontSize(BWFont.title)
+          .fontColor([BWColor.gold])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(BWFont.title)
         Text('没找到真实地点，这次不抽了')
           .fontSize(BWFont.titleSm)
@@ -288,6 +292,6 @@ export struct BwManualLocationSheet {
     .backgroundColor(BWColor.paper)
     .borderRadius(BWSize.cardRadius)
     .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-    .shadow({ radius: 24, color: BWColor.shadowLift, offsetX: 0, offsetY: 16 })
+    .shadow({ radius: 16, color: BWColor.shadow, offsetX: 0, offsetY: 4 })
   }
 }

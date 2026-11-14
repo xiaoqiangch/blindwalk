@@ -38,12 +38,12 @@ export const FOG_FADE_METERS: number = 46;
 export const FOG_STEP_METERS: number = 3;
 
 /** 已走部分颜色 / 线宽 / 不透明度 */
-export const PATH_BEHIND_COLOR: string = '#AEB8D6';
+export const PATH_BEHIND_COLOR: string = '#99A0A6';
 export const PATH_BEHIND_WIDTH: number = 7;
 export const PATH_BEHIND_OPACITY: number = 0.55;
 
 /** 前方部分颜色 / 线宽 */
-export const PATH_AHEAD_COLOR: string = '#5B6CFF';
+export const PATH_AHEAD_COLOR: string = '#0A59F7';
 export const PATH_AHEAD_WIDTH: number = 9;
 
 /** 行进箭头间距（米） */
@@ -62,7 +62,7 @@ export const OFF_ROUTE_HYSTERESIS_METERS: number = 4;
 export const FOG_HIDE_REMAINING_METERS: number = 60;
 
 /** 偏离提示文案 */
-export const OFF_ROUTE_COLOR: string = '#FF6B6B';
+export const OFF_ROUTE_COLOR: string = '#FA2A2D';
 
 /** 「剩余 < 60m」时的替代文案 */
 export const NEARBY_COPY: string = '就在附近 · 抬头看看周围';

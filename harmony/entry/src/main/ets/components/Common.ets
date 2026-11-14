@@ -1,8 +1,13 @@
 /**
  * 盲走 BlindWalk · HarmonyOS ArkUI — 共享小组件
  *
+ * 严格对齐 HarmonyOS 官方组件规格：
+ *   - 按钮：胶囊形，品牌蓝底 + 白字，高 40/48vp
+ *   - 卡片：16vp 圆角，白底，无重阴影
+ *   - 分隔线：官方 20% 透明度
+ *   - 图标：统一 SymbolGlyph 单色（components/BwSymbol.ets）
+ *
  * 只依赖 theme/Theme.ets 的 token；不读 store。
- * 所有组件都是 V1 状态管理（@Component + @Prop + @State），避免跨版本 API。
  */
 
 import { Rarity } from '../core/types';
@@ -15,6 +20,7 @@ import {
   rarityLabel,
   raritySoft
 } from '../theme/Theme';
+import { BwIcon, BwSymbols } from './BwSymbol';
 
 // ============================================================
 // 微标 / 小标题
@@ -26,10 +32,9 @@ export struct BwMicroLabel {
 
   build() {
     Text(this.text)
-      .fontSize(BWFont.micro)
+      .fontSize(BWFont.caption)
       .fontColor(BWColor.ink3)
-      .fontWeight(FontWeight.Medium)
-      .letterSpacing(1.1)
+      .fontWeight(FontWeight.Regular)
   }
 }
 
@@ -41,7 +46,7 @@ export struct BwSectionHead {
   };
 
   build() {
-    Row() {
+    Row({ space: 4 }) {
       Text(this.title)
         .fontSize(BWFont.titleMd)
         .fontWeight(FontWeight.Medium)
@@ -52,11 +57,12 @@ export struct BwSectionHead {
       if (this.trailing.length > 0) {
         Row({ space: 2 }) {
           Text(this.trailing)
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.amberDeep)
-          Text('›')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.amberDeep)
+            .fontSize(BWFont.bodySm)
+            .fontColor(BWColor.ink2)
+          SymbolGlyph($r('sys.symbol.chevron_right'))
+            .fontSize(12)
+            .fontColor([BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         }
         .onClick(() => {
           this.onTrailingTap();
@@ -68,7 +74,7 @@ export struct BwSectionHead {
 }
 
 // ============================================================
-// 按钮
+// 按钮（官方规格）
 // ============================================================
 
 @Component
@@ -76,7 +82,8 @@ export struct BwPrimaryButton {
   @Prop title: string = '';
   /** 按钮内小标签，例如「演示」「兜底」；空字符串不显示 */
   @Prop tag: string = '';
-  @Prop enabled: boolean = true;
+  @Prop isActive: boolean = true;
+  @Prop large: boolean = false;
   onTap: () => void = () => {
   };
 
@@ -86,17 +93,17 @@ export struct BwPrimaryButton {
         Text(this.title)
           .fontSize(BWFont.titleSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(BWColor.iconOnBrand)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
         if (this.tag.length > 0) {
           Text(this.tag)
-            .fontSize(BWFont.microSm)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.ink)
-            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-            .backgroundColor('#A6FFFBF3')
+            .fontSize(BWFont.micro)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(BWColor.iconOnBrand)
+            .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+            .backgroundColor('#33FFFFFF')
             .borderRadius(BWSize.chipRadius)
         }
       }
@@ -104,14 +111,13 @@ export struct BwPrimaryButton {
       .width('100%')
     }
     .type(ButtonType.Capsule)
-    .height(52)
+    .height(this.large ? BWSize.buttonHeightLg : BWSize.buttonHeight)
     .width('100%')
     .backgroundColor(BWColor.amber)
-    .shadow({ radius: 14, color: BWColor.shadow, offsetX: 0, offsetY: 6 })
-    .enabled(this.enabled)
-    .opacity(this.enabled ? 1 : 0.55)
+    .enabled(this.isActive)
+    .opacity(this.isActive ? 1 : 0.4)
     .onClick(() => {
-      if (this.enabled) {
+      if (this.isActive) {
         this.onTap();
       }
     })
@@ -122,7 +128,7 @@ export struct BwPrimaryButton {
 export struct BwQuietButton {
   @Prop title: string = '';
   @Prop bordered: boolean = true;
-  @Prop enabled: boolean = true;
+  @Prop isActive: boolean = true;
   onTap: () => void = () => {
   };
 
@@ -136,49 +142,16 @@ export struct BwQuietButton {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
     .type(ButtonType.Capsule)
-    .height(44)
+    .height(BWSize.buttonHeight)
     .width('100%')
     .backgroundColor(this.bordered ? BWColor.paper2 : Color.Transparent)
-    .border({
-      width: this.bordered ? 1 : 0,
-      color: BWColor.line,
-      radius: BWSize.chipRadius
-    })
-    .enabled(this.enabled)
-    .opacity(this.enabled ? 1 : 0.45)
+    .enabled(this.isActive)
+    .opacity(this.isActive ? 1 : 0.4)
     .onClick(() => {
-      if (this.enabled) {
+      if (this.isActive) {
         this.onTap();
       }
     })
-  }
-}
-
-@Component
-export struct BwIconButton {
-  @Prop glyph: string = '‹';
-  @Prop size: number = 34;
-  @Prop dark: boolean = false;
-  onTap: () => void = () => {
-  };
-
-  build() {
-    Text(this.glyph)
-      .fontSize(BWFont.titleSm)
-      .fontColor(this.dark ? BWColor.creamOnStage : BWColor.ink2)
-      .textAlign(TextAlign.Center)
-      .width(this.size)
-      .height(this.size)
-      .backgroundColor(this.dark ? BWColor.stageClose : BWColor.paper)
-      .borderRadius(this.size / 2)
-      .border({
-        width: 1,
-        color: this.dark ? BWColor.stageCloseBorder : BWColor.line,
-        radius: this.size / 2
-      })
-      .onClick(() => {
-        this.onTap();
-      })
   }
 }
 
@@ -196,19 +169,14 @@ export struct BwPill {
   build() {
     Button() {
       Text(this.text)
-        .fontSize(BWFont.caption)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.selected ? BWColor.ink : BWColor.ink2)
+        .fontSize(BWFont.bodySm)
+        .fontWeight(this.selected ? FontWeight.Medium : FontWeight.Regular)
+        .fontColor(this.selected ? BWColor.amber : BWColor.ink2)
     }
     .type(ButtonType.Capsule)
-    .height(30)
+    .height(32)
     .padding({ left: 14, right: 14 })
-    .backgroundColor(this.selected ? BWColor.amberSoftStrong : BWColor.paper)
-    .border({
-      width: 1,
-      color: this.selected ? BWColor.amberBorder : BWColor.line,
-      radius: BWSize.chipRadius
-    })
+    .backgroundColor(this.selected ? BWColor.amberSoft : BWColor.paper2)
     .onClick(() => {
       this.onTap();
     })
@@ -220,25 +188,20 @@ export struct BwRarityBadge {
   @Prop rarity: Rarity = Rarity.Common;
 
   build() {
-    Row({ space: 5 }) {
+    Row({ space: 4 }) {
       Circle()
-        .width(6)
-        .height(6)
+        .width(5)
+        .height(5)
         .fill(rarityColor(this.rarity))
 
       Text(rarityLabel(this.rarity))
-        .fontSize(BWFont.captionSm)
+        .fontSize(BWFont.micro)
         .fontWeight(FontWeight.Medium)
         .fontColor(rarityColor(this.rarity))
     }
-    .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+    .padding({ left: 8, right: 8, top: 3, bottom: 3 })
     .backgroundColor(raritySoft(this.rarity))
     .borderRadius(BWSize.chipRadius)
-    .border({
-      width: 1,
-      color: rarityBorder(this.rarity),
-      radius: BWSize.chipRadius
-    })
   }
 }
 
@@ -262,21 +225,21 @@ export struct BwStatsRow {
         if (index > 0) {
           Divider()
             .vertical(true)
-            .height(this.roomy ? 28 : 22)
+            .height(this.roomy ? 28 : 24)
             .strokeWidth(1)
             .color(BWColor.line)
         }
 
-        Column({ space: 3 }) {
+        Column({ space: 2 }) {
           Text(item.value)
             .fontSize(BWFont.title)
-            .fontWeight(FontWeight.Bold)
+            .fontWeight(FontWeight.Medium)
             .fontColor(BWColor.ink)
             .maxLines(1)
 
           Text(item.label)
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink2)
+            .fontSize(BWFont.caption)
+            .fontColor(BWColor.ink3)
             .maxLines(1)
         }
         .layoutWeight(1)
@@ -284,10 +247,9 @@ export struct BwStatsRow {
       }, (item: StatItem) => item.label)
     }
     .width('100%')
-    .padding({ top: 14, bottom: 14 })
-    .backgroundColor(BWColor.paperTranslucent)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+    .padding({ top: 16, bottom: 16 })
+    .backgroundColor(BWColor.paper)
+    .borderRadius(BWSize.cardRadius)
   }
 }
 
@@ -295,8 +257,8 @@ export struct BwStatsRow {
 export struct BwProgressBar {
   @Prop progress: number = 0;
   @Prop barColor: string = BWColor.amber;
-  @Prop trackColor: string = BWColor.line;
-  @Prop barHeight: number = 6;
+  @Prop trackColor: string = '#1A182431';
+  @Prop barHeight: number = 4;
 
   build() {
     Stack({ alignContent: Alignment.Start }) {
@@ -323,28 +285,27 @@ export struct BwProgressBar {
 @Component
 export struct BwToastBar {
   @Prop text: string = '';
-  @Prop icon: string = '✨';
+  /** 语义图标名，见 BwSymbols */
+  @Prop iconName: string = BwSymbols.info;
   @Prop amber: boolean = false;
 
   build() {
     Row({ space: 8 }) {
-      Text(this.icon)
-        .fontSize(BWFont.bodySm)
+      BwIcon({
+        name: this.iconName,
+        iconSize: BWSize.iconSizeSm,
+        color: this.amber ? BWColor.amber : BWColor.ink2
+      })
 
       Text(this.text)
-        .fontSize(BWFont.caption)
+        .fontSize(BWFont.bodySm)
         .fontColor(BWColor.ink)
         .maxLines(2)
     }
-    .padding({ left: 16, right: 16, top: 11, bottom: 11 })
-    .backgroundColor(BWColor.paper)
+    .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+    .backgroundColor('#F2FFFFFF')
     .borderRadius(BWSize.chipRadius)
-    .border({
-      width: 1,
-      color: this.amber ? BWColor.amberBorder : BWColor.line,
-      radius: BWSize.chipRadius
-    })
-    .shadow({ radius: 18, color: BWColor.shadow, offsetX: 0, offsetY: 8 })
+    .shadow({ radius: 20, color: BWColor.shadow, offsetX: 0, offsetY: 4 })
   }
 }
 
@@ -353,14 +314,17 @@ export struct BwEmptyState {
   @Prop title: string = '';
   @Prop subtitle: string = '';
   @Prop actionText: string = '';
+  @Prop iconName: string = BwSymbols.gift;
   onAction: () => void = () => {
   };
 
   build() {
-    Column({ space: 8 }) {
-      Text('🪹')
-        .fontSize(34)
-        .opacity(0.8)
+    Column({ space: 10 }) {
+      BwIcon({
+        name: this.iconName,
+        iconSize: 40,
+        color: BWColor.ink4
+      })
 
       Text(this.title)
         .fontSize(BWFont.body)
@@ -369,7 +333,7 @@ export struct BwEmptyState {
 
       if (this.subtitle.length > 0) {
         Text(this.subtitle)
-          .fontSize(BWFont.caption)
+          .fontSize(BWFont.bodySm)
           .fontColor(BWColor.ink3)
           .textAlign(TextAlign.Center)
       }
@@ -377,22 +341,22 @@ export struct BwEmptyState {
       if (this.actionText.length > 0) {
         Button(this.actionText)
           .type(ButtonType.Capsule)
-          .height(40)
-          .padding({ left: 22, right: 22 })
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink)
+          .height(BWSize.buttonHeight)
+          .padding({ left: 24, right: 24 })
+          .fontSize(BWFont.bodySm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(BWColor.iconOnBrand)
           .backgroundColor(BWColor.amber)
+          .margin({ top: 4 })
           .onClick(() => {
             this.onAction();
           })
-          .margin({ top: 6 })
       }
     }
     .width('100%')
-    .padding({ top: 28, bottom: 28, left: 24, right: 24 })
-    .backgroundColor(BWColor.paperHalf)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+    .padding({ top: 32, bottom: 32, left: 24, right: 24 })
+    .backgroundColor(BWColor.paper)
+    .borderRadius(BWSize.cardRadius)
   }
 }
 
@@ -400,7 +364,7 @@ export struct BwEmptyState {
 // 小工具视图
 // ============================================================
 
-/** 卡片内的细分割线（design-system：--line） */
+/** 卡片内的细分割线（官方 divider 20%） */
 @Component
 export struct BwHairline {
   @Prop inset: number = 0;
@@ -413,43 +377,57 @@ export struct BwHairline {
   }
 }
 
-/** 圆形 emoji 头像（好友 / 动态 / 圈子） */
+/**
+ * 圆形头像 —— 官方风格：中性底 + 单色图标
+ * （不用 emoji，保持单色极简）
+ */
 @Component
 export struct BwAvatar {
-  @Prop emoji: string = '🙂';
-  @Prop size: number = 40;
+  @Prop emoji: string = '';
+  @Prop iconName: string = BwSymbols.profile;
+  @Prop boxSize: number = 40;
   @Prop onlineDot: boolean = false;
   @Prop name: string = '';
 
   build() {
     Column({ space: 4 }) {
       Stack({ alignContent: Alignment.BottomEnd }) {
-        Text(this.emoji)
-          .fontSize(this.size * 0.46)
-          .textAlign(TextAlign.Center)
-          .width(this.size)
-          .height(this.size)
-          .backgroundColor(BWColor.paper)
-          .borderRadius(this.size / 2)
-          .border({ width: 1, color: BWColor.line, radius: this.size / 2 })
+        Stack({ alignContent: Alignment.Center }) {
+          BwIcon({
+            name: this.iconName,
+            iconSize: this.boxSize * 0.5,
+            color: BWColor.ink2
+          })
+        }
+        .width(this.boxSize)
+        .height(this.boxSize)
+        .backgroundColor(BWColor.paper2)
+        .borderRadius(this.boxSize / 2)
 
         if (this.onlineDot) {
           Circle()
-            .width(12)
-            .height(12)
+            .width(10)
+            .height(10)
             .fill(BWColor.teal)
-            .stroke(BWColor.cream)
+            .stroke(BWColor.paper)
             .strokeWidth(2)
-            .offset({ x: 2, y: 1 })
+            .offset({ x: 1, y: 1 })
         }
       }
 
       if (this.name.length > 0) {
         Text(this.name)
-          .fontSize(BWFont.microSm)
+          .fontSize(BWFont.caption)
           .fontColor(BWColor.ink3)
           .maxLines(1)
       }
     }
   }
 }
+
+// ============================================================
+// 兼容导出：图标组件统一收口到 BwSymbol.ets
+// （旧代码从 './Common' 引入 BwIconButton，这里保持可用）
+// ============================================================
+
+export { BwIcon, BwIconButton, BwIconLabel } from './BwSymbol';

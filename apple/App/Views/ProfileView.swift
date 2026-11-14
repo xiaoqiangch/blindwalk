@@ -76,114 +76,95 @@ struct ProfileView: View {
                 .foregroundStyle(BWTheme.ink)
             Spacer(minLength: 0)
         }
-        .padding(.bottom, 2)
+        .padding(.bottom, 12)
     }
 
-    // MARK: 等级卡（web .levelcard：牛皮纸渐层 + 右上头像）
+    // MARK: 等级卡
+    //
+    // 富细节放在「进度 + 三个读数」上，卡片本身保持白面。
+    // 上一版用主色渐变铺满整张卡，导致它抢走整屏注意力，且和首页盲盒卡看不出主次。
 
     private var levelCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("散步 Lv.\(store.profile.level)")
-                        .font(.system(size: 25, weight: .bold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(BWTheme.ink)
-                    Text("· \(store.profile.levelName)")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink2)
+                    Text(store.profile.levelName)
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(BWTheme.ink3)
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
                 Spacer(minLength: 0)
 
-                Text("🫥")
-                    .font(.system(size: 22))
-                    .frame(width: 46, height: 46)
-                    .background(BWTheme.paper)
+                Text(store.profile.displayName.prefix(1))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(BWTheme.ink2)
+                    .frame(width: 40, height: 40)
+                    .background(BWTheme.paper2)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(BWTheme.ink.opacity(0.10), lineWidth: 1))
             }
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(BWTheme.ink.opacity(0.09))
+                        Capsule().fill(BWTheme.paper2)
                         Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [BWTheme.amber, BWTheme.amberDeep],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .fill(BWTheme.amber)
                             .frame(width: max(0, geo.size.width * CGFloat(store.profile.levelProgress)))
                     }
                 }
-                .frame(height: 8)
+                .frame(height: 6)
 
                 HStack {
                     Text("\(store.profile.xp - store.profile.levelFloorXP) / 800")
-                        .font(.system(size: 11.5))
                         .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink.opacity(0.48))
                     Spacer(minLength: 0)
-                    Text("距离下一级 \(max(0, 800 - (store.profile.xp - store.profile.levelFloorXP)))")
-                        .font(.system(size: 11.5))
+                    Text("还差 \(max(0, 800 - (store.profile.xp - store.profile.levelFloorXP))) 升下一级")
                         .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink.opacity(0.48))
                 }
+                .font(.system(size: 11.5))
+                .foregroundStyle(BWTheme.ink3)
             }
-            .padding(.top, 15)
+            .padding(.top, 16)
 
-            HStack(spacing: 0) {
+            HStack(spacing: 16) {
                 levelStat(value: BWFormat.decimal1(store.profile.totalKm), unit: "km", title: "累计里程")
-                levelStatDivider
                 levelStat(value: "\(store.profile.boxesOpened)", unit: nil, title: "开盒")
-                levelStatDivider
                 levelStat(value: "\(store.profile.streakDays)", unit: nil, title: "连续天数")
             }
-            .padding(.top, 12)
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(BWTheme.ink.opacity(0.10))
-                    .frame(height: 1)
-            }
-            .padding(.top, 14)
+            .padding(.top, 18)
         }
         .padding(18)
-        .background {
-            ZStack {
-                BWKraft.levelGradient
-                BWPaperTexture().opacity(0.6)
-            }
-        }
+        .background(BWTheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                .stroke(BWTheme.line, lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.12), radius: 20, x: 0, y: 12)
     }
 
     private func levelStat(value: String, unit: String?, title: String) -> some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 14.5, weight: .semibold))
+                    .font(.system(size: 16, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(BWTheme.ink)
                 if let unit {
                     Text(unit)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(BWTheme.ink.opacity(0.45))
+                        .font(.system(size: 11))
+                        .foregroundStyle(BWTheme.ink3)
                 }
             }
             Text(title)
-                .font(.system(size: 11))
-                .foregroundStyle(BWTheme.ink.opacity(0.48))
+                .font(.system(size: 11.5))
+                .foregroundStyle(BWTheme.ink3)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var levelStatDivider: some View {
@@ -198,25 +179,28 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("成就")
-                    .font(BWType.micro())
-                    .tracking(1.1)
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
 
                 Spacer(minLength: 0)
 
                 NavigationLink {
                     AchievementsView(store: store)
                 } label: {
-                    Text("全部成就 ›")
-                        .font(BWType.caption(10.5))
-                        .foregroundStyle(BWTheme.ink3)
+                    HStack(spacing: 2) {
+                        Text("全部")
+                            .font(.system(size: 12.5))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundStyle(BWTheme.ink3)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("查看全部成就")
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 11) {
+                HStack(spacing: 12) {
                     ForEach(achievements) { achievement in
                         NavigationLink {
                             AchievementsView(store: store)
@@ -234,26 +218,28 @@ struct ProfileView: View {
     }
 
     private func achievementBadge(_ achievement: Achievement) -> some View {
-        VStack(spacing: 5) {
-            Text(achievement.icon)
-                .font(.system(size: 20))
-                .frame(width: 48, height: 48)
-                .background(achievement.isUnlocked ? BWTheme.amber.opacity(0.10) : BWTheme.paper)
-                .clipShape(Circle())
-                .overlay(
-                    Circle().stroke(
-                        achievement.isUnlocked
-                            ? BWTheme.amber.opacity(0.60)
-                            : BWTheme.line,
-                        lineWidth: 1
-                    )
-                )
-                .saturation(achievement.isUnlocked ? 1 : 0)
-                .opacity(achievement.isUnlocked ? 1 : 0.45)
+        VStack(spacing: 6) {
+            Group {
+                if achievement.isUnlocked {
+                    Text(achievement.icon)
+                        .font(.system(size: 20))
+                } else {
+                    Image(systemName: "lock")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(BWTheme.ink3)
+                }
+            }
+            .frame(width: 46, height: 46)
+            .background(achievement.isUnlocked ? BWTheme.paper2 : BWTheme.paper)
+            .clipShape(Circle())
+            .overlay(
+                Circle().stroke(achievement.isUnlocked ? BWTheme.line : BWTheme.line, lineWidth: 1)
+            )
+            .opacity(achievement.isUnlocked ? 1 : 0.7)
 
             Text(achievement.name)
-                .font(.system(size: 10.5))
-                .foregroundStyle(BWTheme.ink3)
+                .font(.system(size: 11))
+                .foregroundStyle(achievement.isUnlocked ? BWTheme.ink2 : BWTheme.ink3)
                 .lineLimit(1)
                 .frame(width: 62)
         }
@@ -263,50 +249,48 @@ struct ProfileView: View {
 
     // MARK: 设置
 
-    // MARK: - 账号卡片（显眼入口）
+    // MARK: - 账号卡片
 
     private var accountCard: some View {
         Button {
             showAccount = true
         } label: {
             HStack(spacing: 12) {
-                Text(account.user == nil ? "☁️" : "👤")
-                    .font(.system(size: 19))
-                    .frame(width: 38, height: 38)
-                    .background(BWTheme.amber.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Image(systemName: account.user == nil ? "icloud" : "person.crop.circle")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(BWTheme.ink2)
+                    .frame(width: 30, height: 30)
+                    .background(BWTheme.paper2)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(account.user == nil ? "登录 / 注册账号" : "已登录 · " + (account.user?.username ?? ""))
-                        .font(.system(size: 15, weight: .semibold))
+                    Text(account.user == nil ? "登录账号" : "已登录 · " + (account.user?.username ?? ""))
+                        .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
                     Text(account.user == nil
-                         ? "把卡片和进度存到云端，换手机也不丢（可选）"
-                         : "进度已可跨设备同步 · 点这里管理")
+                         ? "卡片和进度存到云端，换手机也不丢"
+                         : "进度可跨设备同步")
                         .font(.system(size: 12))
                         .foregroundStyle(BWTheme.ink3)
                         .lineLimit(2)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(BWTheme.ink3)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(BWTheme.amber.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
-            )
+            .frame(minHeight: 54)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
     private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BWSectionHeader(title: "设置")
+        VStack(alignment: .leading, spacing: 10) {
+            Text("设置")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(BWTheme.ink)
 
             VStack(spacing: 0) {
                 settingRow {
@@ -320,13 +304,9 @@ struct ProfileView: View {
                     ))
                     .labelsHidden()
                     .tint(BWTheme.amber)
-                    .scaleEffect(0.86)
+                    .scaleEffect(0.84)
                     .frame(width: 44)
                 }
-
-                BWHairline()
-
-                accountCard
 
                 BWHairline()
 
@@ -343,7 +323,7 @@ struct ProfileView: View {
                     Toggle("", isOn: $mapFollowsHeading)
                         .labelsHidden()
                         .tint(BWTheme.amber)
-                        .scaleEffect(0.86)
+                        .scaleEffect(0.84)
                         .frame(width: 44)
                 }
 
@@ -363,9 +343,19 @@ struct ProfileView: View {
                     ))
                     .labelsHidden()
                     .tint(BWTheme.amber)
-                    .scaleEffect(0.86)
+                    .scaleEffect(0.84)
                     .frame(width: 44)
                 }
+            }
+            .background(BWTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                    .stroke(BWTheme.line, lineWidth: 1)
+            )
+
+            VStack(spacing: 0) {
+                accountCard
 
                 BWHairline()
 
@@ -388,19 +378,9 @@ struct ProfileView: View {
                             .foregroundStyle(BWTheme.ink)
                         Spacer(minLength: 0)
                         Text("模拟步行")
-                            .font(BWType.caption(11))
+                            .font(.system(size: 12.5))
                             .foregroundStyle(BWTheme.ink3)
                     }
-                }
-
-                BWHairline()
-
-                settingLink {
-                    showClearConfirm = true
-                } label: {
-                    Text("清除演示数据")
-                        .font(.system(size: 14.5))
-                        .foregroundStyle(BWTheme.ember)
                 }
 
                 BWHairline()
@@ -412,11 +392,21 @@ struct ProfileView: View {
                         .font(.system(size: 14.5))
                         .foregroundStyle(BWTheme.ink)
                 }
+
+                BWHairline()
+
+                settingLink {
+                    showClearConfirm = true
+                } label: {
+                    Text("清除演示数据")
+                        .font(.system(size: 14.5))
+                        .foregroundStyle(BWTheme.ember)
+                }
             }
             .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                     .stroke(BWTheme.line, lineWidth: 1)
             )
         }
@@ -427,7 +417,7 @@ struct ProfileView: View {
             content()
         }
         .padding(.horizontal, 16)
-        .frame(minHeight: 46)
+        .frame(minHeight: 50)
     }
 
     private func settingLink<Label: View>(
@@ -439,11 +429,11 @@ struct ProfileView: View {
                 label()
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(BWTheme.ink3)
             }
             .padding(.horizontal, 16)
-            .frame(minHeight: 46)
+            .frame(minHeight: 50)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -453,8 +443,7 @@ struct ProfileView: View {
 
     private var versionFooter: some View {
         Text("步谜 0.1 · 原型")
-            .font(.system(size: 12.5))
-            .tracking(0.5)
+            .font(.system(size: 12))
             .foregroundStyle(BWTheme.ink3)
             .frame(maxWidth: .infinity)
     }

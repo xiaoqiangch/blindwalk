@@ -1,5 +1,5 @@
 {
-  "modelVersion": "5.0.0",
+  "modelVersion": "6.0.0",
   "description": "盲走 BlindWalk · HarmonyOS 移植版",
   "dependencies": {},
   "devDependencies": {

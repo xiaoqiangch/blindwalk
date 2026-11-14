@@ -1,8 +1,12 @@
 /**
  * 盲走 BlindWalk · HarmonyOS ArkUI 设计 token
  *
- * 唯一来源：docs/design-system.md §3（与 apple/Shared/Design/Theme.swift 一一对应）。
- * 所有颜色/圆角/间距只从这里取，页面里不要写裸色值（阴影带 alpha 的 8 位 hex 也在这里）。
+ * 严格对齐 HarmonyOS 官方设计规范（HarmonyOS NEXT 通用设计基础 · 视觉风格）：
+ *   - 色彩：宇宙蓝（Brand）/ 雪域灰（背景）/ 三级文本透明度
+ *   - 圆角：官方组件规格（卡片 16vp、面板 24vp、按钮全圆角胶囊）
+ *   - 图标：统一走 SymbolGlyph 单色符号（见 components/BwSymbol.ets）
+ *   - 字体：与系统一致的字号阶梯
+ *   - 动效：官方标准曲线与时长
  *
  * 注意：本文件是 ArkTS（.ets），只放常量与纯函数；不要引入 UI 组件。
  */
@@ -11,112 +15,140 @@ import { curves } from '@kit.ArkUI';
 import { Area, Rarity } from '../core/types';
 
 // ============================================================
-// 颜色（design-system §3）
+// 颜色 —— HarmonyOS 官方色彩体系
+//
+// 官方 token 对应关系（浅色模式）：
+//   font_primary    90%  #E5000000  → 用 #182431（宇宙蓝调和的黑，官方正文色）
+//   font_secondary  60%  #99000000  → #66182431
+//   font_tertiary   40%  #66000000  → #40182431
+//   font_fourth     20%  #33000000  → #33182431
+//   comp_background         #FFFFFF（卡片 / 弹层）
+//   sub_background          #F1F3F5（页面背景，雪域灰）
+//   brand                   #0A59F7（宇宙蓝，HarmonyOS NEXT 品牌色）
+//   warning / danger        #E84026 / #FA2A2D
+//   confirm                 #64BB5C
+//   interactive_pressed     品牌色 10% 叠加
 // ============================================================
 
 export class BWColor {
-  static readonly ink: string = '#111827';
-  static readonly ink2: string = '#4B5563';
-  static readonly ink3: string = '#9CA3AF';
-  static readonly cream: string = '#F3F5FB';
-  static readonly paper: string = '#FFFFFF';
-  static readonly paper2: string = '#EEF1F9';
-  static readonly line: string = '#E2E7F2';
-  static readonly amber: string = '#5B6CFF';
-  static readonly amberDeep: string = '#3D4FE0';
-  static readonly ember: string = '#FF6B6B';
-  static readonly teal: string = '#14B8A6';
-  static readonly plum: string = '#8B5CF6';
-  static readonly gold: string = '#F59E0B';
-  static readonly common: string = '#94A3B8';
+  // 文本与图标（四级，官方透明度阶梯）
+  static readonly ink: string = '#182431';
+  static readonly ink2: string = '#66182431';
+  static readonly ink3: string = '#40182431';
+  static readonly ink4: string = '#33182431';
 
-  // 带 alpha 的常用变体（ArkUI 的 string 颜色支持 #AARRGGBB）
-  static readonly inkSoft: string = '#14171410';
-  static readonly lineSoft: string = '#80E8DECC';
-  static readonly amberSoft: string = '#245B6CFF';
-  static readonly amberSoftStrong: string = '#3D5B6CFF';
-  static readonly amberBorder: string = '#995B6CFF';
-  static readonly tealSoft: string = '#242E7D78';
-  static readonly paperTranslucent: string = '#CCFFFBF3';
-  static readonly paperHalf: string = '#80FFFBF3';
-  static readonly creamTranslucent: string = '#E6F5EEE2';
-  static readonly shadow: string = '#1A171410';
-  static readonly shadowSoft: string = '#0D171410';
-  static readonly shadowLift: string = '#29171410';
-  static readonly scrim: string = '#59171410';
-  static readonly stage: string = '#111827';
-  static readonly stageBar: string = '#14FFFBF3';
-  static readonly stageClose: string = '#14FFFBF3';
-  static readonly stageCloseBorder: string = '#24FFFBF3';
-  static readonly creamOnStage: string = '#EBF5EEE2';
-  static readonly creamOnStageDim: string = '#6BF5EEE2';
+  // 背景与容器
+  static readonly cream: string = '#F1F3F5';   // 页面底色（雪域灰）
+  static readonly paper: string = '#FFFFFF';   // 卡片 / 弹层
+  static readonly paper2: string = '#F1F3F5';  // 次级填充（输入框 / 选中态底）
+  static readonly line: string = '#33182431';  // 分割线（官方 divider 20%）
+  static readonly lineSoft: string = '#1A182431';
 
-  // 牛皮纸（盲盒主卡 / 盒体插画）
-  static readonly kraftTop: string = '#EEF1F9';
+  // 品牌色（宇宙蓝）
+  static readonly amber: string = '#0A59F7';
+  static readonly amberDeep: string = '#0A59F7';
+  static readonly amberSoft: string = '#1A0A59F7';      // 10% 品牌色（选中底 / 标签底）
+  static readonly amberSoftStrong: string = '#290A59F7'; // 16%
+  static readonly amberBorder: string = '#330A59F7';
+  static readonly tealSoft: string = '#1A64BB5C';
+
+  // 语义色（官方）
+  static readonly ember: string = '#FA2A2D';   // danger
+  static readonly teal: string = '#64BB5C';    // confirm
+  static readonly plum: string = '#0A59F7';    // 强调（统一收进品牌蓝，避免杂色）
+  static readonly gold: string = '#E84026';    // warning
+  static readonly common: string = '#99182431';
+
+  // 深色舞台（揭晓页全屏）
+  static readonly stage: string = '#0D0D0D';
+  static readonly stageBar: string = '#1AFFFFFF';
+  static readonly stageClose: string = '#14FFFFFF';
+  static readonly stageCloseBorder: string = '#24FFFFFF';
+  static readonly creamOnStage: string = '#E5FFFFFF';
+  static readonly creamOnStageDim: string = '#66FFFFFF';
+
+  // 兼容旧引用：牛皮纸系列统一收敛为中性容器色
+  static readonly kraftTop: string = '#F1F3F5';
   static readonly kraftMid: string = '#FFFFFF';
-  static readonly kraftBottom: string = '#D6DDF3';
-  static readonly kraftLid: string = '#D6DDF3';
-  static readonly kraftBody: string = '#E8ECFB';
-  static readonly kraftLine: string = '#CC171410';
-  static readonly kraftAmberLight: string = '#BF5B6CFF';
+  static readonly kraftBottom: string = '#E5E8EB';
+  static readonly kraftLid: string = '#E5E8EB';
+  static readonly kraftBody: string = '#F1F3F5';
+  static readonly kraftLine: string = '#33182431';
+  static readonly kraftAmberLight: string = '#4D0A59F7';
+
+  // 阴影：官方风格极轻，用低透明度中性色
+  static readonly shadow: string = '#14000000';
+  static readonly shadowSoft: string = '#0A000000';
+  static readonly shadowLift: string = '#1F000000';
+  static readonly scrim: string = '#66000000';
+
+  // 半透明容器（浮层）
+  static readonly paperTranslucent: string = '#FFFFFFFF';
+  static readonly paperHalf: string = '#FFFFFFFF';
+  static readonly creamTranslucent: string = '#F1F3F5';
+  static readonly inkSoft: string = '#1A182431';
+
+  // 图标默认色（单色符号统一取这个）
+  static readonly icon: string = '#182431';
+  static readonly iconOnBrand: string = '#FFFFFF';
 }
 
 // ============================================================
-// 尺寸（design-system §3 / docs/foldable.md）
+// 尺寸 —— 官方组件规格
 // ============================================================
 
 export class BWSize {
-  static readonly pagePadding: number = 20;
-  static readonly cardRadius: number = 24;
-  static readonly panelRadius: number = 28;
-  static readonly chipRadius: number = 999;
-  static readonly cardRadiusSm: number = 16;
-  static readonly cardRadiusXs: number = 12;
+  static readonly pagePadding: number = 16;    // 官方页面边距 16vp
+  static readonly cardRadius: number = 16;     // 官方卡片圆角
+  static readonly panelRadius: number = 24;    // 官方弹层 / 半模态圆角
+  static readonly cardRadiusSm: number = 12;
+  static readonly cardRadiusXs: number = 8;
+  static readonly chipRadius: number = 999;    // 胶囊
 
-  // 折叠屏断点（docs/foldable.md §3.1）：Duo 展开 669 / 折叠 678
+  // 控件高度（官方标准）
+  static readonly buttonHeight: number = 40;
+  static readonly buttonHeightLg: number = 48;
+  static readonly iconSize: number = 24;       // 官方图标标准尺寸 24vp
+  static readonly iconSizeSm: number = 20;
+  static readonly touchTarget: number = 40;    // 最小点击区
+
+  // 折叠屏断点
   static readonly wideBreakpoint: number = 600;
   static readonly shortHeightBreakpoint: number = 720;
   static readonly contentMaxWidth: number = 620;
 }
 
 // ============================================================
-// 字号（docs/parity.md §5 — 对齐 Web v32）
-//
-// 三端统一口径：
-//   - 正文 14–16（body 15.5 / bodySm 14.5）
-//   - 次要 12–13.5（caption 13 / captionSm 12）
-//   - 标签 10–12.5（micro 11.5 / microSm 10.5）
-//   - 大数字 22–30 起（title 22 / hero 26 / digits 46）
-// **不再使用 <10pt 的字号**（旧版 microSm=9 / 页面里写死 7 都改掉了）。
+// 字号 —— 与 HarmonyOS 系统字号阶梯一致
 // ============================================================
 
 export class BWFont {
-  static readonly display: number = 40;
-  static readonly digits: number = 46;
-  static readonly hero: number = 26;
-  static readonly title: number = 22;
+  static readonly display: number = 36;
+  static readonly digits: number = 40;
+  static readonly hero: number = 24;
+  static readonly title: number = 20;
   static readonly titleMd: number = 18;
   static readonly titleSm: number = 16;
-  static readonly body: number = 15.5;
-  static readonly bodySm: number = 14.5;
-  static readonly caption: number = 13;
+  static readonly body: number = 16;      // 官方正文 16vp
+  static readonly bodySm: number = 14;    // 官方次要正文 14vp
+  static readonly caption: number = 12;
   static readonly captionSm: number = 12;
-  static readonly micro: number = 11.5;
-  static readonly microSm: number = 10.5;
+  static readonly micro: number = 10;
+  static readonly microSm: number = 10;
 }
 
 // ============================================================
-// 动效（design-system §3：主缓动 cubic-bezier(.22,1,.36,1)）
+// 动效 —— 官方标准曲线（fastOutSlowIn / friction）
 // ============================================================
 
-export const BW_EASE = curves.cubicBezierCurve(0.22, 1, 0.36, 1);
-export const BW_DUR_QUICK: number = 180;
-export const BW_DUR_REGULAR: number = 320;
-export const BW_DUR_SLOW: number = 520;
-export const BW_DUR_OPEN_BOX: number = 900;
+export const BW_EASE = curves.cubicBezierCurve(0.2, 0, 0.2, 1);
+export const BW_DUR_QUICK: number = 150;
+export const BW_DUR_REGULAR: number = 250;
+export const BW_DUR_SLOW: number = 350;
+export const BW_DUR_OPEN_BOX: number = 600;
 
 // ============================================================
-// 稀有度 / 区域（design-system §3、§5.4）
+// 稀有度 / 区域
 // ============================================================
 
 export function rarityLabel(rarity: Rarity): string {
@@ -139,11 +171,11 @@ export function rarityColor(rarity: Rarity): string {
     case Rarity.Common:
       return BWColor.common;
     case Rarity.Rare:
-      return BWColor.teal;
+      return '#0A59F7';
     case Rarity.Epic:
-      return BWColor.plum;
+      return '#6A5AE0';
     case Rarity.Hidden:
-      return BWColor.gold;
+      return '#E84026';
     default:
       return BWColor.common;
   }
@@ -152,30 +184,30 @@ export function rarityColor(rarity: Rarity): string {
 export function raritySoft(rarity: Rarity): string {
   switch (rarity) {
     case Rarity.Common:
-      return '#248B9484';
+      return '#0D182431';
     case Rarity.Rare:
-      return '#242E7D78';
+      return '#1A0A59F7';
     case Rarity.Epic:
-      return '#246B5B9E';
+      return '#1A6A5AE0';
     case Rarity.Hidden:
-      return '#24B98A1F';
+      return '#1AE84026';
     default:
-      return '#248B9484';
+      return '#0D182431';
   }
 }
 
 export function rarityBorder(rarity: Rarity): string {
   switch (rarity) {
     case Rarity.Common:
-      return '#598B9484';
+      return '#33182431';
     case Rarity.Rare:
-      return '#592E7D78';
+      return '#330A59F7';
     case Rarity.Epic:
-      return '#596B5B9E';
+      return '#336A5AE0';
     case Rarity.Hidden:
-      return '#59B98A1F';
+      return '#33E84026';
     default:
-      return '#598B9484';
+      return '#33182431';
   }
 }
 
@@ -222,7 +254,7 @@ export function walkCopy(area: Area): string {
 }
 
 // ============================================================
-// 等级（与 apple/Shared/Core/Models.swift Profile.levelName 一致）
+// 等级
 // ============================================================
 
 export const LEVEL_NAMES: string[] = [

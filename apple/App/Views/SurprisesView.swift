@@ -33,21 +33,23 @@ struct SurpriseHubCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                BWMicroLabel("惊喜社区")
+                Text("惊喜社区")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
                 Spacer(minLength: 8)
                 Text("我埋了 \(buriedCount) · 找到 \(foundCount)")
-                    .font(BWType.caption(10.5))
+                    .font(BWType.caption(12))
                     .foregroundStyle(BWTheme.ink3)
+                    .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
 
             Text("留一张照片给陌生人，或者去找到别人的。")
-                .font(BWType.body(13))
+                .font(BWType.body(13.5))
                 .foregroundStyle(BWTheme.ink2)
-                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 7)
+                .padding(.top, 6)
 
             HStack(spacing: 8) {
                 hubButton(
@@ -58,31 +60,29 @@ struct SurpriseHubCard: View {
                 )
                 hubButton(
                     title: waitingCount > 0 ? "去寻宝 · \(waitingCount) 个在等你" : "去寻宝",
-                    systemName: "sparkle.magnifyingglass",
+                    systemName: "magnifyingglass",
                     emphasized: false,
                     action: { destination = .seek }
                 )
             }
-            .padding(.top, 13)
+            .padding(.top, 14)
 
             Button {
                 destination = .mine
             } label: {
                 HStack(spacing: 3) {
                     Text("我的惊喜")
-                        .font(BWType.caption(10.5))
+                        .font(.system(size: 12.5))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                 }
                 .foregroundStyle(BWTheme.ink3)
             }
             .buttonStyle(BWPressEffectStyle())
-            .padding(.top, 10)
+            .padding(.top, 12)
             .accessibilityLabel("查看我埋的和我找到的惊喜")
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 16)
-        .padding(.bottom, 15)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BWTheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
@@ -90,16 +90,6 @@ struct SurpriseHubCard: View {
             RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                 .stroke(BWTheme.line, lineWidth: 1)
         )
-        .overlay(alignment: .topLeading) {
-            // 右上角一小片琥珀光，让这张卡和「今日盲盒」区分开，又不抢戏
-            Circle()
-                .fill(BWTheme.amber.opacity(0.10))
-                .frame(width: 74, height: 74)
-                .blur(radius: 18)
-                .offset(x: 40, y: -30)
-                .allowsHitTesting(false)
-        }
-        .shadow(color: BWTheme.ink.opacity(0.07), radius: 14, x: 0, y: 9)
         .fullScreenCover(item: $destination) { destination in
             switch destination {
             case .bury:
@@ -132,21 +122,21 @@ struct SurpriseHubCard: View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: systemName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                 Text(title)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
-            .foregroundStyle(emphasized ? BWTheme.ink : BWTheme.ink2)
+            .foregroundStyle(emphasized ? BWTheme.amberDeep : BWTheme.ink)
             .frame(maxWidth: .infinity)
             .frame(height: 40)
-            .background(emphasized ? BWTheme.amber : BWTheme.paper2)
-            .clipShape(Capsule())
+            .background(emphasized ? BWTheme.amberSoft : BWTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(
-                Capsule().stroke(emphasized ? Color.clear : BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(emphasized ? BWTheme.amber.opacity(0.26) : BWTheme.line, lineWidth: 1)
             )
-            .shadow(color: emphasized ? BWTheme.amberDeep.opacity(0.22) : .clear, radius: 10, x: 0, y: 5)
         }
         .buttonStyle(BWPressEffectStyle())
         .accessibilityLabel(title)

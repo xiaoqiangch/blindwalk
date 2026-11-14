@@ -157,7 +157,7 @@ export struct BwFogPath {
     // ---------- 3. 偏离路径的红色虚线 ----------
     const deviateTo: FogPoint | undefined = geometry.deviateTo;
     if (deviateTo !== undefined) {
-      ctx.strokeStyle = '#FF6B6B';
+      ctx.strokeStyle = '#FA2A2D';
       ctx.globalAlpha = 0.7;
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 4]);
@@ -216,7 +216,7 @@ export struct BwFogPath {
     ctx.translate(x, y);
     ctx.rotate(rotation * Math.PI / 180);
     // 北：红
-    ctx.fillStyle = '#FF6B6B';
+    ctx.fillStyle = '#FA2A2D';
     ctx.beginPath();
     ctx.moveTo(0, -9);
     ctx.lineTo(4, 0);
@@ -301,6 +301,7 @@ function emptyGeometry(): FogGeometry {
     userX: 0,
     userY: 0,
     compassRotation: 0,
+    userRotation: 0,
     caption: '正在规划路径…',
     hidden: false,
     remaining: 0,

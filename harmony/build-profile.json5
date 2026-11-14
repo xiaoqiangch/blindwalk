@@ -1,11 +1,27 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+    {
+      "name": "default",
+      "type": "HarmonyOS",
+      "material": {
+        "certpath": "/Users/chenxiaoqiang/.ohos/config/default_harmony_WtKZkpDOD6Lmo3B8FzDR5cS95-M_Dv_2q2z2I3hMJsI=.cer",
+        "keyAlias": "debugKey",
+        "keyPassword": "0000001B3A99EC038B89AA21D53FCC0B8EEF817BE5154A82015D09E1C7BEC2366AB3D2BD6FC66FD169A0D4",
+        "profile": "/Users/chenxiaoqiang/.ohos/config/default_harmony_WtKZkpDOD6Lmo3B8FzDR5cS95-M_Dv_2q2z2I3hMJsI=.p7b",
+        "signAlg": "SHA256withECDSA",
+        "storeFile": "/Users/chenxiaoqiang/.ohos/config/default_harmony_WtKZkpDOD6Lmo3B8FzDR5cS95-M_Dv_2q2z2I3hMJsI=.p12",
+        "storePassword": "0000001BFA7C61D5EB20D0C53B8C4555BC3DE527E12BBB20154144862B63308408FEED6F1CAC092EC5D4EE"
+      }
+    }
+  ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
-        "compatibleSdkVersion": "5.0.0(12)",
+        "compatibleSdkVersion": "26.0.0",
+        "compileSdkVersion": "26.0.1",
+        "targetSdkVersion": "26.0.0",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
@@ -16,8 +32,12 @@
       }
     ],
     "buildModeSet": [
-      { "name": "debug" },
-      { "name": "release" }
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release"
+      }
     ]
   },
   "modules": [
@@ -25,7 +45,12 @@
       "name": "entry",
       "srcPath": "./entry",
       "targets": [
-        { "name": "default", "applyToProducts": ["default"] }
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
       ]
     }
   ]

@@ -216,6 +216,7 @@ export class BlindWalkStore implements BlindWalkStoreApi {
   private demoModeValue: boolean;
   private routeValue: RoutePolyline | undefined;
   private dataSourceValue: DataSourceStatus;
+  private nearbyPlacesValue: Place[];
   private drawCounter: number;
   private surpriseCounter: number;
   private seedSurprisesRebased: boolean;
@@ -228,6 +229,7 @@ export class BlindWalkStore implements BlindWalkStoreApi {
     this.demoModeValue = true;
     this.routeValue = undefined;
     this.dataSourceValue = emptyDataSourceStatus();
+    this.nearbyPlacesValue = [];
     this.drawCounter = 0;
     this.surpriseCounter = 0;
     this.seedSurprisesRebased = false;
@@ -433,6 +435,15 @@ export class BlindWalkStore implements BlindWalkStoreApi {
   /** 当前数据源状态 */
   dataSourceStatus(): DataSourceStatus {
     return cloneDataSourceStatus(this.dataSourceValue);
+  }
+
+  /** 写入附近的兴趣点（内存态，不持久化） */
+  setNearbyPlaces(places: Place[]): void {
+    const copy: Place[] = [];
+    for (let i = 0; i < places.length; i += 1) {
+      copy.push(clonePlace(places[i]));
+    }
+    this.nearbyPlacesValue = copy;
   }
 
   /** 设置步行路线（迷雾路径视图用；传 undefined 清除） */
@@ -782,6 +793,7 @@ export class BlindWalkStore implements BlindWalkStoreApi {
       selectedDuration: this.selectedDurationValue,
       explorableSurprises: this.explorableSurpriseList(),
       mySurprises: this.mySurpriseList(),
+      nearbyPlaces: this.nearbyPlaceList(),
       feed: this.snapshotFeed(walking, place, destinationCollected),
       leaderboard: leaderboard(this.profile).map(
         (entry: LeaderboardEntry): LeaderboardEntry => cloneLeaderboardEntry(entry)
@@ -807,6 +819,14 @@ export class BlindWalkStore implements BlindWalkStoreApi {
     const route: RoutePolyline | undefined = this.currentRoute();
     if (route !== undefined) snapshot.route = route;
     return snapshot;
+  }
+
+  private nearbyPlaceList(): Place[] {
+    const list: Place[] = [];
+    for (let i = 0; i < this.nearbyPlacesValue.length; i += 1) {
+      list.push(clonePlace(this.nearbyPlacesValue[i]));
+    }
+    return list;
   }
 
   private isPlaceCollected(placeID: string): boolean {
@@ -1087,6 +1107,13 @@ export function getStoreInstance(): BlindWalkStore {
  * - 追加进地点库（图鉴可还原、抽盒可抽到）
  * - 持久化到 extras.realPlaces，重启后仍在
  */
+export function setNearbyPlaces(places: Place[]): void {
+  if (singleton === undefined) {
+    throw new Error('BlindWalkStore 未初始化：请先调用 initStore(kv)');
+  }
+  singleton.setNearbyPlaces(places);
+}
+
 export function registerPlaces(places: Place[]): void {
   if (singleton === undefined) {
     throw new Error('BlindWalkStore 未初始化：请先调用 initStore(kv)');

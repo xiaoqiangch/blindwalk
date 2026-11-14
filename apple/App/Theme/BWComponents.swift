@@ -1,38 +1,23 @@
 import SwiftUI
 
 // MARK: - 纸面背景
-// 「黄昏的旧地图」：奶油纸底 + 极低透明度纸纹（design-system §3）。
+// v3：底色是一条中性冷灰梯，不再叠噪点。
+// 噪点纹理在 3x 屏上会因为缩放产生摩尔纹，视觉上就是「页面脏」。
 
 struct BWPaperBackground: View {
     var body: some View {
-        ZStack {
-            BWTheme.cream
-            BWPaperTexture()
-        }
-        .ignoresSafeArea()
+        BWTheme.cream.ignoresSafeArea()
     }
 }
 
-/// 简化纸纹：确定性伪随机噪点，替代 web 的 feTurbulence。
-/// web 纸纹 opacity .035，这里只取极淡的一层，避免页面「脏」。
+/// 保留旧名，避免改动其他页面的调用；v3 起它不再画任何噪点。
 struct BWPaperTexture: View {
     var body: some View {
-        Canvas { context, size in
-            var random = BWPseudoRandom(seed: 0xB1_1D_2A_1C)
-            let count = 90
-            for _ in 0..<count {
-                let x = random.nextDouble() * size.width
-                let y = random.nextDouble() * size.height
-                let radius = 0.5 + random.nextDouble() * 1.3
-                let rect = CGRect(x: x, y: y, width: radius, height: radius)
-                context.fill(Path(ellipseIn: rect), with: .color(BWTheme.ink.opacity(0.035)))
-            }
-        }
-        .allowsHitTesting(false)
+        Color.clear.allowsHitTesting(false)
     }
 }
 
-/// 小工具：可复现的伪随机（保证每次重绘纹理一致）
+/// 小工具：可复现的伪随机（保留给插画使用）
 struct BWPseudoRandom {
     private var state: UInt64
 
@@ -49,13 +34,13 @@ struct BWPseudoRandom {
 
 // MARK: - 卡片
 
-/// 纸卡：24pt 圆角 + 发丝描边 + 极轻阴影（web 卡片的阴影几乎不可见）。
+/// 面卡：16pt 圆角 + 发丝描边 + 中性微阴影。白面 + 描边就够分层，不需要彩色投影。
 struct BWCard<Content: View>: View {
     private let padding: CGFloat
     private let background: Color
     private let content: Content
 
-    init(padding: CGFloat = 18, background: Color = BWTheme.paper, @ViewBuilder content: () -> Content) {
+    init(padding: CGFloat = 16, background: Color = BWTheme.paper, @ViewBuilder content: () -> Content) {
         self.padding = padding
         self.background = background
         self.content = content()
@@ -70,7 +55,6 @@ struct BWCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                     .stroke(BWTheme.line, lineWidth: 1)
             )
-            .shadow(color: BWTheme.ink.opacity(0.05), radius: 10, x: 0, y: 6)
     }
 }
 
@@ -85,7 +69,8 @@ struct BWHairline: View {
 
 // MARK: - 文本
 
-/// 微标：10pt + 字距（design-system §3 微标 10/12，字距 .08em）
+/// 小节微标：句首大写中文、不追踪。
+/// v1 用的是「全大写 + 字距 .08em」的网页表单标签写法，中文上只会显得挤。
 struct BWMicroLabel: View {
     private let text: String
     private let tint: Color
@@ -97,14 +82,12 @@ struct BWMicroLabel: View {
 
     var body: some View {
         Text(text)
-            .font(BWType.micro())
-            .tracking(0.9)
+            .font(.system(size: 12.5, weight: .medium))
             .foregroundStyle(tint)
     }
 }
 
-/// 小节标题：web 里所有分节标题都是一枚很小的灰色追踪标签，
-/// 而不是粗体大标题 —— 这是「像设计稿」和「像 AI 生成」的分界线。
+/// 小节标题：一行文字 + 右侧可选动作，不用追踪标签
 struct BWSectionHeader: View {
     let title: String
     var trailingTitle: String? = nil
@@ -113,25 +96,24 @@ struct BWSectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
-                .font(BWType.micro())
-                .tracking(1.1)
-                .foregroundStyle(BWTheme.ink3)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(BWTheme.ink)
 
             Spacer(minLength: 0)
 
             if let trailingTitle, let action {
                 Button(action: action) {
                     HStack(spacing: 2) {
-                        Text(trailingTitle).font(BWType.caption(10.5))
+                        Text(trailingTitle).font(BWType.caption(12.5))
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 10.5, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                     }
                     .foregroundStyle(BWTheme.ink3)
                 }
                 .buttonStyle(BWPressEffectStyle())
             } else if let trailingTitle {
                 Text(trailingTitle)
-                    .font(BWType.caption(10.5))
+                    .font(BWType.caption(12.5))
                     .foregroundStyle(BWTheme.ink3)
             }
         }
@@ -149,7 +131,8 @@ struct BWPressEffectStyle: ButtonStyle {
     }
 }
 
-/// 琥珀主 CTA（web .btn--primary：纯色、贴纸感、不堆渐变）
+/// 主 CTA：纯色靛蓝 + 白字 + 中性外阴影。
+/// v1 是「黑字压在主色上 + 主色投影」，对比不足且发虚；v3 一次只允许有一个这样的按钮。
 struct BWPrimaryButton: View {
     let title: String
     var icon: String? = nil
@@ -168,26 +151,26 @@ struct BWPrimaryButton: View {
                     .font(BWType.cta())
                 if let caption {
                     Text(caption)
-                        .font(.system(size: 10.5, weight: .bold))
+                        .font(.system(size: 10.5, weight: .semibold))
                         .tracking(0.4)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
-                        .background(BWTheme.ink.opacity(0.10))
+                        .background(Color.white.opacity(0.20))
                         .clipShape(Capsule())
                 }
             }
-            .foregroundStyle(BWTheme.ink)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .background(BWTheme.amber)
-            .clipShape(Capsule())
-            .shadow(color: BWTheme.amberDeep.opacity(0.35), radius: 14, x: 0, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: BWTheme.amber.opacity(0.18), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(BWPressEffectStyle())
     }
 }
 
-/// 次级按钮：透明底 + 发丝描边（web .btn--ghost）
+/// 次级按钮：白面 + 发丝描边
 struct BWSecondaryButton: View {
     let title: String
     var icon: String? = nil
@@ -201,12 +184,17 @@ struct BWSecondaryButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .semibold))
                 }
-                Text(title).font(BWType.cta(14))
+                Text(title).font(BWType.cta(14.5))
             }
-            .foregroundStyle(BWTheme.ink2)
+            .foregroundStyle(BWTheme.ink)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+            .background(BWTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(BWTheme.line, lineWidth: 1)
+            )
         }
         .buttonStyle(BWPressEffectStyle())
     }
@@ -221,7 +209,7 @@ struct BWIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: size * 0.42, weight: .semibold))
+                .font(.system(size: size * 0.42, weight: .medium))
                 .foregroundStyle(BWTheme.ink2)
                 .frame(width: size, height: size)
                 .background(BWTheme.paper)
@@ -232,7 +220,7 @@ struct BWIconButton: View {
     }
 }
 
-/// 筛选 chip（web .chipbtn：选中 = 墨色底 + 奶油字）
+/// 筛选 chip：选中 = 主色淡底 + 主色字（不再用「黑底白字」，黑底按钮太重）
 struct BWPill: View {
     let title: String
     var selected: Bool = false
@@ -241,15 +229,15 @@ struct BWPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(selected ? BWTheme.cream : BWTheme.ink2)
+                .font(.system(size: 13.5, weight: selected ? .medium : .regular))
+                .foregroundStyle(selected ? BWTheme.amberDeep : BWTheme.ink2)
                 .lineLimit(1)
-                .padding(.horizontal, 16)
-                .frame(height: 34)
-                .background(selected ? BWTheme.ink : BWTheme.paper)
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background(selected ? BWTheme.amberSoft : BWTheme.paper)
                 .clipShape(Capsule())
                 .overlay(
-                    Capsule().stroke(selected ? BWTheme.ink : BWTheme.line, lineWidth: 1)
+                    Capsule().stroke(selected ? BWTheme.amber.opacity(0.28) : BWTheme.line, lineWidth: 1)
                 )
         }
         .buttonStyle(BWPressEffectStyle())
@@ -258,22 +246,18 @@ struct BWPill: View {
 
 // MARK: - 稀有度
 
-/// 稀有度徽章（web .badge：22 高、10.5 / 700、淡底 + 细描边）
+/// 稀有度徽章：细描边 + 淡底，不用满圆药丸
 struct BWRarityBadge: View {
     let rarity: Rarity
 
     var body: some View {
         Text(rarity.label)
-            .font(.system(size: 12.5, weight: .bold))
-            .tracking(0.2)
+            .font(.system(size: 11.5, weight: .medium))
             .foregroundStyle(BWTheme.rarityColor(rarity))
-            .padding(.horizontal, 9)
-            .frame(height: 22)
+            .padding(.horizontal, 7)
+            .frame(height: 20)
             .background(BWTheme.raritySoft(rarity))
-            .clipShape(Capsule())
-            .overlay(
-                Capsule().stroke(BWTheme.rarityColor(rarity).opacity(0.34), lineWidth: 1)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
@@ -291,59 +275,37 @@ struct BWRarityDot: View {
 
 // MARK: - 统计
 
-/// 首页快捷统计（web .stat：无卡片底、左侧发丝分隔、数字 19/700）
+/// 首页快捷统计。v1 给每格加了一条左侧竖线（网页表格的写法），
+/// v3 去掉竖线，改用间距分组 + 三档文字层级。
 struct BWStatCell: View {
     let value: String
     let title: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(BWType.number(19))
-                .monospacedDigit()
+                .font(BWType.number(22))
                 .foregroundStyle(BWTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(title)
-                .font(BWType.caption(10.5))
+                .font(.system(size: 12))
                 .foregroundStyle(BWTheme.ink3)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 14)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(BWTheme.line)
-                .frame(width: 1)
-                .padding(.vertical, 2)
-        }
     }
 }
 
-/// 三栏统计行（第一栏不带左侧分隔线）
+/// 三栏统计行
 struct BWStatsRow: View {
     let items: [(String, String)]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(items[0].0)
-                    .font(BWType.number(19))
-                    .monospacedDigit()
-                    .foregroundStyle(BWTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Text(items[0].1)
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(BWTheme.ink3)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            ForEach(1..<items.count, id: \.self) { index in
-                BWStatCell(value: items[index].0, title: items[index].1)
+        HStack(alignment: .top, spacing: 16) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                BWStatCell(value: item.0, title: item.1)
             }
         }
     }

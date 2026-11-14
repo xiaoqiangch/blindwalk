@@ -19,6 +19,7 @@ import {
   StatItem
 } from '../components/Common';
 import { BwBoxArt } from '../components/BoxArt';
+import { categorySymbol } from '../components/BwSymbol';
 import {
   activeSession,
   emptySnapshot,
@@ -45,10 +46,10 @@ class FriendInfo {
 }
 
 const FRIENDS: FriendInfo[] = [
-  new FriendInfo('小满', '🐱', false),
-  new FriendInfo('阿岛', '🎧', false),
-  new FriendInfo('77', '🌙', true),
-  new FriendInfo('老陈', '🍜', false)
+  new FriendInfo('小满', 'person_2', false),
+  new FriendInfo('阿岛', 'headphones_fill', false),
+  new FriendInfo('77', 'sun_max', true),
+  new FriendInfo('老陈', 'leaf_fill', false)
 ];
 
 @Component
@@ -59,6 +60,9 @@ export struct HomeView {
   @Prop winHeight: number = 800;
 
   onOpenSetup: () => void = () => {
+  };
+  /** 打开埋惊喜面板（首页「埋下一个」/「我的惊喜」） */
+  onOpenBury: () => void = () => {
   };
   onOpenJourney: () => void = () => {
   };
@@ -107,13 +111,13 @@ export struct HomeView {
     return placeOf(this.snapshot, card.placeID) !== undefined;
   }
 
-  private latestEmoji(): string {
+  private latestSymbol(): string {
     const card: PlaceCard | undefined = latestCard(this.snapshot.profile);
     if (card === undefined) {
-      return '🃏';
+      return 'pin';
     }
     const place: Place | undefined = placeOf(this.snapshot, card.placeID);
-    return place === undefined ? '🃏' : place.emoji;
+    return place === undefined ? 'pin' : categorySymbol(place.category);
   }
 
   private latestName(): string {
@@ -167,8 +171,9 @@ export struct HomeView {
     return items;
   }
 
-  private showSurpriseSoon(): void {
-    promptAction.showToast({ message: '埋惊喜 / 寻惊喜即将开放', duration: 2000 });
+  /** 寻宝列表页尚未移植：只有这里还是提示 */
+  private showSeekSoon(): void {
+    promptAction.showToast({ message: '寻宝列表还在做，先从图鉴的「附近的惊喜」进', duration: 2400 });
   }
 
   // ============================================================
@@ -205,7 +210,10 @@ export struct HomeView {
       }
 
       Row({ space: 4 }) {
-        Text('🔥')
+        SymbolGlyph($r('sys.symbol.flame'))
+          .fontSize(BWFont.captionSm)
+          .fontColor([BWColor.ink2])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(BWFont.captionSm)
         Text(this.snapshot.profile.streakDays + ' 天')
           .fontSize(BWFont.captionSm)
@@ -274,7 +282,7 @@ export struct HomeView {
       .constraintSize({ minHeight: 24 })
 
       Row() {
-        BwBoxArt({ size: this.isShort() ? 86 : 112 })
+        BwBoxArt({ artSize: this.isShort() ? 86 : 112 })
       }
       .width('100%')
       .justifyContent(FlexAlign.Center)
@@ -299,17 +307,10 @@ export struct HomeView {
     }
     .width('100%')
     .padding({ left: 18, right: 18, top: 15, bottom: 14 })
-    .linearGradient({
-      angle: 135,
-      colors: [
-        [BWColor.kraftTop, 0.0],
-        [BWColor.kraftMid, 0.5],
-        [BWColor.kraftBottom, 1.0]
-      ]
-    })
+    .backgroundColor(BWColor.paper)
     .borderRadius(BWSize.cardRadius)
     .border({ width: 1, color: BWColor.inkSoft, radius: BWSize.cardRadius })
-    .shadow({ radius: 20, color: BWColor.shadow, offsetX: 0, offsetY: 12 })
+    .shadow({ radius: 12, color: BWColor.shadowSoft, offsetX: 0, offsetY: 2 })
   }
 
   @Builder
@@ -323,8 +324,8 @@ export struct HomeView {
       Row({ space: -7 }) {
         ForEach(FRIENDS, (friend: FriendInfo) => {
           BwAvatar({
-            emoji: friend.emoji,
-            size: 42,
+            iconName: friend.emoji,
+            boxSize: 42,
             onlineDot: friend.online,
             name: friend.name
           })
@@ -351,14 +352,16 @@ export struct HomeView {
   lastSurpriseSection() {
     if (this.hasLastSurprise()) {
       Row({ space: 12 }) {
-        Text(this.latestEmoji())
-          .fontSize(20)
-          .textAlign(TextAlign.Center)
-          .width(46)
-          .height(56)
-          .backgroundColor(BWColor.kraftTop)
-          .borderRadius(BWSize.cardRadiusXs)
-          .border({ width: 1, color: BWColor.inkSoft, radius: BWSize.cardRadiusXs })
+        Stack({ alignContent: Alignment.Center }) {
+          SymbolGlyph($r('sys.symbol.' + this.latestSymbol()))
+            .fontSize(BWSize.iconSize)
+            .fontColor([BWColor.ink2])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        }
+        .width(46)
+        .height(56)
+        .backgroundColor(BWColor.paper2)
+        .borderRadius(BWSize.cardRadiusXs)
 
         Column({ space: 2 }) {
           BwMicroLabel({ text: '上一次的惊喜' })
@@ -382,9 +385,9 @@ export struct HomeView {
       .width('100%')
       .padding({ left: 10, right: 14, top: 10, bottom: 10 })
       .backgroundColor(BWColor.paper)
-      .borderRadius(20)
-      .border({ width: 1, color: BWColor.line, radius: 20 })
-      .shadow({ radius: 12, color: BWColor.shadowSoft, offsetX: 0, offsetY: 8 })
+      .borderRadius(BWSize.cardRadius)
+      .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+      .shadow({ radius: BWSize.cardRadius, color: BWColor.shadowSoft, offsetX: 0, offsetY: 8 })
       .onClick(() => {
         this.onOpenCards();
       })
@@ -402,8 +405,8 @@ export struct HomeView {
       .width('100%')
       .padding({ left: 18, right: 18, top: 15, bottom: 15 })
       .backgroundColor(BWColor.paperHalf)
-      .borderRadius(20)
-      .border({ width: 1, color: BWColor.line, style: BorderStyle.Dashed, radius: 20 })
+      .borderRadius(BWSize.cardRadius)
+      .border({ width: 1, color: BWColor.line, style: BorderStyle.Dashed, radius: BWSize.cardRadius })
     }
   }
 
@@ -441,7 +444,7 @@ export struct HomeView {
         .backgroundColor(BWColor.amberSoftStrong)
         .border({ width: 1, color: BWColor.amberBorder, radius: BWSize.chipRadius })
         .onClick(() => {
-          this.showSurpriseSoon();
+          this.onOpenBury();
         })
 
         Button() {
@@ -460,7 +463,7 @@ export struct HomeView {
         .backgroundColor(BWColor.paper2)
         .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
         .onClick(() => {
-          this.showSurpriseSoon();
+          this.showSeekSoon();
         })
       }
       .width('100%')
@@ -476,7 +479,7 @@ export struct HomeView {
       }
       .margin({ top: 10 })
       .onClick(() => {
-        this.showSurpriseSoon();
+        this.onOpenBury();
       })
     }
     .width('100%')

@@ -32,10 +32,13 @@ import {
 import {
   emptySnapshot,
   hiddenCardCount,
+  isNearbyExplored,
+  nearbyDistance,
   placeOf,
   rareCardCount,
   readSnapshot,
-  sortedCards
+  sortedCards,
+  unexploredNearbyCount
 } from '../components/StoreBridge';
 import {
   BWColor,
@@ -45,6 +48,7 @@ import {
   rarityColor
 } from '../theme/Theme';
 import { formatShortDate } from '../components/Format';
+import { categorySymbol } from '../components/BwSymbol';
 
 enum CardFilter {
   All = 'all',
@@ -83,6 +87,9 @@ export struct CardsView {
   };
   /** 空状态 CTA：去埋一个（由 Index 决定去哪） */
   onOpenBury: () => void = () => {
+  };
+  /** 点击「附近未探索的兴趣点」→ 由 Index 用该地点开始一次旅程 */
+  onExplorePlace: (placeID: string) => void = () => {
   };
 
   @State private snapshot: AppSnapshot = emptySnapshot();
@@ -140,6 +147,25 @@ export struct CardsView {
     return this.snapshot.lastKnownOrigin !== undefined;
   }
 
+  /** 附近兴趣点：未探索在前（按距离升序），已探索在后 */
+  private nearbyPlaceList(): Place[] {
+    const list: Place[] = this.snapshot.nearbyPlaces.slice();
+    list.sort((first: Place, second: Place): number => {
+      const exploredFirst: boolean = isNearbyExplored(this.snapshot, first);
+      const exploredSecond: boolean = isNearbyExplored(this.snapshot, second);
+      if (exploredFirst !== exploredSecond) {
+        return exploredFirst ? 1 : -1;
+      }
+      const metersFirst: number = nearbyDistance(this.snapshot, first);
+      const metersSecond: number = nearbyDistance(this.snapshot, second);
+      if (metersFirst < 0 && metersSecond < 0) return 0;
+      if (metersFirst < 0) return 1;
+      if (metersSecond < 0) return -1;
+      return metersFirst - metersSecond;
+    });
+    return list;
+  }
+
   private matchesFilter(place: Place): boolean {
     switch (this.filter) {
       case CardFilter.Rare:
@@ -185,6 +211,15 @@ export struct CardsView {
     if (this.winWidth >= BWSize.wideBreakpoint) {
       return 5;
     }
+    return 3;
+  }
+
+  private isWide(): boolean {
+    return this.winWidth >= BWSize.wideBreakpoint;
+  }
+
+  /** 展开态：左右分屏时每栏更窄，列数相应减少 */
+  private wideColumnCount(): number {
     return 3;
   }
 
@@ -250,18 +285,19 @@ export struct CardsView {
 
       Blank()
 
-      Text('☰')
-        .fontSize(BWFont.body)
-        .fontColor(BWColor.ink2)
-        .textAlign(TextAlign.Center)
-        .width(36)
-        .height(36)
-        .backgroundColor(BWColor.paper)
-        .borderRadius(18)
-        .border({ width: 1, color: BWColor.line, radius: 18 })
-        .onClick(() => {
-          this.cycleFilter();
-        })
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.square_grid_2x2'))
+          .fontSize(BWSize.iconSizeSm)
+          .fontColor([BWColor.ink2])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(36)
+      .height(36)
+      .backgroundColor(BWColor.paper2)
+      .borderRadius(18)
+      .onClick(() => {
+        this.cycleFilter();
+      })
     }
     .width('100%')
   }
@@ -415,6 +451,143 @@ export struct CardsView {
     })
   }
 
+  /**
+   * 附近的兴趣点（真实数据源）。
+   *
+   * 展示规则：
+   *   - 未探索：显示「?」+ 类别 + 距离 + 方向，点击开始探索；
+   *   - 已探索（已收录）：显示类别图标 + 地点名 + 收录日期，点击看详情。
+   * 保密：未探索条目**只给类别与距离**，绝不给地点名。
+   */
+  @Builder
+  nearbyPoiSection() {
+    Column({ space: 8 }) {
+      Row({ space: 6 }) {
+        Text('附近的兴趣点')
+          .fontSize(BWFont.caption)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(BWColor.ink)
+        Text(String(unexploredNearbyCount(this.snapshot)) + ' 个待探索')
+          .fontSize(BWFont.microSm)
+          .fontColor(BWColor.ink3)
+        Blank()
+      }
+      .width('100%')
+
+      if (this.snapshot.nearbyPlaces.length === 0) {
+        Row({ space: 6 }) {
+          SymbolGlyph($r('sys.symbol.magnifyingglass'))
+            .fontSize(BWFont.caption)
+            .fontColor([BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          Text(this.hasLocation() ? '正在搜附近…（没找到就下拉重试）' : '需要先定位才能列出附近')
+            .fontSize(BWFont.captionSm)
+            .fontColor(BWColor.ink3)
+        }
+        .width('100%')
+        .padding({ top: 6, bottom: 6 })
+      } else {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+          ForEach(this.nearbyPlaceList(), (place: Place) => {
+            this.poiCell(place)
+          }, (place: Place) => place.id)
+        }
+        .width('100%')
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(14)
+    .backgroundColor(BWColor.paper)
+    .borderRadius(BWSize.cardRadius)
+    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+  }
+
+  /** 单个兴趣点：未探索显示 ?，已探索显示真实信息 */
+  @Builder
+  poiCell(place: Place) {
+    Column({ space: 0 }) {
+      if (isNearbyExplored(this.snapshot, place)) {
+        SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
+          .fontSize(22)
+          .fontColor([BWColor.ink2])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          .width('100%')
+
+        Text(place.name)
+          .fontSize(BWFont.captionSm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(BWColor.ink)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+          .margin({ top: 4 })
+      } else {
+        // 未探索：问号 + 类别（不含地点名）
+        Text('?')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(BWColor.ink3)
+          .width('100%')
+
+        Text(place.category)
+          .fontSize(BWFont.captionSm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(BWColor.ink2)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+          .margin({ top: 4 })
+      }
+
+      Blank()
+
+      Row({ space: 3 }) {
+        SymbolGlyph($r('sys.symbol.pin'))
+          .fontSize(BWFont.micro)
+          .fontColor([BWColor.ink3])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+
+        Text(this.poiDistanceText(place))
+          .fontSize(BWFont.microSm)
+          .fontColor(BWColor.ink3)
+          .maxLines(1)
+      }
+      .width('100%')
+    }
+    .width(this.cardWidth())
+    .height(this.cardHeight())
+    .padding(10)
+    .margin({ bottom: 10 })
+    .backgroundColor(isNearbyExplored(this.snapshot, place) ? BWColor.paper : BWColor.paper2)
+    .borderRadius(BWSize.cardRadiusSm)
+    .border({
+      width: 1,
+      color: BWColor.line,
+      radius: BWSize.cardRadiusSm,
+      style: isNearbyExplored(this.snapshot, place) ? BorderStyle.Solid : BorderStyle.Dashed
+    })
+    .onClick(() => {
+      if (isNearbyExplored(this.snapshot, place)) {
+        this.selectedPlaceID = place.id;
+      } else {
+        this.onExplorePlace(place.id);
+      }
+    })
+  }
+
+  /** 兴趣点距离文案 */
+  private poiDistanceText(place: Place): string {
+    const meters: number = nearbyDistance(this.snapshot, place);
+    if (meters < 0) {
+      return '位置未知';
+    }
+    if (meters >= 1000) {
+      return (meters / 1000).toFixed(1) + ' km';
+    }
+    return String(meters) + ' m';
+  }
+
   @Builder
   filterRow() {
     Row({ space: 8 }) {
@@ -464,8 +637,10 @@ export struct CardsView {
   @Builder
   collectedCell(place: Place, card: PlaceCard) {
     Column({ space: 0 }) {
-      Text(place.emoji)
+      SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
         .fontSize(26)
+        .fontColor([BWColor.ink2])
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         .width('100%')
 
       Text(place.name)
@@ -556,8 +731,10 @@ export struct CardsView {
           .width('100%')
 
           Column({ space: 6 }) {
-            Text(place.emoji)
+            SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
               .fontSize(40)
+              .fontColor([BWColor.amber])
+              .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             Text(place.name)
               .fontSize(BWFont.title)
               .fontWeight(FontWeight.Bold)
@@ -582,7 +759,7 @@ export struct CardsView {
             .width('100%')
 
           Column({ space: 6 }) {
-            BwMicroLabel({ text: '🎯 小任务' })
+            BwMicroLabel({ text: '小任务' })
             Text(place.task)
               .fontSize(BWFont.caption)
               .fontColor(BWColor.ink)
@@ -619,7 +796,7 @@ export struct CardsView {
         .backgroundColor(BWColor.paper)
         .borderRadius(BWSize.cardRadius)
         .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-        .shadow({ radius: 24, color: BWColor.shadowLift, offsetX: 0, offsetY: 16 })
+        .shadow({ radius: 16, color: BWColor.shadow, offsetX: 0, offsetY: 4 })
       }
       .width('100%')
       .constraintSize({ maxWidth: 420 })
@@ -628,6 +805,41 @@ export struct CardsView {
     }
     .width('100%')
     .height('100%')
+  }
+
+  /** 左栏：统计 + 附近的惊喜 + 附近的兴趣点（折叠屏展开态） */
+  @Builder
+  wideLeftPane() {
+    Column({ space: 0 }) {
+      this.statsLine()
+
+      Column() {
+        this.nearbyHintsSection()
+      }
+      .margin({ top: 12 })
+
+      Column() {
+        this.nearbyPoiSection()
+      }
+      .margin({ top: 12 })
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  /** 右栏：筛选 + 图鉴网格 */
+  @Builder
+  wideRightPane() {
+    Column({ space: 0 }) {
+      this.filterRow()
+
+      Column() {
+        this.grid()
+      }
+      .margin({ top: 12 })
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
   }
 
   build() {
@@ -641,29 +853,59 @@ export struct CardsView {
         Column({ space: 0 }) {
           this.header()
 
-          Column() {
-            this.statsLine()
-          }
-          .margin({ top: 8 })
+          if (this.isWide()) {
+            // 折叠屏展开态：左右分屏（同一个 Scroll 内，两列各自独立排布）
+            Row({ space: 20 }) {
+              Column() {
+                this.wideLeftPane()
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .padding({ top: 8 })
 
-          // 附近的惊喜：隐晦提示（点一下开始探寻）
-          Column() {
-            this.nearbyHintsSection()
-          }
-          .margin({ top: 12 })
+              Column() {
+                this.wideRightPane()
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .padding({ top: 8 })
+            }
+            .width('100%')
+            .alignItems(VerticalAlign.Top)
+          } else {
+            Column({ space: 0 }) {
+              Column() {
+                this.statsLine()
+              }
+              .margin({ top: 8 })
 
-          Column() {
-            this.filterRow()
-          }
-          .margin({ top: 12 })
+              // 附近的惊喜：隐晦提示（点一下开始探寻）
+              Column() {
+                this.nearbyHintsSection()
+              }
+              .margin({ top: 12 })
 
-          Column() {
-            this.grid()
+              // 附近的兴趣点（未探索 = 问号，点击开始探索）
+              Column() {
+                this.nearbyPoiSection()
+              }
+              .margin({ top: 12 })
+
+              Column() {
+                this.filterRow()
+              }
+              .margin({ top: 12 })
+
+              Column() {
+                this.grid()
+              }
+              .margin({ top: 14 })
+            }
+            .width('100%')
           }
-          .margin({ top: 14 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
         .padding({
           left: BWSize.pagePadding,
           right: BWSize.pagePadding,
@@ -672,7 +914,7 @@ export struct CardsView {
         })
       }
       .width('100%')
-      .height('100%')
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
 
       if (this.selectedPlace() !== undefined) {

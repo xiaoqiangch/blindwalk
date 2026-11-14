@@ -92,9 +92,9 @@ export struct BwDataSourcePanel {
 
           // ---------- 各源状态 ----------
           Column({ space: 0 }) {
-            this.statusRow('高德地图', this.status.amapReady ? '已由后台配置 ✓' : '后台未配置', this.status.amapReady)
+            this.statusRow('高德地图', this.status.amapReady ? '已由后台配置' : '后台未配置', this.status.amapReady)
             Divider().strokeWidth(1).color(BWColor.line)
-            this.statusRow('百度地图', this.status.baiduReady ? '已由后台配置 ✓' : '后台未配置', this.status.baiduReady)
+            this.statusRow('百度地图', this.status.baiduReady ? '已由后台配置' : '后台未配置', this.status.baiduReady)
             Divider().strokeWidth(1).color(BWColor.line)
             this.statusRow('OpenStreetMap', '免费 · 始终可用', true)
             Divider().strokeWidth(1).color(BWColor.line)

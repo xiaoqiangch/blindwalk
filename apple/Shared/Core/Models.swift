@@ -73,6 +73,16 @@ public enum Mood: String, Codable, CaseIterable, Identifiable, Sendable {
         case .lively: return "去哪儿都行，人多一点"
         }
     }
+
+    /// 界面里用的 SF Symbol。emoji 在小字号下字重不一，🌫️ 还会渲染成一团灰雾，
+    /// 所以心情这一层用线图标，emoji 只留给地点卡片（那是内容本身）。
+    public var symbol: String {
+        switch self {
+        case .drift: return "wind"
+        case .discover: return "binoculars"
+        case .lively: return "flame"
+        }
+    }
 }
 
 /// 时长

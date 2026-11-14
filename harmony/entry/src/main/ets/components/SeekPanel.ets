@@ -119,7 +119,7 @@ export struct BwSeekPanel {
   topBar() {
     Row({ space: 10 }) {
       BwIconButton({
-        glyph: '‹',
+        name: 'chevron_left',
         onTap: () => {
           this.onBack();
         }
@@ -151,12 +151,12 @@ export struct BwSeekPanel {
     Column({ space: 8 }) {
       Row({ space: 10 }) {
         Text(this.authorEmoji)
-          .fontSize(BWFont.title)
+          .fontSize(BWFont.titleSm)
           .textAlign(TextAlign.Center)
-          .width(38)
-          .height(38)
-          .backgroundColor(BWColor.amberSoft)
-          .borderRadius(12)
+          .width(40)
+          .height(40)
+          .backgroundColor(BWColor.paper2)
+          .borderRadius(20)
 
         Column({ space: 3 }) {
           Text('有人在这儿留下一张照片')
@@ -218,10 +218,17 @@ export struct BwSeekPanel {
           .stroke(this.isUnlocked(index) ? '#662E7D78' : BWColor.line)
           .strokeWidth(1)
 
-        Text(this.isUnlocked(index) ? '✓' : String(index + 1))
-          .fontSize(BWFont.microSm)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.isUnlocked(index) ? BWColor.teal : BWColor.ink3)
+        if (this.isUnlocked(index)) {
+          SymbolGlyph($r('sys.symbol.checkmark'))
+            .fontSize(BWFont.micro)
+            .fontColor([BWColor.teal])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        } else {
+          Text(String(index + 1))
+            .fontSize(BWFont.microSm)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(BWColor.ink3)
+        }
       }
 
       Text(this.clueText(index))
@@ -231,7 +238,10 @@ export struct BwSeekPanel {
         .layoutWeight(1)
 
       if (!this.isUnlocked(index)) {
-        Text('🔒')
+        SymbolGlyph($r('sys.symbol.lock'))
+          .fontSize(BWFont.caption)
+          .fontColor([BWColor.ink3])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(BWFont.microSm)
       }
     }

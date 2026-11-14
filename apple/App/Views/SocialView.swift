@@ -60,91 +60,74 @@ struct SocialView: View {
             Spacer(minLength: 0)
 
             Button(action: refreshTogetherCode) {
-                Text("同频")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink2)
-                    .padding(.horizontal, 14)
-                    .frame(height: 30)
-                    .background(BWTheme.paper)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11, weight: .medium))
+                    Text("换一个")
+                        .font(.system(size: 12.5))
+                }
+                .foregroundStyle(BWTheme.ink2)
+                .padding(.horizontal, 11)
+                .frame(height: 30)
+                .background(BWTheme.paper)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
             }
             .buttonStyle(BWPressEffectStyle())
             .accessibilityLabel("刷新同频码")
         }
-        .padding(.bottom, 4)
+        .padding(.bottom, 14)
     }
 
     // MARK: 同频码卡（web .codecard：整张琥珀卡 + 两圈细环装饰）
 
     private var togetherCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("今晚一起走？")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(BWTheme.ink)
-
-            Text("把这串码给朋友，各自开盒。")
-                .font(BWType.caption(10.5))
-                .foregroundStyle(BWTheme.ink.opacity(0.58))
-                .padding(.top, 2)
-
-            HStack(alignment: .center, spacing: 12) {
-                Text(store.togetherCode)
-                    .font(.system(size: 25, weight: .bold, design: .default))
-                    .monospacedDigit()
-                    .tracking(3.2)
-                    .foregroundStyle(BWTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
+            HStack(alignment: .firstTextBaseline) {
+                Text("今晚一起走")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.66))
                 Spacer(minLength: 0)
-
-                Button(action: copyTogetherCode) {
-                    Text("复制")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink)
-                        .padding(.horizontal, 15)
-                        .frame(height: 34)
-                        .background(BWTheme.paper.opacity(0.9))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.ink.opacity(0.12), lineWidth: 1))
-                }
-                .buttonStyle(BWPressEffectStyle())
-                .accessibilityLabel("复制同频码 \(store.togetherCode)")
+                Text("同频码")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.white.opacity(0.40))
             }
-            .padding(.top, 12)
-            .padding(.bottom, 10)
 
-            Text("好友输入同频码，各自开盒，结束后交换线索")
+            Text(store.togetherCode)
+                .font(.system(size: 30, weight: .semibold, design: .monospaced))
+                .tracking(3)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.top, 12)
+
+            Text("朋友输这串码，各自开盒，回来交换线索")
                 .font(.system(size: 12.5))
-                .foregroundStyle(BWTheme.ink.opacity(0.62))
+                .foregroundStyle(Color.white.opacity(0.58))
                 .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 17)
-        .padding(.bottom, 15)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack(alignment: .topTrailing) {
-                LinearGradient(
-                    colors: [BWTheme.amber, BWTheme.amberDeep],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                .padding(.top, 8)
 
-                Circle()
-                    .stroke(BWTheme.ink.opacity(0.13), lineWidth: 1)
-                    .frame(width: 150, height: 150)
-                    .offset(x: 34, y: -46)
-
-                Circle()
-                    .stroke(BWTheme.paper.opacity(0.28), lineWidth: 1)
-                    .frame(width: 92, height: 92)
-                    .offset(x: -6, y: -20)
+            Button(action: copyTogetherCode) {
+                HStack(spacing: 5) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 11, weight: .medium))
+                    Text("复制")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundStyle(BWTheme.ink)
+                .padding(.horizontal, 14)
+                .frame(height: 32)
+                .background(Color.white)
+                .clipShape(Capsule())
             }
+            .buttonStyle(BWPressEffectStyle())
+            .padding(.top, 16)
+            .accessibilityLabel("复制同频码 \(store.togetherCode)")
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BWTheme.ink)
         .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
-        .shadow(color: BWTheme.amberDeep.opacity(0.30), radius: 22, x: 0, y: 12)
     }
 
     // MARK: 本周榜
@@ -152,8 +135,16 @@ struct SocialView: View {
     private var leaderboardSection: some View {
         let entries = visibleLeaderboard
 
-        return VStack(alignment: .leading, spacing: 8) {
-            BWSectionHeader(title: "本周榜", trailingTitle: "惊喜指数")
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("本周榜")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(BWTheme.ink)
+                Spacer(minLength: 0)
+                Text("惊喜指数")
+                    .font(.system(size: 12))
+                    .foregroundStyle(BWTheme.ink3)
+            }
 
             VStack(spacing: 0) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
@@ -165,50 +156,47 @@ struct SocialView: View {
                         showAllLeaderboard.toggle()
                     }
                 } label: {
-                    Text(showAllLeaderboard ? "收起" : "展开 · 其余 \(max(0, allLeaderboard.count - entries.count)) 位")
+                    Text(showAllLeaderboard ? "收起" : "其余 \(max(0, allLeaderboard.count - entries.count)) 位")
                         .font(.system(size: 12.5))
                         .foregroundStyle(BWTheme.ink3)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 6)
-                        .padding(.bottom, 4)
+                        .frame(height: 40)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
             .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                     .stroke(BWTheme.line, lineWidth: 1)
             )
-            .shadow(color: BWTheme.ink.opacity(0.04), radius: 14, x: 0, y: 8)
         }
     }
 
     private func leaderboardRow(rank: Int, entry: LeaderboardEntry) -> some View {
         HStack(spacing: 10) {
             Text("\(rank)")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 12, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(rankColor(rank))
-                .frame(width: 16)
+                .frame(width: 16, alignment: .leading)
 
             Text(entry.emoji)
-                .font(.system(size: 14))
-                .frame(width: 28, height: 28)
+                .font(.system(size: 13))
+                .frame(width: 26, height: 26)
                 .background(BWTheme.paper2)
                 .clipShape(Circle())
 
             HStack(spacing: 5) {
                 Text(entry.name)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 14, weight: entry.isMe ? .medium : .regular))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(1)
                 if entry.isMe {
                     Text("你")
                         .font(.system(size: 11))
-                        .tracking(0.4)
                         .foregroundStyle(BWTheme.ink3)
                 }
             }
@@ -216,21 +204,20 @@ struct SocialView: View {
             Spacer(minLength: 0)
 
             Text("\(entry.score)")
-                .font(.system(size: 13.5, weight: .bold))
+                .font(.system(size: 14, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(BWTheme.ink)
         }
         .padding(.horizontal, 8)
-        .frame(height: 42)
-        .background(entry.isMe ? BWTheme.amber.opacity(0.13) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(height: 44)
+        .background(entry.isMe ? BWTheme.amberSoft : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func rankColor(_ rank: Int) -> Color {
         switch rank {
         case 1: return BWTheme.amberDeep
-        case 2: return BWTheme.ink2
-        case 3: return BWTheme.amberDeep.opacity(0.65)
+        case 2, 3: return BWTheme.ink2
         default: return BWTheme.ink3
         }
     }
@@ -260,7 +247,9 @@ struct SocialView: View {
         let posts = sortedPosts
 
         return VStack(alignment: .leading, spacing: 10) {
-            BWSectionHeader(title: "今晚的惊喜")
+            Text("今晚的惊喜")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(BWTheme.ink)
 
             if posts.isEmpty {
                 BWEmptyState(
@@ -279,15 +268,14 @@ struct SocialView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 9) {
                 Text(post.authorEmoji)
-                    .font(.system(size: 15))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 14))
+                    .frame(width: 30, height: 30)
                     .background(BWTheme.paper2)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(post.authorName)
-                        .font(.system(size: 13.5, weight: .semibold))
+                        .font(.system(size: 13.5, weight: .medium))
                         .foregroundStyle(BWTheme.ink)
                     Text(BWFormat.relative(post.createdAt))
                         .font(.system(size: 12))
@@ -297,41 +285,35 @@ struct SocialView: View {
 
                 Spacer(minLength: 0)
 
-                Text("揭晓")
-                    .font(.system(size: 11))
-                    .tracking(0.5)
-                    .foregroundStyle(BWTheme.ink3)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                if post.isMine {
+                    Text("你埋的")
+                        .font(.system(size: 11))
+                        .foregroundStyle(BWTheme.ink3)
+                }
             }
-            .padding(.bottom, 9)
+            .padding(.bottom, 10)
 
             HStack(spacing: 8) {
                 Text(post.categoryEmoji)
-                    .font(.system(size: 16))
+                    .font(.system(size: 15))
                 Text(post.placeName)
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .medium))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(1)
                 Spacer(minLength: 6)
                 BWRarityBadge(rarity: post.rarity)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .background(BWTheme.paper2)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
-            )
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
 
             Text(post.caption)
                 .font(.system(size: 14))
                 .foregroundStyle(BWTheme.ink2)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 9)
+                .padding(.top, 10)
 
             HStack(spacing: 6) {
                 ForEach(0..<reactionOrder.count, id: \.self) { index in
@@ -339,18 +321,15 @@ struct SocialView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.top, 10)
+            .padding(.top, 12)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, 13)
+        .padding(14)
         .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                 .stroke(BWTheme.line, lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.04), radius: 12, x: 0, y: 6)
     }
 
     private func reactionButton(for post: FeedPost, key: String) -> some View {
@@ -370,23 +349,20 @@ struct SocialView: View {
                         .font(.system(size: 12))
                 } else {
                     Text(emoji)
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                 }
                 Text("\(count)")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12))
                     .monospacedDigit()
             }
-            .foregroundStyle(isTapped ? BWTheme.ink : BWTheme.ink2)
+            .foregroundStyle(isTapped ? BWTheme.amberDeep : BWTheme.ink2)
             .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: 28)
-            .background(isTapped ? BWTheme.amber.opacity(0.20) : BWTheme.paper2)
+            .background(isTapped ? BWTheme.amberSoft : BWTheme.paper2)
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(
-                    isTapped ? BWTheme.amber.opacity(0.6) : BWTheme.line,
-                    lineWidth: 1
-                )
+                Capsule().stroke(isTapped ? BWTheme.amber.opacity(0.30) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(BWPressEffectStyle())

@@ -1,65 +1,87 @@
 import SwiftUI
 
 /// 共享视觉 Token（与 docs/design-system.md §3 一致）
+///
+/// v3 · 2026-11-14：中性底 + 靛蓝只做强调。
+/// 上一版的问题是「什么都是紫的」——页面底色、卡片底色、渐变、阴影全由主色混出来，
+/// 界面因此发虚、像网页。这一版把中性面独立成一条冷灰梯，主色只允许出现在
+/// 一处主按钮、选中态、迷雾路径的「要走的那段」，以及一个关键数字上。
 public enum BWTheme {
 
-    // 颜色
-    public static let ink = Color(hex: 0x111827)
-    public static let ink2 = Color(hex: 0x4B5563)
-    public static let ink3 = Color(hex: 0x9CA3AF)
-    public static let cream = Color(hex: 0xF3F5FB)
-    public static let paper = Color(hex: 0xFFFFFF)
-    public static let paper2 = Color(hex: 0xEEF1F9)
-    public static let line = Color(hex: 0xE2E7F2)
-    public static let amber = Color(hex: 0x5B6CFF)
-    public static let amberDeep = Color(hex: 0x3D4FE0)
-    public static let ember = Color(hex: 0xFF6B6B)
-    public static let teal = Color(hex: 0x14B8A6)
-    public static let plum = Color(hex: 0x8B5CF6)
-    public static let gold = Color(hex: 0xF59E0B)
+    // MARK: 中性梯（唯一用于背景 / 卡片 / 分割线 / 文字的色板）
+    /// 主文字
+    public static let ink = Color(hex: 0x14161A)
+    /// 次要文字
+    public static let ink2 = Color(hex: 0x5A6068)
+    /// 弱提示 / 占位
+    public static let ink3 = Color(hex: 0x9BA1AA)
 
-    // 尺寸
+    /// 页面底色
+    public static let cream = Color(hex: 0xF5F6F8)
+    /// 卡片 / 面板
+    public static let paper = Color(hex: 0xFFFFFF)
+    /// 次级表面 / 输入框 / 凹槽
+    public static let paper2 = Color(hex: 0xF0F1F4)
+    /// 分割线 / 描边
+    public static let line = Color(hex: 0xE4E6EA)
+
+    // MARK: 强调色（整屏只允许出现三次以内）
+    /// 历史名保留为 `amber`，实际是靛蓝主色；白字对比 5.2:1
+    public static let amber = Color(hex: 0x4A5BF0)
+    /// 按下态 / 深强调 / 正文用的小号强调字
+    public static let amberDeep = Color(hex: 0x3546D6)
+    /// 主色极淡底（选中行、chip 选中）
+    public static let amberSoft = Color(hex: 0xEEF0FE)
+
+    // MARK: 语义色
+    public static let ember = Color(hex: 0xDC4C4C)
+    public static let teal = Color(hex: 0x0E9384)
+    public static let plum = Color(hex: 0x7C5CD6)
+    public static let gold = Color(hex: 0xB8791A)
+
+    // MARK: 尺寸
     public static let pagePadding: CGFloat = 20
-    public static let cardRadius: CGFloat = 24
-    public static let panelRadius: CGFloat = 28
+    /// 卡片圆角：内层 = 外层 − 内边距，这里统一三档
+    public static let controlRadius: CGFloat = 12
+    public static let cardRadius: CGFloat = 16
+    public static let panelRadius: CGFloat = 20
     public static let pillRadius: CGFloat = 999
 
-    // 阴影
-    public static func cardShadow(_ color: Color = BWTheme.ink.opacity(0.10)) -> Color { color }
+    /// 卡片阴影：中性、极轻。深色阴影+彩色阴影会让界面发虚。
+    public static func cardShadow(_ color: Color = BWTheme.ink.opacity(0.05)) -> Color { color }
 
     // MARK: 折叠屏 / 宽屏断点
     // iPhone Duo 展开态 669×951pt、折叠态 466×678pt（见 docs/foldable.md）
-    /// 宽屏阈值：Duo 展开（669）走双列；任何 iPhone 常规宽度（402/440）都走单列
     public static let wideBreakpoint: CGFloat = 600
-    /// 内容最大宽度：宽屏时居中，避免一行文字被拉到 669pt 那么长
     public static let contentMaxWidth: CGFloat = 620
-    /// 矮屏阈值：Duo 折叠态 678pt 高，需要压缩纵向节奏
     public static let shortHeightBreakpoint: CGFloat = 720
 
     public static func isWide(_ width: CGFloat) -> Bool { width >= wideBreakpoint }
     public static func isShort(_ height: CGFloat) -> Bool { height < shortHeightBreakpoint }
 
-    // 字体
-    public static func display(_ size: CGFloat = 30) -> Font {
-        .system(size: size, weight: .bold, design: .rounded)
-    }
-
-    public static func title(_ size: CGFloat = 22) -> Font {
+    // MARK: 字体
+    // 只用一档字族的五个阶 + 两个字重（.semibold 仅用于标题与按钮）。
+    // 不再用 .rounded —— 圆体是「可爱风」，和城市测绘的方向相反。
+    public static func display(_ size: CGFloat = 34) -> Font {
         .system(size: size, weight: .semibold, design: .default)
     }
 
-    public static func body(_ size: CGFloat = 15) -> Font {
+    public static func title(_ size: CGFloat = 20) -> Font {
+        .system(size: size, weight: .semibold, design: .default)
+    }
+
+    public static func body(_ size: CGFloat = 14) -> Font {
         .system(size: size, weight: .regular, design: .default)
     }
 
-    public static func caption(_ size: CGFloat = 13) -> Font {
-        .system(size: size, weight: .medium, design: .default)
+    public static func caption(_ size: CGFloat = 12) -> Font {
+        .system(size: size, weight: .regular, design: .default)
     }
 
-    // 稀有度
+    // MARK: 稀有度
     public static func rarityColor(_ rarity: Rarity) -> Color {
         switch rarity {
-        case .common: return Color(hex: 0x94A3B8)
+        case .common: return Color(hex: 0x8B939F)
         case .rare: return teal
         case .epic: return plum
         case .hidden: return gold
@@ -67,7 +89,7 @@ public enum BWTheme {
     }
 
     public static func raritySoft(_ rarity: Rarity) -> Color {
-        rarityColor(rarity).opacity(0.14)
+        rarityColor(rarity).opacity(0.10)
     }
 }
 

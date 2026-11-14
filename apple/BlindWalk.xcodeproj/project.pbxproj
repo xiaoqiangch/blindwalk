@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -151,7 +151,7 @@
 		B20DAF4F2CE482E03210F638 /* POISelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = POISelection.swift; sourceTree = "<group>"; };
 		B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionSummary.swift; sourceTree = "<group>"; };
 		BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoxFailureView.swift; sourceTree = "<group>"; };
-		BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BlindWalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlindWalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKeysService.swift; sourceTree = "<group>"; };
 		C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurprisesView.swift; sourceTree = "<group>"; };
 		C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
@@ -383,7 +383,6 @@
 			);
 			mainGroup = 69F0BC5CDB144B69901942B8;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -575,6 +574,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = WQ82UGJ72W;
 				INFOPLIST_FILE = "Info/BlindWalk-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步谜需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";
@@ -688,6 +688,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = WQ82UGJ72W;
 				INFOPLIST_FILE = "Info/BlindWalk-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步谜需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";

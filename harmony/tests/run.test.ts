@@ -2107,12 +2107,12 @@ test('迷雾：几何数据（已走/前方颜色、箭头间距、两端渐隐�
   assert.ok(behind.length > 0, '应该有已走部分');
   assert.ok(ahead.length > 0, '应该有前方部分');
   for (let i = 0; i < behind.length; i += 1) {
-    assert.equal(behind[i].color, '#AEB8D6');
+    assert.equal(behind[i].color, '#99A0A6');
     assert.equal(behind[i].width, 7);
     assert.ok(behind[i].opacity <= 0.55 + 0.001, '已走部分不透明度 ≤ 0.55');
   }
   for (let i = 0; i < ahead.length; i += 1) {
-    assert.equal(ahead[i].color, '#5B6CFF');
+    assert.equal(ahead[i].color, '#0A59F7');
     assert.equal(ahead[i].width, 9);
   }
   // 两端渐隐：窗口最边上一条应明显更透明

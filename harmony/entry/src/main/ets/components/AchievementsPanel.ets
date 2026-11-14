@@ -42,7 +42,7 @@ export struct AchievementsPanel {
   header() {
     Row({ space: 12 }) {
       BwIconButton({
-        glyph: '‹',
+        name: 'chevron_left',
         onTap: () => {
           this.onBack();
         }
@@ -129,7 +129,7 @@ export struct AchievementsPanel {
     .width('100%')
     .padding(14)
     .backgroundColor(BWColor.paper)
-    .borderRadius(18)
+    .borderRadius(BWSize.cardRadius)
     .border({
       width: achievement.unlockedAt !== undefined ? 1.4 : 1,
       color: achievement.unlockedAt !== undefined ? '#73E89B4C' : BWColor.line,

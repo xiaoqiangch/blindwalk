@@ -14,6 +14,7 @@ import {
   Achievement,
   Area,
   FeedPost,
+  GeoPoint,
   Mood,
   Place,
   PlaceCard,
@@ -25,7 +26,7 @@ import {
   WalkDuration
 } from '../core/types';
 import { getStore, getStoreInstance } from '../core/store';
-import { Profile } from '../core/types';
+import { distance } from '../core/geo';
 
 /** 空快照：仅用于 @State 初始值，页面 aboutToAppear 会立刻换成真实快照 */
 export function emptySnapshot(): AppSnapshot {
@@ -49,6 +50,7 @@ export function emptySnapshot(): AppSnapshot {
     leaderboard: [],
     explorableSurprises: [],
     mySurprises: [],
+    nearbyPlaces: [],
     demoMode: true
   };
   return snapshot;
@@ -230,8 +232,8 @@ export interface ReactionMeta {
 
 export function reactionMetas(): ReactionMeta[] {
   const metas: ReactionMeta[] = [
-    { key: 'eyes' as ReactionKey, icon: '👀', label: '羡慕' },
-    { key: 'heart' as ReactionKey, icon: '🫶', label: '一起' },
+    { key: 'eyes' as ReactionKey, icon: 'eye', label: '羡慕' },
+    { key: 'heart' as ReactionKey, icon: 'heart_fill', label: '一起' },
     { key: 'next' as ReactionKey, icon: '', label: '下次带我' }
   ];
   return metas;
@@ -280,9 +282,9 @@ export function mySurpriseCount(snapshot: AppSnapshot): number {
  * 其中 profile 是契约 Profile + extras（里程/到达时间/动态/真实地点），
  * 这样「从账号恢复」才能真正把本机状态还原回去。
  */
-export function buildSyncPayload(): Record<string, unknown> {
+export function buildSyncPayload(): Record<string, Object> {
   const snapshot: AppSnapshot = getStore().snapshot();
-  const extras: Record<string, unknown> = {};
+  const extras: Record<string, Object> = {};
   try {
     const instance = getStoreInstance();
     const raw = instance.rawExtras();
@@ -299,33 +301,33 @@ export function buildSyncPayload(): Record<string, unknown> {
 
   // 云端信封的**顶层就是 Profile 字段**（与本地存档同构），
   // 这样 core/persistence.profileFromJson 能直接解回来，不必两套结构。
-  const envelope: Record<string, unknown> = profileToJson(snapshot.profile);
+  const envelope: Record<string, Object> = profileToJson(snapshot.profile);
   envelope['extras'] = extras;
   envelope['surprises'] = snapshot.explorableSurprises.concat(snapshot.mySurprises);
-  envelope['settings'] = {};
+  const settings: Record<string, Object> = {};
+  envelope['settings'] = settings;
 
-  const payload: Record<string, unknown> = {
-    app: 'blindwalk',
-    version: 1,
-    savedAt: Date.now(),
-    profile: envelope
-  };
+  const payload: Record<string, Object> = {};
+  payload['app'] = 'blindwalk';
+  payload['version'] = 1;
+  payload['savedAt'] = Date.now();
+  payload['profile'] = envelope;
   return payload;
 }
 
 /** 契约 Profile → 可序列化 JSON（字段名与 persistence.decodeProfile 一致） */
-function profileToJson(profile: Profile): Record<string, unknown> {
-  const json: Record<string, unknown> = {
-    version: 1,
-    name: profile.name,
-    avatarEmoji: profile.avatarEmoji,
-    xp: profile.xp,
-    streakDays: profile.streakDays,
-    weeklySurprise: profile.weeklySurprise,
-    weeklyWindowStart: profile.weeklyWindowStart,
-    cards: profile.cards,
-    achievements: profile.achievements
-  };
+function profileToJson(profile: Profile): Record<string, Object> {
+  const json: Record<string, Object> = {}
+  json['version'] = 1;
+  json['name'] = profile.name;
+  json['avatarEmoji'] = profile.avatarEmoji;
+  json['xp'] = profile.xp;
+  json['streakDays'] = profile.streakDays;
+  json['weeklySurprise'] = profile.weeklySurprise;
+  json['weeklyWindowStart'] = profile.weeklyWindowStart;
+  json['cards'] = profile.cards;
+  json['achievements'] = profile.achievements;
+
   return json;
 }
 
@@ -333,7 +335,7 @@ function profileToJson(profile: Profile): Record<string, unknown> {
  * 「从账号恢复」：把云端整包写回本机。
  * 只接受结构正确的数据，缺字段一律忽略（不覆盖本机已有内容）。
  */
-export function applySyncedPayload(payload: Record<string, unknown>): boolean {
+export function applySyncedPayload(payload: Record<string, Object>): boolean {
   try {
     const instance = getStoreInstance();
     return instance.applyRemotePayload(payload);
@@ -347,6 +349,43 @@ export function myFoundSurpriseCount(snapshot: AppSnapshot): number {
   for (let i = 0; i < snapshot.mySurprises.length; i++) {
     if (snapshot.mySurprises[i].found) {
       count = count + 1;
+    }
+  }
+  return count;
+}
+
+// ============================================================
+// 附近的兴趣点（图鉴区块）
+// ============================================================
+
+/** 某个兴趣点是否已经被收录（已探索） */
+export function isNearbyExplored(snapshot: AppSnapshot, place: Place): boolean {
+  for (let i = 0; i < snapshot.profile.cards.length; i += 1) {
+    if (snapshot.profile.cards[i].placeID === place.id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** 兴趣点距离（米）；没有定位或没有坐标时返回 -1 */
+export function nearbyDistance(snapshot: AppSnapshot, place: Place): number {
+  const origin: GeoPoint | undefined = snapshot.lastKnownOrigin;
+  if (origin === undefined) {
+    return -1;
+  }
+  if (place.coordinate === undefined) {
+    return -1;
+  }
+  return Math.round(distance(origin, place.coordinate));
+}
+
+/** 未探索的兴趣点数量 */
+export function unexploredNearbyCount(snapshot: AppSnapshot): number {
+  let count: number = 0;
+  for (let i = 0; i < snapshot.nearbyPlaces.length; i += 1) {
+    if (!isNearbyExplored(snapshot, snapshot.nearbyPlaces[i])) {
+      count += 1;
     }
   }
   return count;

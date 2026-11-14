@@ -33,12 +33,15 @@ export class HarmonyHttpClient implements HttpClient {
     const client: http.HttpRequest = this.ensureClient();
 
     const method: http.RequestMethod = toRequestMethod(request.method);
+    const emptyHeader: Record<string, string> = {};
+    const headerMap: Record<string, string> =
+      request.headers === undefined ? emptyHeader : request.headers;
     const options: http.HttpRequestOptions = {
       method: method,
       expectDataType: http.HttpDataType.STRING,
       connectTimeout: request.timeoutMs,
       readTimeout: request.timeoutMs,
-      header: request.headers === undefined ? {} : request.headers
+      header: headerMap
     };
     if (request.body !== undefined && request.body.length > 0) {
       options.extraData = request.body;
@@ -51,12 +54,13 @@ export class HarmonyHttpClient implements HttpClient {
         : String(result.result);
 
       const headers: Record<string, string> = {};
-      const rawHeaders: Record<string, string> | undefined = result.header;
+      const rawHeaders: Record<string, Object> | undefined =
+        result.header as Record<string, Object> | undefined;
       if (rawHeaders !== undefined) {
         const keys: string[] = Object.keys(rawHeaders);
         for (let i = 0; i < keys.length; i += 1) {
           // 鸿蒙的 header 键名大小写不统一，统一转小写方便上层查找（set-cookie）
-          headers[keys[i].toLowerCase()] = rawHeaders[keys[i]];
+          headers[keys[i].toLowerCase()] = String(rawHeaders[keys[i]]);
         }
       }
 

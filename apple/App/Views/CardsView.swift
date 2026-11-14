@@ -122,87 +122,87 @@ struct CardsView: View {
     @ViewBuilder
     private var nearbyHintsSection: some View {
         let list = nearbyHintList
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
                 Text("附近的惊喜")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(BWTheme.ink)
+                Spacer(minLength: 0)
                 Text(list.isEmpty ? "这一带暂时没有" : "\(list.count) 个还没被找到")
-                    .font(.system(size: 11.5))
+                    .font(.system(size: 12))
                     .foregroundStyle(BWTheme.ink3)
             }
+            .padding(.bottom, 10)
 
             if list.isEmpty {
                 Button {
                     showSeek = true
                 } label: {
-                    Text("有人在这儿留下第一张？埋一个 →")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(BWTheme.amberDeep)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(BWTheme.amber.opacity(0.05))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(BWTheme.amber.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        )
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("这一带还没人埋过，你来第一个")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .foregroundStyle(BWTheme.ink2)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(BWTheme.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                            .stroke(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(BWPressEffectStyle())
             } else {
-                ForEach(list) { surprise in
-                    Button {
-                        seekFocusID = surprise.id
-                        showSeek = true
-                    } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            Text(surprise.authorEmoji)
-                                .font(.system(size: 17))
-                                .frame(width: 32, height: 32)
-                                .background(BWTheme.amber.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(distanceBucket(store.lastKnownOrigin.map { GeoMath.distance(from: $0, to: surprise.location) })) · 有人留下一张照片")
-                                    .font(.system(size: 13.5, weight: .semibold))
-                                    .foregroundStyle(BWTheme.ink)
-                                    .multilineTextAlignment(.leading)
-                                Text(atmosphere(for: surprise))
-                                    .font(.system(size: 12.5))
-                                    .foregroundStyle(BWTheme.ink2)
-                                    .multilineTextAlignment(.leading)
-                                Text("线索要靠走近才会解锁 · 点这里开始找")
-                                    .font(.system(size: 10.5))
+                VStack(spacing: 0) {
+                    ForEach(Array(list.enumerated()), id: \.element.id) { index, surprise in
+                        Button {
+                            seekFocusID = surprise.id
+                            showSeek = true
+                        } label: {
+                            HStack(alignment: .center, spacing: 12) {
+                                Text(surprise.authorEmoji)
+                                    .font(.system(size: 15))
+                                    .frame(width: 32, height: 32)
+                                    .background(BWTheme.paper2)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(distanceBucket(store.lastKnownOrigin.map { GeoMath.distance(from: $0, to: surprise.location) }))
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(BWTheme.ink)
+                                    Text(atmosphere(for: surprise))
+                                        .font(.system(size: 12.5))
+                                        .foregroundStyle(BWTheme.ink3)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundStyle(BWTheme.ink3)
                             }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(BWTheme.ink3)
+                            .padding(.vertical, 11)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 11)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(BWTheme.amber.opacity(0.18), lineWidth: 1)
-                        )
+                        .buttonStyle(BWPressEffectStyle())
+
+                        if index < list.count - 1 {
+                            BWHairline()
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 14)
+                .background(BWTheme.paper)
+                .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                        .stroke(BWTheme.line, lineWidth: 1)
+                )
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .fill(LinearGradient(colors: [Color(hex: 0xF4F6FF), .white], startPoint: .topLeading, endPoint: .bottomTrailing))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
-        )
     }
 
     // MARK: 顶栏
@@ -225,7 +225,7 @@ struct CardsView: View {
                 }
             } label: {
                 Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(BWTheme.ink2)
                     .frame(width: 34, height: 34)
                     .background(BWTheme.paper)
@@ -234,10 +234,10 @@ struct CardsView: View {
             }
             .accessibilityLabel("筛选")
         }
-        .padding(.bottom, 10)
+        .padding(.bottom, 12)
     }
 
-    // MARK: 统计条：已收集 18/24 · 稀有 7 · 隐藏 1（web 是一行文字，不是卡片）
+    // MARK: 统计条：已收集 18/24 · 稀有 7 · 隐藏 1
 
     private var collectStats: some View {
         HStack(spacing: 6) {
@@ -253,18 +253,18 @@ struct CardsView: View {
     private func statPiece(_ label: String, _ value: String) -> some View {
         HStack(spacing: 3) {
             Text(label)
-                .font(BWType.body(12))
-                .foregroundStyle(BWTheme.ink2)
+                .font(BWType.body(12.5))
+                .foregroundStyle(BWTheme.ink3)
             Text(value)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 12.5, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(BWTheme.ink2)
         }
     }
 
     private var dot: some View {
         Text("·")
-            .font(BWType.body(12))
+            .font(BWType.body(12.5))
             .foregroundStyle(BWTheme.ink3)
     }
 
@@ -286,7 +286,7 @@ struct CardsView: View {
     // MARK: 3 列卡片网格
 
     private var grid: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
+        LazyVGrid(columns: columns, spacing: 12) {
             ForEach(visiblePlaces) { place in
                 Button {
                     if collectedIDs.contains(place.id) {
@@ -309,23 +309,23 @@ struct CardsView: View {
         if collected {
             VStack(alignment: .leading, spacing: 0) {
                 Text(place.emoji)
-                    .font(.system(size: 21))
-                    .padding(.bottom, 6)
+                    .font(.system(size: 20))
+                    .padding(.bottom, 10)
 
                 Text(place.name)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(BWTheme.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 6)
 
                 HStack(alignment: .center, spacing: 0) {
                     if let card {
                         Text(BWFormat.compactDate(card.collectedAt))
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 11))
                             .monospacedDigit()
                             .foregroundStyle(BWTheme.ink3)
                     }
@@ -333,32 +333,29 @@ struct CardsView: View {
                     BWRarityDot(rarity: place.rarity)
                 }
             }
-            .padding(.horizontal, 9)
-            .padding(.top, 9)
-            .padding(.bottom, 8)
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .aspectRatio(0.8, contentMode: .fit)
             .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
                     .stroke(BWTheme.line, lineWidth: 1)
             )
         } else {
-            VStack(spacing: 5) {
-                Text("?")
-                    .font(.system(size: 22, weight: .semibold))
+            VStack(spacing: 6) {
+                Image(systemName: "lock")
+                    .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(BWTheme.ink3)
                 Text("未解锁")
-                    .font(.system(size: 11))
-                    .tracking(0.5)
+                    .font(.system(size: 11.5))
                     .foregroundStyle(BWTheme.ink3)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .aspectRatio(0.8, contentMode: .fit)
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
+                    .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             )
         }
     }
@@ -367,7 +364,7 @@ struct CardsView: View {
 
     private func detailOverlay(_ place: Place) -> some View {
         ZStack {
-            BWTheme.ink.opacity(0.46)
+            BWTheme.ink.opacity(0.38)
                 .ignoresSafeArea()
                 .onTapGesture {
                     selectedPlace = nil
@@ -380,25 +377,25 @@ struct CardsView: View {
                         Spacer(minLength: 8)
                         BWRarityBadge(rarity: place.rarity)
                     }
-                    .padding(.bottom, 13)
+                    .padding(.bottom, 16)
 
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         Text(place.emoji)
-                            .font(.system(size: 40))
+                            .font(.system(size: 38))
                         Text(place.name)
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(BWTheme.ink)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                         if let card = store.card(for: place.id) {
                             Text("\(card.serialDisplay) · \(BWFormat.shortDate(card.collectedAt))")
-                                .font(BWType.caption(10.5))
+                                .font(BWType.caption(12))
                                 .monospacedDigit()
                                 .foregroundStyle(BWTheme.ink3)
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, 16)
 
                     BWHairline()
 
@@ -407,38 +404,38 @@ struct CardsView: View {
                         Text(place.why)
                             .font(.system(size: 14))
                             .foregroundStyle(BWTheme.ink2)
-                            .lineSpacing(4)
+                            .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 14)
 
                     BWHairline()
 
                     taskView(place)
-                        .padding(.top, 12)
+                        .padding(.top, 14)
 
                     HStack(spacing: 8) {
                         Button {
                             selectedPlace = nil
                         } label: {
                             Text("关闭")
-                                .font(BWType.cta(14))
-                                .foregroundStyle(BWTheme.ink2)
+                                .font(BWType.cta(14.5))
+                                .foregroundStyle(BWTheme.ink)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                                .frame(height: 46)
+                                .background(BWTheme.paper2)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                         .buttonStyle(BWPressEffectStyle())
                     }
-                    .padding(.top, 14)
+                    .padding(.top, 16)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 18)
+                .padding(.top, 18)
+                .padding(.bottom, 20)
                 .background(BWTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: BWTheme.panelRadius, style: .continuous))
                 .frame(maxWidth: 322)
-                .shadow(color: BWTheme.ink.opacity(0.28), radius: 30, x: 0, y: 18)
                 .padding(.horizontal, 26)
                 .padding(.vertical, 40)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -450,9 +447,11 @@ struct CardsView: View {
 
     private func taskView(_ place: Place) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 3) {
-                    Text("🎯").font(.system(size: 12))
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 4) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(BWTheme.ink3)
                     BWMicroLabel("小任务")
                 }
                 Text(place.task)
@@ -462,21 +461,16 @@ struct CardsView: View {
 
                 if let card = store.card(for: place.id) {
                     Text(card.taskDone ? "已完成" : "还没打卡 · 下次再去补上")
-                        .font(.system(size: 11.5))
+                        .font(.system(size: 12))
                         .foregroundStyle(card.taskDone ? BWTheme.teal : BWTheme.ink3)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(BWTheme.paper2)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
     }
 
     // MARK: 数据

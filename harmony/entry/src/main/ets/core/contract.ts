@@ -78,6 +78,12 @@ export interface AppSnapshot {
   explorableSurprises: BuriedSurprise[];
   /** 我埋下的惊喜 */
   mySurprises: BuriedSurprise[];
+  /**
+   * 附近的兴趣点（真实数据源；图鉴「附近的兴趣点」区块用）。
+   * 未探索的条目在 UI 上显示为「?」+ 类别 + 距离，点击开始探索。
+   * 已探索（已收录卡片）的条目显示为普通卡片。
+   */
+  nearbyPlaces: Place[];
   /** 圈子动态 */
   feed: FeedPost[];
   /** 排行榜 */
@@ -159,6 +165,11 @@ export interface BlindWalkStoreApi {
   setDataSourceStatus(status: DataSourceStatus): void;
   /** 当前数据源状态 */
   dataSourceStatus(): DataSourceStatus;
+  /**
+   * 写入「附近的兴趣点」（图鉴区块用；由 core/nearby.ts 检索后灌入）。
+   * 传空数组即清空。只保存内存态，不持久化（每次进图鉴重新拉取）。
+   */
+  setNearbyPlaces(places: Place[]): void;
 
   // ---------- 旅程 ----------
   /** 用剩余距离推进旅程（演示模式 / 模拟步行） */

@@ -165,13 +165,7 @@ export struct ProfileView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(20)
-    .linearGradient({
-      angle: 135,
-      colors: [
-        [BWColor.paper, 0.0],
-        [BWColor.paper2, 1.0]
-      ]
-    })
+    .backgroundColor(BWColor.paper)
     .borderRadius(BWSize.cardRadius)
     .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
     .shadow({ radius: 16, color: BWColor.shadowSoft, offsetX: 0, offsetY: 10 })
@@ -186,7 +180,7 @@ export struct ProfileView {
         .width(48)
         .height(48)
         .backgroundColor(achievement.unlockedAt !== undefined ? BWColor.amberSoftStrong : BWColor.paper2)
-        .borderRadius(24)
+        .borderRadius(BWSize.cardRadius)
         .border({
           width: 1,
           color: achievement.unlockedAt !== undefined ? BWColor.amberBorder : BWColor.line,
@@ -274,13 +268,16 @@ export struct ProfileView {
   @Builder
   accountCard() {
     Row({ space: 12 }) {
-      Text(this.accountLabel === '未登录' ? '☁️' : '👤')
-        .fontSize(19)
-        .width(38)
-        .height(38)
-        .textAlign(TextAlign.Center)
-        .backgroundColor('#1F5B6CFF')
-        .borderRadius(12)
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.' + (this.accountLabel === '未登录' ? 'info_circle' : 'person')))
+          .fontSize(BWSize.iconSizeSm)
+          .fontColor([BWColor.amber])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(38)
+      .height(38)
+      .backgroundColor(BWColor.amberSoft)
+      .borderRadius(12)
 
       Column({ space: 2 }) {
         Text(this.accountLabel === '未登录' ? '登录 / 注册账号' : '已登录 · ' + this.accountLabel)
@@ -400,8 +397,8 @@ export struct ProfileView {
     }
     .width('100%')
     .backgroundColor(BWColor.paperTranslucent)
-    .borderRadius(20)
-    .border({ width: 1, color: BWColor.line, radius: 20 })
+    .borderRadius(BWSize.cardRadius)
+    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
   }
 
   @Builder
@@ -454,6 +451,10 @@ export struct ProfileView {
     .height('100%')
   }
 
+  private isWide(): boolean {
+    return this.winWidth >= BWSize.wideBreakpoint;
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column()
@@ -465,25 +466,58 @@ export struct ProfileView {
         Column({ space: 0 }) {
           this.header()
 
-          Column() {
-            this.levelCard()
-          }
-          .margin({ top: 16 })
+          if (this.isWide()) {
+            // 折叠屏展开态：左（等级 + 账号）/ 右（成就 + 设置）
+            Row({ space: 20 }) {
+              Column({ space: 0 }) {
+                this.levelCard()
 
-          Column() {
-            this.accountCard()
-          }
-          .margin({ top: 14 })
+                Column() {
+                  this.accountCard()
+                }
+                .margin({ top: 14 })
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
 
-          Column() {
-            this.achievementStrip()
-          }
-          .margin({ top: 18 })
+              Column({ space: 0 }) {
+                this.achievementStrip()
 
-          Column() {
-            this.settingsCard()
+                Column() {
+                  this.settingsCard()
+                }
+                .margin({ top: 18 })
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+            }
+            .width('100%')
+            .alignItems(VerticalAlign.Top)
+            .margin({ top: 16 })
+          } else {
+            Column({ space: 0 }) {
+              Column() {
+                this.levelCard()
+              }
+              .margin({ top: 16 })
+
+              Column() {
+                this.accountCard()
+              }
+              .margin({ top: 14 })
+
+              Column() {
+                this.achievementStrip()
+              }
+              .margin({ top: 18 })
+
+              Column() {
+                this.settingsCard()
+              }
+              .margin({ top: 18 })
+            }
+            .width('100%')
           }
-          .margin({ top: 18 })
 
           Text('步谜 StepRiddle · 原型')
             .fontSize(BWFont.captionSm)
@@ -493,7 +527,7 @@ export struct ProfileView {
             .margin({ top: 22, bottom: 12 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
         .padding({
           left: BWSize.pagePadding,
           right: BWSize.pagePadding,
@@ -508,7 +542,7 @@ export struct ProfileView {
 
       if (this.toastText.length > 0) {
         Column() {
-          BwToastBar({ text: this.toastText, icon: '🫶' })
+          BwToastBar({ text: this.toastText, iconName: 'heart_fill' })
         }
         .width('100%')
         .height('100%')

@@ -9,6 +9,8 @@ node_modules/
 *.hsp
 local.properties
 .test-build/
+# 预览器缓存（含本机绝对路径，每次构建都会变）
+.preview/
 
 # 截图与临时文件
 *.log

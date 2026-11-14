@@ -47,12 +47,12 @@ export struct BwAccountPanel {
   onBack: () => void = () => {
   };
   /** 本机数据整包（同步到账号用）；由 Index 提供 */
-  buildPayload: () => Record<string, unknown> = () => {
-    const empty: Record<string, unknown> = {};
+  buildPayload: () => Record<string, Object> = () => {
+    const empty: Record<string, Object> = {};
     return empty;
   };
   /** 从账号恢复后把 payload 写回本机；由 Index 提供 */
-  applyPayload: (payload: Record<string, unknown>) => void = () => {
+  applyPayload: (payload: Record<string, Object>) => void = () => {
   };
   onChanged: () => void = () => {
   };
@@ -159,7 +159,7 @@ export struct BwAccountPanel {
   private async doSync(): Promise<void> {
     if (this.kv === undefined || this.http === undefined || this.mode === MODE_BUSY) return;
     this.mode = MODE_BUSY;
-    const payload: Record<string, unknown> = this.buildPayload();
+    const payload: Record<string, Object> = this.buildPayload();
     const result = await pushProfile(this.http, this.config, payload);
     this.mode = MODE_IDLE;
     if (!result.ok) {
@@ -179,9 +179,9 @@ export struct BwAccountPanel {
       this.load();
       return;
     }
-    const payload: Record<string, unknown> | undefined = result.value === undefined
+    const payload: Record<string, Object> | undefined = result.value === undefined
       ? undefined
-      : result.value.profile;
+      : result.value.profile as Record<string, Object> | undefined;
     if (payload === undefined) {
       this.showMessage('账号里还没有数据，先「同步到账号」一次', true);
       return;

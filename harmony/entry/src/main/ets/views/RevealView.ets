@@ -26,6 +26,7 @@ import {
   areaWord
 } from '../theme/Theme';
 import { clockHHMM } from '../components/Format';
+import { categorySymbol } from '../components/BwSymbol';
 
 const PARTICLE_INDEXES: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -51,7 +52,7 @@ export struct RevealView {
   @State private collecting: boolean = false;
   @State private taskDone: boolean = false;
   @State private toastText: string = '';
-  @State private toastIcon: string = '✨';
+  @State private toastIcon: string = 'star_fill';
   @State private achievementText: string = '';
 
   private stageTimers: number[] = [];
@@ -200,7 +201,7 @@ export struct RevealView {
 
     const result: CollectResult | undefined = getStore().collectCurrentPlace();
     if (result === undefined) {
-      this.showToast('这张卡已经在图鉴里了。', '✓');
+      this.showToast('这张卡已经在图鉴里了。', 'checkmark_circle');
       this.hasCollected = true;
       this.onChanged();
       return;
@@ -220,7 +221,7 @@ export struct RevealView {
       });
     }, 620));
 
-    this.showToast('已收录 · 惊喜值 +' + result.xpGained, '✨');
+    this.showToast('已收录 · 惊喜值 +' + result.xpGained, 'star_fill');
 
     // 成就 toast 延后 600ms
     if (result.newAchievements.length > 0) {
@@ -235,7 +236,7 @@ export struct RevealView {
       return;
     }
     // 契约里没有 share API：不假装已发布，温柔地兜底。
-    this.showToast('这一版先把惊喜留给自己。', '🫶');
+    this.showToast('这一版先把惊喜留给自己。', 'heart_fill');
   }
 
   private toggleTaskDone(): void {
@@ -348,17 +349,18 @@ export struct RevealView {
       Blank()
 
       if (this.hasCollected) {
-        Text('✕')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.creamOnStageDim)
-          .textAlign(TextAlign.Center)
-          .width(30)
-          .height(30)
-          .backgroundColor(BWColor.stageClose)
-          .borderRadius(15)
-          .border({ width: 1, color: BWColor.stageCloseBorder, radius: 15 })
-          .onClick(() => {
-            this.onGoCards();
+        Stack({ alignContent: Alignment.Center }) {
+          SymbolGlyph($r('sys.symbol.xmark'))
+            .fontSize(BWFont.caption)
+            .fontColor([BWColor.creamOnStageDim])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        }
+        .width(30)
+        .height(30)
+        .backgroundColor(BWColor.stageClose)
+        .borderRadius(15)
+        .onClick(() => {
+          this.onGoCards();
           })
       }
     }
@@ -372,7 +374,10 @@ export struct RevealView {
     Row({ space: 10 }) {
       Column({ space: 4 }) {
         Row({ space: 3 }) {
-          Text('🎯')
+          SymbolGlyph($r('sys.symbol.warning'))
+            .fontSize(BWFont.micro)
+            .fontColor([BWColor.gold])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             .fontSize(BWFont.micro)
           BwMicroLabel({ text: '小任务：' })
         }
@@ -438,8 +443,10 @@ export struct RevealView {
       }
 
       Column({ space: 7 }) {
-        Text(place.emoji)
+        SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
           .fontSize(46)
+          .fontColor([BWColor.amber])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         Text(place.name)
           .fontSize(BWFont.title)
           .fontWeight(FontWeight.Bold)
@@ -454,8 +461,10 @@ export struct RevealView {
 
         // 来源标签：编辑精选 / 真实地标 / 演示
         Row({ space: 5 }) {
-          Text(this.isCurated(place) ? '✨' : (place.source === 'catalog' ? '🧪' : '📍'))
-            .fontSize(BWFont.microSm)
+          SymbolGlyph($r('sys.symbol.' + (this.isCurated(place) ? 'star_fill' : (place.source === 'catalog' ? 'info_circle' : 'pin'))))
+            .fontSize(BWFont.micro)
+            .fontColor([BWColor.ink3])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           Text(this.sourceLabel(place))
             .fontSize(BWFont.microSm)
             .fontWeight(FontWeight.Medium)
@@ -547,7 +556,7 @@ export struct RevealView {
     .padding({ left: 20, right: 20, top: 17, bottom: 18 })
     .backgroundColor(BWColor.paper)
     .borderRadius(BWSize.cardRadius)
-    .shadow({ radius: 32, color: '#4D171410', offsetX: 0, offsetY: 20 })
+    .shadow({ radius: 20, color: '#33000000', offsetX: 0, offsetY: 6 })
     .rotate({ angle: -1.2 })
     .scale({
       x: this.collecting ? 0.26 : 1,
@@ -633,14 +642,14 @@ export struct RevealView {
         if (this.achievementText.length > 0) {
           BwToastBar({
             text: this.achievementText,
-            icon: '🏅',
+            iconName: 'star_fill',
             amber: true
           })
         }
         if (this.toastText.length > 0) {
           BwToastBar({
             text: this.toastText,
-            icon: this.toastIcon,
+            iconName: this.toastIcon,
             amber: false
           })
         }

@@ -1,0 +1,6 @@
+#!/bin/sh
+# hvigorw: 使用 DevEco Studio 自带工具链 (API 26)
+IDE=/Volumes/XQProjects/DevTools/apps/DevEco-Studio.app/Contents
+export DEVECO_SDK_HOME="$IDE/sdk"
+export JAVA_HOME="$IDE/jbr/Contents/Home"
+exec "$IDE/tools/node/bin/node" "$IDE/tools/hvigor/bin/hvigorw.js" "$@"

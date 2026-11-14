@@ -84,8 +84,10 @@ export class CompassWatcher {
   private active: boolean = false;
   private heading: number = -1;
   private listener: (data: sensor.OrientationResponse) => void;
+  private onHeading: (heading: number) => void;
 
-  constructor(private onHeading: (heading: number) => void) {
+  constructor(onHeading: (heading: number) => void) {
+    this.onHeading = onHeading;
     this.listener = (data: sensor.OrientationResponse) => {
       const alpha: number = data.alpha;
       if (typeof alpha !== 'number' || isNaN(alpha)) {
@@ -136,6 +138,15 @@ export class GeoWatcher {
 
   private onPollPoint: (point: GeoPoint) => void;
 
+  /** 最近一次定位成功的时间戳（ms）；0 表示还没拿到过 */
+  private lastFixAt: number = 0;
+  /** 由最近两次定位点推算出的移动方向（度，0=北）；负值表示无法判断 */
+  private moveHeading: number = -1;
+  /** 上一次用于算方向的定位点 */
+  private prevPoint: GeoPoint | undefined = undefined;
+  /** 兜底轮询定时器句柄，-1 表示未启动 */
+  private pollTimer: number = -1;
+
   constructor(onPoint: (point: GeoPoint) => void) {
     this.onPollPoint = onPoint;
     this.request = {
@@ -181,5 +192,74 @@ export class GeoWatcher {
       const error = err as BusinessError;
     }
     this.active = false;
+    if (this.pollTimer !== -1) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = -1;
+    }
+  }
+
+  /** 当前移动方向（度）；负值表示暂时无法判断 */
+  heading(): number {
+    return this.moveHeading;
+  }
+
+  /** 用相邻两次定位点推算移动方向，写入 moveHeading */
+  private updateMoveHeading(point: GeoPoint): void {
+    const now: number = Date.now();
+    if (this.prevPoint === undefined) {
+      this.prevPoint = point;
+      this.lastFixAt = now;
+      return;
+    }
+    const dLat: number = point.latitude - this.prevPoint.latitude;
+    const dLon: number = point.longitude - this.prevPoint.longitude;
+    const meters: number = Math.abs(dLat) + Math.abs(dLon);
+    // 位移太小时方向不可靠，保留上一次结果
+    if (meters > 0.00002) {
+      this.moveHeading = Math.atan2(dLon, dLat) * 180 / Math.PI;
+      if (this.moveHeading < 0) {
+        this.moveHeading += 360;
+      }
+      this.prevPoint = point;
+    }
+    this.lastFixAt = now;
+  }
+
+  /** 兜底轮询：订阅式定位迟迟不来时，用单次定位补点 */
+  private startPollFallback(): void {
+    if (this.pollTimer !== -1) {
+      return;
+    }
+    this.pollTimer = setInterval(() => {
+      if (!this.active) {
+        return;
+      }
+      // 已经有新鲜定位就不再打扰
+      if (this.lastFixAt > 0 && Date.now() - this.lastFixAt < 8000) {
+        return;
+      }
+      try {
+        geoLocationManager.getCurrentLocation({
+          priority: geoLocationManager.LocationRequestPriority.FIRST_FIX,
+          scenario: geoLocationManager.LocationRequestScenario.UNSET,
+          maxAccuracy: 0
+        }, (err: BusinessError, location: geoLocationManager.Location) => {
+          if (err) {
+            return;
+          }
+          if (location === undefined || location === null) {
+            return;
+          }
+          const point: GeoPoint = {
+            latitude: location.latitude,
+            longitude: location.longitude
+          };
+          this.updateMoveHeading(point);
+          this.onPollPoint(point);
+        });
+      } catch (err) {
+        const error = err as BusinessError;
+      }
+    }, 5000);
   }
 }

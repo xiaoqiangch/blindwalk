@@ -69,44 +69,44 @@ private extension UIColor {
     }
 }
 
-/// 牛皮纸色板：web 里 `.boxcard` / `.levelcard` / 卡片缩略图用的暖纸色，
-/// 由 `paper2` 与 `amberDeep` 混出来，避免新增 token。
+/// 卡片面材色板。
+///
+/// v3：不再用「主色混出来」的渐变。原来那三档（paper2 → 主色 10/20/30%）让整张卡片
+/// 变成淡紫，一屏里出现三张就变成「满屏紫」——这是界面发虚的主因。
+/// 现在只保留一条中性面材梯，渐变仅作为同一中性内部的极轻微tone shift，
+/// 层次靠「面材 + 发丝描边」拉开，不靠色相。
 enum BWKraft {
-    /// 现代冷调：用主色（靛蓝）做渐变，取代原来的牛皮纸暖黄。
-    static let light = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.10)
-    static let mid = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.20)
-    static let deep = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)
+    /// 面材三档（中性冷灰，自上而下略深）
+    static let light = Color(hex: 0xFFFFFF)
+    static let mid = Color(hex: 0xFAFAFB)
+    static let deep = Color(hex: 0xF2F3F5)
 
-    /// 牛皮纸盒体 / 盒盖（web: #DFC49B / #EAD6B2）
-    static let boxBody = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.34)
-    static let boxLid = Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.22)
+    /// 盒体 / 盒盖：中性面 + 一点主色（只在插画内部出现，不当背景）
+    static let boxBody = Color(hex: 0xF0F2FB)
+    static let boxLid = Color(hex: 0xF8F9FD)
 
-    /// 主卡渐层（web: linear-gradient(152deg, #F3E4CB → #EAD4B0 → #DFC59B)）
+    /// 主卡面材：仍是中性，只在内部 tone shift
     static var cardGradient: LinearGradient {
         LinearGradient(
-            colors: [light, mid, deep],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            colors: [light, mid],
+            startPoint: .top,
+            endPoint: .bottom
         )
     }
 
-    /// 等级卡渐层（web: linear-gradient(150deg, #F2E3C9 → #E8D2AD → #DFC69C)）
+    /// 等级卡面材
     static var levelGradient: LinearGradient {
         LinearGradient(
-            colors: [
-                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.10),
-                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.20),
-                Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            colors: [light, mid, deep],
+            startPoint: .top,
+            endPoint: .bottom
         )
     }
 
-    /// 缩略图渐层（web: linear-gradient(160deg, #F2E4CC, #E3CCA6)）
+    /// 缩略图面材
     static var thumbGradient: LinearGradient {
         LinearGradient(
-            colors: [mid, Color.bwMix(BWTheme.paper2, BWTheme.amber, 0.30)],
+            colors: [BWTheme.paper2, BWTheme.paper],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -118,29 +118,29 @@ enum BWKraft {
 // 具体字号按 Web 原型（390pt 稿）实测取值。
 
 enum BWType {
-    /// 页面标题：回忆册 / 圈子 / 我的（web .pagehead h1，22 / 700）
-    static func pageTitle() -> Font { .system(size: 24, weight: .bold) }
+    /// 页面标题：一屏只有一个（回忆册 / 圈子 / 我的）
+    static func pageTitle() -> Font { .system(size: 28, weight: .semibold) }
 
-    /// 首页大头文案（web .home__hero h2，26 / 700）
-    static func hero() -> Font { .system(size: 28, weight: .bold) }
+    /// 首页主标题
+    static func hero() -> Font { .system(size: 30, weight: .semibold) }
 
-    /// 主按钮（web .btn，15.5 / 650）
+    /// 主按钮文字
     static func cta(_ size: CGFloat = 16) -> Font { .system(size: size, weight: .semibold) }
 
-    /// 卡片 / 列表主标题（web 13.5 / 650）
-    static func rowTitle(_ size: CGFloat = 14.5) -> Font { .system(size: size, weight: .semibold) }
+    /// 卡片 / 列表主标题
+    static func rowTitle(_ size: CGFloat = 15) -> Font { .system(size: size, weight: .medium) }
 
-    /// 正文（web 13 / 400）
-    static func body(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .regular) }
+    /// 正文
+    static func body(_ size: CGFloat = 14) -> Font { .system(size: size, weight: .regular) }
 
-    /// 辅助文字（web 10.5 / 400）
+    /// 辅助文字
     static func caption(_ size: CGFloat = 12.5) -> Font { .system(size: size, weight: .regular) }
 
-    /// 微标：10 / 650 + 字距（web .micro / .section-head h2）
-    static func micro(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .semibold) }
+    /// 小节标题：句首大写、不追踪、不用全大写
+    static func micro(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .medium) }
 
-    /// 数字（web tabular-nums）
-    static func number(_ size: CGFloat = 24) -> Font { .system(size: size, weight: .bold) }
+    /// 数字（等宽）
+    static func number(_ size: CGFloat = 22) -> Font { .system(size: size, weight: .semibold).monospacedDigit() }
 }
 
 // MARK: - 动态字体
@@ -214,8 +214,9 @@ enum BWTabBarChrome {
         for sub in view.subviews {
             let name = String(describing: type(of: sub))
             if name.contains("_UITabSelectionView") {
-                // 换成品牌琥珀的极淡底，而不是系统那团灰玻璃
-                sub.backgroundColor = UIColor(BWTheme.amber).withAlphaComponent(0.14)
+                // 选中态用中性面，而不是带主色的淡底：
+                // 底栏一天要被看几百次，它是 chrome，不该是整屏第二个彩色元素
+                sub.backgroundColor = UIColor(BWTheme.paper2)
                 sub.alpha = 1
             }
             if name.contains("_UITabBarItemPlatterView") {

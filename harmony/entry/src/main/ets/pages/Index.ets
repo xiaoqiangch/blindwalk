@@ -12,23 +12,26 @@
  */
 
 import { common } from '@kit.AbilityKit';
-import { getStore, initStore } from '../core/store';
+import { getStore, initStore, registerPlaces, setNearbyPlaces } from '../core/store';
 import { PreferencesKV } from '../components/PreferencesKV';
 import { HarmonyHttpClient, readBundledMapKeys } from '../components/HttpClient';
 import { BwAccountPanel } from '../components/AccountPanel';
 import { BwDataSourcePanel } from '../components/DataSourcePanel';
 import { BwSeekPanel } from '../components/SeekPanel';
+import { BurySurprisePanel } from '../components/BurySurprisePanel';
 import { DataSourceStatus } from '../core/contract';
 import { BWColor, BWFont, BWSize } from '../theme/Theme';
 import { BwBoxArt } from '../components/BoxArt';
 import { AchievementsPanel } from '../components/AchievementsPanel';
 import { KeyValueStore, RoutePolyline } from '../core/contract';
 import { QuestFlowDeps, planRoute } from '../core/flow';
+import { discoverNearbyPlaces } from '../core/nearby';
+import { getCurrentLocationOnce, requestLocationPermission } from '../components/Location';
 import { applySyncedPayload, buildSyncPayload } from '../components/StoreBridge';
 import { readAccountConfig } from '../core/account';
 import { MAPKEYS_CACHE_KEY, loadMapKeys, mapKeysSourceText } from '../core/mapkeys';
 import { bwToast } from '../components/Async';
-import { BuriedSurprise, GeoPoint } from '../core/types';
+import { BuriedSurprise, GeoPoint, Place } from '../core/types';
 import { HomeView } from '../views/HomeView';
 import { CardsView } from '../views/CardsView';
 import { SocialView } from '../views/SocialView';
@@ -50,6 +53,7 @@ const OVERLAY_ACHIEVEMENTS: string = 'achievements';
 const OVERLAY_ACCOUNT: string = 'account';
 const OVERLAY_DATASOURCE: string = 'datasource';
 const OVERLAY_SEEK: string = 'seek';
+const OVERLAY_BURY: string = 'bury';
 
 @Entry
 @Component
@@ -57,7 +61,7 @@ struct Index {
   @State private ready: boolean = false;
   @State private initError: string = '';
   @State private tab: number = TAB_HOME;
-  @State private overlay: string = OVERLAY_NONE;
+  @State private activeOverlay: string = OVERLAY_NONE;
   @State private revision: number = 0;
   @State private winWidth: number = 400;
   @State private winHeight: number = 800;
@@ -85,6 +89,10 @@ struct Index {
   @State private seekTargetLat: number = 0;
   @State private seekTargetLon: number = 0;
   @State private seekAuthorEmoji: string = '🎁';
+  /** 附近兴趣点检索中（避免重复请求） */
+  private nearbyLoading: boolean = false;
+  /** 上次附近检索的位置（偏差 300m 以上才重查） */
+  private nearbyAnchor: GeoPoint | undefined = undefined;
 
   aboutToAppear(): void {
     // 地图朝向开关：AppStorage 全局共享 + 持久化（重启后保持）
@@ -120,6 +128,8 @@ struct Index {
       getStore().snapshot();
       this.ready = true;
       this.revision = this.revision + 1;
+      // 有定位就顺手把附近兴趣点拉了（进图鉴立刻有内容）
+      this.loadNearbyPlaces();
     } catch (err) {
       this.initError = '本地数据没准备好，重新打开试试。';
     }
@@ -132,16 +142,16 @@ struct Index {
   }
 
   private openSetup(): void {
-    this.overlay = OVERLAY_SETUP;
+    this.activeOverlay = OVERLAY_SETUP;
   }
 
   private closeSetup(): void {
-    this.overlay = OVERLAY_NONE;
+    this.activeOverlay = OVERLAY_NONE;
     this.refresh();
   }
 
   private setupStarted(): void {
-    this.overlay = OVERLAY_JOURNEY;
+    this.activeOverlay = OVERLAY_JOURNEY;
     this.refresh();
     this.planRouteInBackground();
   }
@@ -277,40 +287,141 @@ struct Index {
     this.seekAuthorEmoji = found.authorEmoji;
     this.seekTargetLat = found.location.latitude;
     this.seekTargetLon = found.location.longitude;
-    this.overlay = OVERLAY_SEEK;
+    this.activeOverlay = OVERLAY_SEEK;
     this.refresh();
+  }
+
+  /**
+   * 检索附近的兴趣点并灌入 store（图鉴「附近的兴趣点」区块用）。
+   *
+   * 只在有定位时执行；同一位置（300m 内）不重复请求。
+   * 失败不弹错：图鉴会显示「正在搜附近…」，用户可下拉重试。
+   */
+  private async loadNearbyPlaces(): Promise<void> {
+    if (this.kv === undefined) return;
+    if (this.nearbyLoading) return;
+    let origin: GeoPoint | undefined = undefined;
+    try {
+      origin = getStore().snapshot().lastKnownOrigin;
+    } catch (err) {
+      origin = undefined;
+    }
+    // 没有定位就主动取一次（图鉴不该要求用户先去抽盒才能看附近）
+    if (origin === undefined) {
+      try {
+        const context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+        const granted: boolean = await requestLocationPermission(context);
+        if (!granted) return;
+        const fix: GeoPoint = await getCurrentLocationOnce(8000);
+        getStore().setLastKnownOrigin(fix);
+        getStore().setDemoMode(false);
+        origin = fix;
+      } catch (err) {
+        return;
+      }
+    }
+
+    // 同一位置不重复拉
+    if (this.nearbyAnchor !== undefined) {
+      const dLat: number = Math.abs(this.nearbyAnchor.latitude - origin.latitude);
+      const dLon: number = Math.abs(this.nearbyAnchor.longitude - origin.longitude);
+      if (dLat < 0.003 && dLon < 0.003) return;
+    }
+
+    this.nearbyLoading = true;
+    try {
+      const discovery = await discoverNearbyPlaces({
+        kv: this.kv,
+        http: this.http,
+        readBundledKeys: (): string | undefined => this.bundledKeys,
+        adminBase: this.adminBase,
+        now: (): number => Date.now()
+      }, origin);
+      if (!discovery.failed) {
+        this.nearbyAnchor = origin;
+        setNearbyPlaces(discovery.places);
+        registerPlaces(discovery.places);
+        this.refresh();
+      }
+    } catch (err) {
+      // 网络/数据源全挂：保持空列表，图鉴显示「正在搜附近…」
+    } finally {
+      this.nearbyLoading = false;
+    }
+  }
+
+  /**
+   * 从图鉴点「未探索的兴趣点」→ 用该地点开始一次真实旅程。
+   *
+   * 闸门：必须有真实坐标 + 真实来源，否则明确失败（绝不虚构）。
+   */
+  private exploreNearbyPlace(placeID: string): void {
+    let target: Place | undefined = undefined;
+    let origin: GeoPoint | undefined = undefined;
+    try {
+      const snapshot = getStore().snapshot();
+      origin = snapshot.lastKnownOrigin;
+      for (let i = 0; i < snapshot.nearbyPlaces.length; i += 1) {
+        if (snapshot.nearbyPlaces[i].id === placeID) {
+          target = snapshot.nearbyPlaces[i];
+          break;
+        }
+      }
+    } catch (err) {
+      target = undefined;
+    }
+    if (target === undefined) {
+      bwToast('这个地点已经不在了');
+      this.refresh();
+      return;
+    }
+    if (origin === undefined) {
+      bwToast('需要先定位才能出发');
+      this.refresh();
+      return;
+    }
+    const started = getStore().startQuestWithPlace(target, origin);
+    if (started === undefined) {
+      bwToast('这个地点信息不完整，换个试试');
+      this.refresh();
+      return;
+    }
+    getStore().setDemoMode(false);
+    this.activeOverlay = OVERLAY_JOURNEY;
+    this.refresh();
+    this.planRouteInBackground();
   }
 
   /** 打开账号面板（我的 → 设置 → 账号） */
   private openAccount(): void {
-    this.overlay = OVERLAY_ACCOUNT;
+    this.activeOverlay = OVERLAY_ACCOUNT;
     this.refresh();
   }
 
   private closeJourney(): void {
-    this.overlay = OVERLAY_NONE;
+    this.activeOverlay = OVERLAY_NONE;
     this.refresh();
   }
 
   private openReveal(): void {
-    this.overlay = OVERLAY_REVEAL;
+    this.activeOverlay = OVERLAY_REVEAL;
     this.refresh();
   }
 
   /** 收录完成：回图鉴 Tab */
   private goCards(): void {
-    this.overlay = OVERLAY_NONE;
+    this.activeOverlay = OVERLAY_NONE;
     this.tab = TAB_CARDS;
     this.tabsController.changeIndex(TAB_CARDS);
     this.refresh();
   }
 
   private openAchievements(): void {
-    this.overlay = OVERLAY_ACHIEVEMENTS;
+    this.activeOverlay = OVERLAY_ACHIEVEMENTS;
   }
 
   private closeAchievements(): void {
-    this.overlay = OVERLAY_NONE;
+    this.activeOverlay = OVERLAY_NONE;
     this.refresh();
   }
 
@@ -320,18 +431,19 @@ struct Index {
 
   @Builder
   tabBuilder(title: string, glyph: string, index: number) {
-    Column({ space: 3 }) {
-      Text(glyph)
-        .fontSize(17)
-        .opacity(this.tab === index ? 1 : 0.55)
+    Column({ space: 2 }) {
+      SymbolGlyph($r('sys.symbol.' + glyph))
+        .fontSize(BWSize.iconSize)
+        .fontColor([this.tab === index ? BWColor.amber : BWColor.ink3])
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
 
       Text(title)
-        .fontSize(BWFont.microSm)
+        .fontSize(BWFont.micro)
         .fontWeight(this.tab === index ? FontWeight.Medium : FontWeight.Regular)
-        .fontColor(this.tab === index ? BWColor.ink : BWColor.ink3)
+        .fontColor(this.tab === index ? BWColor.amber : BWColor.ink3)
     }
     .width('100%')
-    .height(54)
+    .height(56)
     .justifyContent(FlexAlign.Center)
   }
 
@@ -347,16 +459,20 @@ struct Index {
             this.openSetup();
           },
           onOpenJourney: () => {
-            this.overlay = OVERLAY_JOURNEY;
+            this.activeOverlay = OVERLAY_JOURNEY;
           },
           onOpenCards: () => {
             this.tab = TAB_CARDS;
             this.tabsController.changeIndex(TAB_CARDS);
             this.refresh();
+          },
+          onOpenBury: () => {
+            this.activeOverlay = OVERLAY_BURY;
+            this.refresh();
           }
         })
       }
-      .tabBar(this.tabBuilder('今日', '📦', TAB_HOME))
+      .tabBar(this.tabBuilder('今日', 'house', TAB_HOME))
 
       TabContent() {
         CardsView({
@@ -370,12 +486,15 @@ struct Index {
             this.openSeek(surpriseID);
           },
           onOpenBury: () => {
-            // 埋惊喜 UI 尚未移植（本轮范围外）：明确告知，而不是静默无反应
-            bwToast('埋惊喜还没搬到鸿蒙，先在 Web 上试');
+            this.activeOverlay = OVERLAY_BURY;
+            this.refresh();
+          },
+          onExplorePlace: (placeID: string) => {
+            this.exploreNearbyPlace(placeID);
           }
         })
       }
-      .tabBar(this.tabBuilder('图鉴', '🗂', TAB_CARDS))
+      .tabBar(this.tabBuilder('图鉴', 'square_grid_2x2', TAB_CARDS))
 
       TabContent() {
         SocialView({
@@ -390,7 +509,7 @@ struct Index {
           }
         })
       }
-      .tabBar(this.tabBuilder('圈子', '👥', TAB_SOCIAL))
+      .tabBar(this.tabBuilder('圈子', 'person_2', TAB_SOCIAL))
 
       TabContent() {
         ProfileView({
@@ -405,7 +524,7 @@ struct Index {
             this.openAccount();
           },
           onOpenDataSource: () => {
-            this.overlay = OVERLAY_DATASOURCE;
+            this.activeOverlay = OVERLAY_DATASOURCE;
             this.refresh();
           },
           onChanged: () => {
@@ -413,7 +532,7 @@ struct Index {
           }
         })
       }
-      .tabBar(this.tabBuilder('我的', '🫥', TAB_PROFILE))
+      .tabBar(this.tabBuilder('我的', 'person', TAB_PROFILE))
     }
     .barHeight(56)
     .barBackgroundColor(BWColor.paper)
@@ -424,6 +543,9 @@ struct Index {
     .onChange((index: number) => {
       this.tab = index;
       this.refresh();
+      if (index === TAB_CARDS) {
+        this.loadNearbyPlaces();
+      }
     })
     .width('100%')
     .height('100%')
@@ -436,7 +558,7 @@ struct Index {
   @Builder
   loadingView() {
     Column({ space: 18 }) {
-      BwBoxArt({ size: 104 })
+      BwBoxArt({ artSize: 104 })
 
       Text('正在准备今晚的盲盒…')
         .fontSize(BWFont.caption)
@@ -451,7 +573,10 @@ struct Index {
   @Builder
   errorView() {
     Column({ space: 12 }) {
-      Text('🪔')
+      SymbolGlyph($r('sys.symbol.exclamationmark_triangle'))
+        .fontSize(32)
+        .fontColor([BWColor.gold])
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         .fontSize(32)
       Text(this.initError)
         .fontSize(BWFont.bodySm)
@@ -492,7 +617,7 @@ struct Index {
 
       // ---------- 全屏覆盖层（对应 iOS sheet / fullScreenCover） ----------
 
-      if (this.ready && this.overlay === OVERLAY_SETUP) {
+      if (this.ready && this.activeOverlay === OVERLAY_SETUP) {
         SetupSheet({
           winWidth: this.winWidth,
           winHeight: this.winHeight,
@@ -512,30 +637,30 @@ struct Index {
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_SEEK) {
+      if (this.ready && this.activeOverlay === OVERLAY_SEEK) {
         BwSeekPanel({
           surpriseID: this.seekSurpriseID,
           clues: this.seekClues,
           authorEmoji: this.seekAuthorEmoji,
-          hereLat: this.currentFix().lat,
-          hereLon: this.currentFix().lon,
+          hereLat: this.currentFix().latitude,
+          hereLon: this.currentFix().longitude,
           hasOrigin: this.hasOrigin(),
           targetLat: this.seekTargetLat,
           targetLon: this.seekTargetLon,
           onBack: () => {
-            this.overlay = OVERLAY_NONE;
+            this.activeOverlay = OVERLAY_NONE;
             this.seekSurpriseID = '';
             this.refresh();
           }
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_DATASOURCE) {
+      if (this.ready && this.activeOverlay === OVERLAY_DATASOURCE) {
         BwDataSourcePanel({
           status: this.dataSourceStatus(),
           curatedCount: this.curatedCount,
           onBack: () => {
-            this.overlay = OVERLAY_NONE;
+            this.activeOverlay = OVERLAY_NONE;
             this.refresh();
           },
           onReload: () => {
@@ -544,18 +669,15 @@ struct Index {
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_ACCOUNT) {
-        BwAccountPanel({
-          revision: this.revision,
-          kv: this.kv,
-          http: this.http,
-          buildPayload: (): Record<string, unknown> => buildSyncPayload(),
-          applyPayload: (payload: Record<string, unknown>): void => {
-            applySyncedPayload(payload);
+      if (this.ready && this.activeOverlay === OVERLAY_BURY) {
+        BurySurprisePanel({
+          winWidth: this.winWidth,
+          winHeight: this.winHeight,
+          onClose: () => {
+            this.activeOverlay = OVERLAY_NONE;
             this.refresh();
           },
-          onBack: () => {
-            this.overlay = OVERLAY_NONE;
+          onBuried: (surpriseID: string) => {
             this.refresh();
           },
           onChanged: () => {
@@ -564,7 +686,27 @@ struct Index {
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_JOURNEY) {
+      if (this.ready && this.activeOverlay === OVERLAY_ACCOUNT) {
+        BwAccountPanel({
+          revision: this.revision,
+          kv: this.kv,
+          http: this.http,
+          buildPayload: (): Record<string, Object> => buildSyncPayload(),
+          applyPayload: (payload: Record<string, Object>): void => {
+            applySyncedPayload(payload);
+            this.refresh();
+          },
+          onBack: () => {
+            this.activeOverlay = OVERLAY_NONE;
+            this.refresh();
+          },
+          onChanged: () => {
+            this.refresh();
+          }
+        })
+      }
+
+      if (this.ready && this.activeOverlay === OVERLAY_JOURNEY) {
         JourneyView({
           revision: this.revision,
           winWidth: this.winWidth,
@@ -581,7 +723,7 @@ struct Index {
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_REVEAL) {
+      if (this.ready && this.activeOverlay === OVERLAY_REVEAL) {
         RevealView({
           winWidth: this.winWidth,
           winHeight: this.winHeight,
@@ -594,7 +736,7 @@ struct Index {
         })
       }
 
-      if (this.ready && this.overlay === OVERLAY_ACHIEVEMENTS) {
+      if (this.ready && this.activeOverlay === OVERLAY_ACHIEVEMENTS) {
         AchievementsPanel({
           onBack: () => {
             this.closeAchievements();

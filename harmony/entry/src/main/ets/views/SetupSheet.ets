@@ -82,9 +82,9 @@ class MoodOption {
 }
 
 const MOODS: MoodOption[] = [
-  new MoodOption(Mood.Drift, '放空', '🌫️', '不想讲话，只想走走'),
-  new MoodOption(Mood.Discover, '发现', '🔍', '我想看点没见过的'),
-  new MoodOption(Mood.Lively, '热闹', '🥁', '去哪儿都行，人多一点')
+  new MoodOption(Mood.Drift, '放空', 'leaf_fill', '不想讲话，只想走走'),
+  new MoodOption(Mood.Discover, '发现', 'magnifyingglass', '我想看点没见过的'),
+  new MoodOption(Mood.Lively, '热闹', 'headphones_fill', '去哪儿都行，人多一点')
 ];
 
 class AreaOption {
@@ -450,13 +450,16 @@ export struct SetupSheet {
       Column({ space: 7 }) {
         ForEach(MOODS, (item: MoodOption) => {
           Row({ space: 12 }) {
-            Text(item.emoji)
-              .fontSize(17)
-              .textAlign(TextAlign.Center)
-              .width(34)
-              .height(34)
-              .backgroundColor(this.isMoodSelected(item.mood) ? BWColor.amberSoftStrong : BWColor.paper2)
-              .borderRadius(17)
+            Stack({ alignContent: Alignment.Center }) {
+              SymbolGlyph($r('sys.symbol.' + item.emoji))
+                .fontSize(BWSize.iconSizeSm)
+                .fontColor([this.isMoodSelected(item.mood) ? BWColor.amber : BWColor.ink2])
+                .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+            }
+            .width(34)
+            .height(34)
+            .backgroundColor(this.isMoodSelected(item.mood) ? BWColor.amberSoft : BWColor.paper2)
+            .borderRadius(17)
 
             Column({ space: 1 }) {
               Text(item.title)
@@ -567,7 +570,7 @@ export struct SetupSheet {
       Row() {
         BwPrimaryButton({
           title: this.busy ? '正在找真实地点…' : '摇一个盲盒',
-          enabled: !this.busy,
+          isActive: !this.busy,
           onTap: () => {
             this.shakeAndStart();
           }
