@@ -4,21 +4,21 @@ import SwiftUI
 // v3：底色是一条中性冷灰梯，不再叠噪点。
 // 噪点纹理在 3x 屏上会因为缩放产生摩尔纹，视觉上就是「页面脏」。
 
-struct BWPaperBackground: View {
+struct WAPaperBackground: View {
     var body: some View {
-        BWTheme.cream.ignoresSafeArea()
+        WATheme.cream.ignoresSafeArea()
     }
 }
 
 /// 保留旧名，避免改动其他页面的调用；v3 起它不再画任何噪点。
-struct BWPaperTexture: View {
+struct WAPaperTexture: View {
     var body: some View {
         Color.clear.allowsHitTesting(false)
     }
 }
 
 /// 小工具：可复现的伪随机（保留给插画使用）
-struct BWPseudoRandom {
+struct WAPseudoRandom {
     private var state: UInt64
 
     init(seed: UInt64) {
@@ -35,12 +35,12 @@ struct BWPseudoRandom {
 // MARK: - 卡片
 
 /// 面卡：16pt 圆角 + 发丝描边 + 中性微阴影。白面 + 描边就够分层，不需要彩色投影。
-struct BWCard<Content: View>: View {
+struct WACard<Content: View>: View {
     private let padding: CGFloat
     private let background: Color
     private let content: Content
 
-    init(padding: CGFloat = 16, background: Color = BWTheme.paper, @ViewBuilder content: () -> Content) {
+    init(padding: CGFloat = 16, background: Color = WATheme.paper, @ViewBuilder content: () -> Content) {
         self.padding = padding
         self.background = background
         self.content = content()
@@ -50,19 +50,19 @@ struct BWCard<Content: View>: View {
         content
             .padding(padding)
             .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
     }
 }
 
 /// 发丝分割线
-struct BWHairline: View {
+struct WAHairline: View {
     var body: some View {
         Rectangle()
-            .fill(BWTheme.line)
+            .fill(WATheme.line)
             .frame(height: 1)
     }
 }
@@ -71,11 +71,11 @@ struct BWHairline: View {
 
 /// 小节微标：句首大写中文、不追踪。
 /// v1 用的是「全大写 + 字距 .08em」的网页表单标签写法，中文上只会显得挤。
-struct BWMicroLabel: View {
+struct WAMicroLabel: View {
     private let text: String
     private let tint: Color
 
-    init(_ text: String, tint: Color = BWTheme.ink3) {
+    init(_ text: String, tint: Color = WATheme.ink3) {
         self.text = text
         self.tint = tint
     }
@@ -88,7 +88,7 @@ struct BWMicroLabel: View {
 }
 
 /// 小节标题：一行文字 + 右侧可选动作，不用追踪标签
-struct BWSectionHeader: View {
+struct WASectionHeader: View {
     let title: String
     var trailingTitle: String? = nil
     var action: (() -> Void)? = nil
@@ -97,24 +97,24 @@ struct BWSectionHeader: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
 
             Spacer(minLength: 0)
 
             if let trailingTitle, let action {
                 Button(action: action) {
                     HStack(spacing: 2) {
-                        Text(trailingTitle).font(BWType.caption(12.5))
+                        Text(trailingTitle).font(WAType.caption(12.5))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             } else if let trailingTitle {
                 Text(trailingTitle)
-                    .font(BWType.caption(12.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(12.5))
+                    .foregroundStyle(WATheme.ink3)
             }
         }
     }
@@ -122,18 +122,18 @@ struct BWSectionHeader: View {
 
 // MARK: - 按钮
 
-struct BWPressEffectStyle: ButtonStyle {
+struct WAPressEffectStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(BWAnimation.quick, value: configuration.isPressed)
+            .animation(WAAnimation.quick, value: configuration.isPressed)
     }
 }
 
 /// 主 CTA：纯色靛蓝 + 白字 + 中性外阴影。
 /// v1 是「黑字压在主色上 + 主色投影」，对比不足且发虚；v3 一次只允许有一个这样的按钮。
-struct BWPrimaryButton: View {
+struct WAPrimaryButton: View {
     let title: String
     var icon: String? = nil
     var caption: String? = nil
@@ -148,7 +148,7 @@ struct BWPrimaryButton: View {
                         .font(.system(size: 15, weight: .semibold))
                 }
                 Text(title)
-                    .font(BWType.cta())
+                    .font(WAType.cta())
                 if let caption {
                     Text(caption)
                         .font(.system(size: 10.5, weight: .semibold))
@@ -162,16 +162,16 @@ struct BWPrimaryButton: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(BWTheme.amber)
+            .background(WATheme.amber)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: BWTheme.amber.opacity(0.18), radius: 8, x: 0, y: 4)
+            .shadow(color: WATheme.amber.opacity(0.18), radius: 8, x: 0, y: 4)
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
     }
 }
 
 /// 次级按钮：白面 + 发丝描边
-struct BWSecondaryButton: View {
+struct WASecondaryButton: View {
     let title: String
     var icon: String? = nil
     var height: CGFloat = 46
@@ -184,24 +184,24 @@ struct BWSecondaryButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .semibold))
                 }
-                Text(title).font(BWType.cta(14.5))
+                Text(title).font(WAType.cta(14.5))
             }
-            .foregroundStyle(BWTheme.ink)
+            .foregroundStyle(WATheme.ink)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(BWTheme.paper)
+            .background(WATheme.paper)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
     }
 }
 
 /// 圆形图标按钮
-struct BWIconButton: View {
+struct WAIconButton: View {
     let systemName: String
     var size: CGFloat = 34
     var action: () -> Void
@@ -210,18 +210,18 @@ struct BWIconButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: size * 0.42, weight: .medium))
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .frame(width: size, height: size)
-                .background(BWTheme.paper)
+                .background(WATheme.paper)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
     }
 }
 
 /// 筛选 chip：选中 = 主色淡底 + 主色字（不再用「黑底白字」，黑底按钮太重）
-struct BWPill: View {
+struct WAPill: View {
     let title: String
     var selected: Bool = false
     var action: () -> Void = {}
@@ -230,45 +230,45 @@ struct BWPill: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 13.5, weight: selected ? .medium : .regular))
-                .foregroundStyle(selected ? BWTheme.amberDeep : BWTheme.ink2)
+                .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink2)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 32)
-                .background(selected ? BWTheme.amberSoft : BWTheme.paper)
+                .background(selected ? WATheme.amberSoft : WATheme.paper)
                 .clipShape(Capsule())
                 .overlay(
-                    Capsule().stroke(selected ? BWTheme.amber.opacity(0.28) : BWTheme.line, lineWidth: 1)
+                    Capsule().stroke(selected ? WATheme.amber.opacity(0.28) : WATheme.line, lineWidth: 1)
                 )
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
     }
 }
 
 // MARK: - 稀有度
 
 /// 稀有度徽章：细描边 + 淡底，不用满圆药丸
-struct BWRarityBadge: View {
+struct WARarityBadge: View {
     let rarity: Rarity
 
     var body: some View {
         Text(rarity.label)
             .font(.system(size: 11.5, weight: .medium))
-            .foregroundStyle(BWTheme.rarityColor(rarity))
+            .foregroundStyle(WATheme.rarityColor(rarity))
             .padding(.horizontal, 7)
             .frame(height: 20)
-            .background(BWTheme.raritySoft(rarity))
+            .background(WATheme.raritySoft(rarity))
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
 /// 稀有度小圆点
-struct BWRarityDot: View {
+struct WARarityDot: View {
     let rarity: Rarity
     var size: CGFloat = 7
 
     var body: some View {
         Circle()
-            .fill(BWTheme.rarityColor(rarity))
+            .fill(WATheme.rarityColor(rarity))
             .frame(width: size, height: size)
     }
 }
@@ -277,20 +277,20 @@ struct BWRarityDot: View {
 
 /// 首页快捷统计。v1 给每格加了一条左侧竖线（网页表格的写法），
 /// v3 去掉竖线，改用间距分组 + 三档文字层级。
-struct BWStatCell: View {
+struct WAStatCell: View {
     let value: String
     let title: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(BWType.number(22))
-                .foregroundStyle(BWTheme.ink)
+                .font(WAType.number(22))
+                .foregroundStyle(WATheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(title)
                 .font(.system(size: 12))
-                .foregroundStyle(BWTheme.ink3)
+                .foregroundStyle(WATheme.ink3)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -299,13 +299,13 @@ struct BWStatCell: View {
 }
 
 /// 三栏统计行
-struct BWStatsRow: View {
+struct WAStatsRow: View {
     let items: [(String, String)]
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                BWStatCell(value: item.0, title: item.1)
+                WAStatCell(value: item.0, title: item.1)
             }
         }
     }
@@ -316,7 +316,7 @@ struct BWStatsRow: View {
 // viewBox 120 × 106：盒体 70×45 @(25,46)、盒盖 78×17.5 @(21,33.5)、
 // 提绳两段贝塞尔 + 中缝竖线、盒面「?」、两粒琥珀点、背后暖光与地面投影。
 
-struct BWBoxIllustration: View {
+struct WABoxIllustration: View {
     var width: CGFloat = 118
     var floating: Bool = true
     var glow: Bool = true
@@ -337,7 +337,7 @@ struct BWBoxIllustration: View {
         .offset(y: floatOffset)
         .onAppear {
             guard floating, !reduceMotion else { return }
-            withAnimation(BWAnimation.floating) {
+            withAnimation(WAAnimation.floating) {
                 floatOffset = -3.5
             }
         }
@@ -351,20 +351,20 @@ struct BWBoxIllustration: View {
         func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
             CGRect(x: origin.x + x * scale, y: origin.y + y * scale, width: w * scale, height: h * scale)
         }
-        let stroke = BWTheme.ink.opacity(0.88)
+        let stroke = WATheme.ink.opacity(0.88)
 
         // 背后暖光
         if glow {
             context.fill(
                 Path(ellipseIn: rect(27, 22, 66, 66)),
-                with: .color(BWTheme.amber.opacity(0.14))
+                with: .color(WATheme.amber.opacity(0.14))
             )
         }
 
         // 地面投影
         context.fill(
             Path(ellipseIn: rect(25, 89.5, 70, 11)),
-            with: .color(BWTheme.ink.opacity(0.08))
+            with: .color(WATheme.ink.opacity(0.08))
         )
 
         // 左侧提绳
@@ -375,25 +375,25 @@ struct BWBoxIllustration: View {
             control1: point(29, 39),
             control2: point(37, 29)
         )
-        context.stroke(leftCord, with: .color(BWTheme.ink.opacity(0.28)), style: StrokeStyle(lineWidth: 1.3 * scale, lineCap: .round))
+        context.stroke(leftCord, with: .color(WATheme.ink.opacity(0.28)), style: StrokeStyle(lineWidth: 1.3 * scale, lineCap: .round))
 
         // 盒体
         let body = RoundedRectangle(cornerRadius: 7 * scale, style: .continuous)
             .path(in: rect(25, 46, 70, 45))
-        context.fill(body, with: .color(BWKraft.boxBody))
+        context.fill(body, with: .color(WAKraft.boxBody))
         context.stroke(body, with: .color(stroke), style: StrokeStyle(lineWidth: 1.7 * scale))
 
         // 盒盖
         let lid = RoundedRectangle(cornerRadius: 5 * scale, style: .continuous)
             .path(in: rect(21, 33.5, 78, 17.5))
-        context.fill(lid, with: .color(BWKraft.boxLid))
+        context.fill(lid, with: .color(WAKraft.boxLid))
         context.stroke(lid, with: .color(stroke), style: StrokeStyle(lineWidth: 1.7 * scale))
 
         // 盒体与盒盖之间的缝
         var seam = Path()
         seam.move(to: point(25, 53.5))
         seam.addLine(to: point(95, 53.5))
-        context.stroke(seam, with: .color(BWTheme.ink.opacity(0.30)), style: StrokeStyle(lineWidth: 1.1 * scale))
+        context.stroke(seam, with: .color(WATheme.ink.opacity(0.30)), style: StrokeStyle(lineWidth: 1.1 * scale))
 
         // 提绳：两段拱 + 中缝
         var handle = Path()
@@ -405,7 +405,7 @@ struct BWBoxIllustration: View {
         handle.addLine(to: point(60, 33.5))
         context.stroke(
             handle,
-            with: .color(BWTheme.ink.opacity(0.5)),
+            with: .color(WATheme.ink.opacity(0.5)),
             style: StrokeStyle(lineWidth: 1.4 * scale, lineCap: .round)
         )
 
@@ -413,34 +413,34 @@ struct BWBoxIllustration: View {
         let question = context.resolve(
             Text("?")
                 .font(.system(size: 24 * scale, weight: .bold))
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
         )
         context.draw(question, at: point(60, 72), anchor: .center)
 
         // 两粒琥珀点
         context.fill(
             Path(ellipseIn: rect(72.8, 33.8, 4.4, 4.4)),
-            with: .color(BWTheme.amber)
+            with: .color(WATheme.amber)
         )
         context.fill(
             Path(ellipseIn: rect(29.6, 41.6, 2.8, 2.8)),
-            with: .color(BWTheme.amber.opacity(0.8))
+            with: .color(WATheme.amber.opacity(0.8))
         )
     }
 }
 
 // MARK: - 空状态插画（web .empty__art：虚线纸盒 + 「?」）
 
-struct BWEmptyArt: View {
+struct WAEmptyArt: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(BWTheme.amber.opacity(0.13))
+                .fill(WATheme.amber.opacity(0.13))
                 .frame(width: 54, height: 54)
 
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .strokeBorder(
-                    BWTheme.ink3.opacity(0.85),
+                    WATheme.ink3.opacity(0.85),
                     style: StrokeStyle(lineWidth: 1.4, dash: [4, 4])
                 )
                 .frame(width: 46, height: 32)
@@ -448,7 +448,7 @@ struct BWEmptyArt: View {
 
             RoundedRectangle(cornerRadius: 3.5, style: .continuous)
                 .strokeBorder(
-                    BWTheme.ink3.opacity(0.85),
+                    WATheme.ink3.opacity(0.85),
                     style: StrokeStyle(lineWidth: 1.4, dash: [4, 4])
                 )
                 .frame(width: 52, height: 12)
@@ -456,7 +456,7 @@ struct BWEmptyArt: View {
 
             Text("?")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(BWTheme.ink3)
+                .foregroundStyle(WATheme.ink3)
                 .offset(y: 7)
         }
         .frame(width: 72, height: 62)
@@ -465,7 +465,7 @@ struct BWEmptyArt: View {
 }
 
 /// 空状态（文案由调用方给，不在这里自创）
-struct BWEmptyState: View {
+struct WAEmptyState: View {
     let title: String
     var subtitle: String? = nil
     var showsArt: Bool = true
@@ -473,17 +473,17 @@ struct BWEmptyState: View {
     var body: some View {
         VStack(spacing: 7) {
             if showsArt {
-                BWEmptyArt()
+                WAEmptyArt()
                     .padding(.bottom, 4)
             }
             Text(title)
-                .font(BWType.body(13))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WAType.body(13))
+                .foregroundStyle(WATheme.ink2)
                 .multilineTextAlignment(.center)
             if let subtitle {
                 Text(subtitle)
-                    .font(BWType.caption(11))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(11))
+                    .foregroundStyle(WATheme.ink3)
                     .multilineTextAlignment(.center)
             }
         }
@@ -495,14 +495,14 @@ struct BWEmptyState: View {
 
 // MARK: - Toast（web .toast：墨色药丸，贴底；成就 toast 用琥珀变体）
 
-struct BWToast: Identifiable {
+struct WAToast: Identifiable {
     let id: UUID
     let text: String
     let icon: String
     let tint: Color
     let isAmber: Bool
 
-    init(text: String, icon: String = "sparkles", tint: Color = BWTheme.amberDeep, isAmber: Bool = false) {
+    init(text: String, icon: String = "sparkles", tint: Color = WATheme.amberDeep, isAmber: Bool = false) {
         self.id = UUID()
         self.text = text
         self.icon = icon
@@ -511,8 +511,8 @@ struct BWToast: Identifiable {
     }
 }
 
-struct BWToastView: View {
-    let toast: BWToast
+struct WAToastView: View {
+    let toast: WAToast
     var onDismiss: (() -> Void)? = nil
 
     var body: some View {
@@ -523,12 +523,12 @@ struct BWToastView: View {
             } else {
                 Image(systemName: toast.icon)
                     .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(toast.isAmber ? BWTheme.ink : BWTheme.amber)
+                    .foregroundStyle(toast.isAmber ? WATheme.ink : WATheme.amber)
             }
 
             Text(toast.text)
                 .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(toast.isAmber ? BWTheme.ink : BWTheme.cream)
+                .foregroundStyle(toast.isAmber ? WATheme.ink : WATheme.cream)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -537,12 +537,12 @@ struct BWToastView: View {
         .background {
             if toast.isAmber {
                 LinearGradient(
-                    colors: [BWTheme.amber, BWTheme.amberDeep],
+                    colors: [WATheme.amber, WATheme.amberDeep],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             } else {
-                BWTheme.ink
+                WATheme.ink
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -550,12 +550,12 @@ struct BWToastView: View {
         // 奶油纸底上这条边几乎不可见，不影响克制感。
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(BWTheme.cream.opacity(0.16), lineWidth: 1)
+                .stroke(WATheme.cream.opacity(0.16), lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.28), radius: 18, x: 0, y: 10)
+        .shadow(color: WATheme.ink.opacity(0.28), radius: 18, x: 0, y: 10)
         .onAppear {
             guard let onDismiss else { return }
-            bwAfter(2.4) {
+            waAfter(2.4) {
                 onDismiss()
             }
         }
@@ -563,12 +563,12 @@ struct BWToastView: View {
 }
 
 /// 成就 toast：与普通 toast 同一造型，琥珀底（web variant: amber）
-struct BWAchievementToastView: View {
+struct WAAchievementToastView: View {
     let achievement: Achievement
 
     var body: some View {
-        BWToastView(
-            toast: BWToast(
+        WAToastView(
+            toast: WAToast(
                 text: "成就解锁 · \(achievement.name)",
                 icon: achievement.icon,
                 isAmber: true
@@ -577,18 +577,18 @@ struct BWAchievementToastView: View {
     }
 }
 
-struct BWToastModifier: ViewModifier {
-    @Binding var toast: BWToast?
+struct WAToastModifier: ViewModifier {
+    @Binding var toast: WAToast?
 
     func body(content: Content) -> some View {
         let binding = $toast
         return content
             .overlay(alignment: .bottom) {
                 if let toast {
-                    BWToastView(
+                    WAToastView(
                         toast: toast,
                         onDismiss: {
-                            withAnimation(BWAnimation.quick) {
+                            withAnimation(WAAnimation.quick) {
                                 if binding.wrappedValue?.id == toast.id {
                                     binding.wrappedValue = nil
                                 }
@@ -596,17 +596,17 @@ struct BWToastModifier: ViewModifier {
                         }
                     )
                     .id(toast.id)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.bottom, 10)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .animation(BWAnimation.regular, value: toast?.id)
+            .animation(WAAnimation.regular, value: toast?.id)
     }
 }
 
 extension View {
-    func bwToast(_ toast: Binding<BWToast?>) -> some View {
-        modifier(BWToastModifier(toast: toast))
+    func waToast(_ toast: Binding<WAToast?>) -> some View {
+        modifier(WAToastModifier(toast: toast))
     }
 }

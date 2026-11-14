@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 盲走 BlindWalk · HarmonyOS ArkTS 静态自检
+ * 步迷 Walkaholic · HarmonyOS ArkTS 静态自检
  *
  * 本机没有 DevEco Studio / hvigor / ohpm，无法编译 .hap；这个脚本做的是
  * 「离线能验证的部分」，尽量把装 DevEco 后才暴露的低级错误提前拦掉：
@@ -359,7 +359,7 @@ function checkStoreContract() {
   if (!/export\s+function\s+getStore\s*\(\s*\)/.test(text)) {
     fail('工程契约', 'core/store.ts 未导出 getStore()');
   }
-  if (text.includes('export interface BlindWalkStoreApi') === false) {
+  if (text.includes('export interface WalkaholicStoreApi') === false) {
     // 接口在 contract.ts，这里只做存在性提示
   }
   pass('工程契约', 'core/store.ts 导出 initStore() / getStore()');
@@ -450,7 +450,7 @@ function checkParity() {
     fail('功能对齐', '缺少 core/mapkeys.ts（Key 下发）');
   } else {
     expectIn('功能对齐', 'core/mapkeys.ts', mapkeys, [
-      'xiaoqiangch.github.io/blindwalk/mapkeys.json',
+      'xiaoqiangch.github.io/walkaholic/mapkeys.json',
       '/api/public/mapkeys',
       'MAPKEYS_CACHE_TTL_MS'
     ]);
@@ -543,10 +543,10 @@ function checkNoFakeFallback() {
   if (!text.includes('prepareQuest')) {
     fail('反虚构兜底', 'SetupSheet.ets 没有调用 prepareQuest()（三档真实搜索入口）');
   }
-  if (!text.includes('BwSearchFailedPanel')) {
+  if (!text.includes('WaSearchFailedPanel')) {
     fail('反虚构兜底', 'SetupSheet.ets 没有失败面板（找不到真实地点必须明确告知）');
   }
-  if (!text.includes('BwLocationBlockedPanel')) {
+  if (!text.includes('WaLocationBlockedPanel')) {
     fail('反虚构兜底', 'SetupSheet.ets 没有定位受阻面板');
   }
   pass('反虚构兜底', '真实模式只走 startQuestWithPlace；startQuest() 仅限显式演示');
@@ -656,7 +656,7 @@ const sections = [
   ['附近惊喜保密', checkSurpriseSecrecy]
 ];
 
-console.log('═══ 盲走 BlindWalk · HarmonyOS ArkTS 静态自检 ═══');
+console.log('═══ 步迷 Walkaholic · HarmonyOS ArkTS 静态自检 ═══');
 console.log(`工程：${HARMONY}`);
 console.log(`扫描 ${etsFiles.length} 个 .ets 文件\n`);
 

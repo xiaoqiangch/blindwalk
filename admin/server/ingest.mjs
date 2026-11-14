@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — 公开数据抓取
+ * 步迷 Walkaholic · 兴趣点管理后台 — 公开数据抓取
  *
  * 数据源（均无需 API Key）：
  * 1. 中文维基百科 geosearch：地标名 + 真实坐标 + 简介 + 代表图片（首选）
@@ -19,7 +19,7 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter'
 ];
-const USER_AGENT = 'BlindWalkAdmin/0.1 (POI curator; local prototype)';
+const USER_AGENT = 'WalkaholicAdmin/0.1 (POI curator; local prototype)';
 const WIKI_TIMEOUT_MS = 8000;
 const OVERPASS_TIMEOUT_MS = 7000;
 const DEDUPE_METERS = 30;

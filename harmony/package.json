@@ -1,8 +1,8 @@
 {
-  "name": "blindwalk-harmony",
+  "name": "walkaholic-harmony",
   "version": "0.1.0",
   "private": true,
-  "description": "盲走 BlindWalk · HarmonyOS NEXT (ArkTS / ArkUI) 移植版",
+  "description": "步迷 Walkaholic · HarmonyOS NEXT (ArkTS / ArkUI) 移植版",
   "scripts": {
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
     "build:test": "tsc -p tsconfig.test.json",

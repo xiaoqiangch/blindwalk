@@ -16,7 +16,7 @@ let publicDir;
 let exportPath;
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-server-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-server-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -36,7 +36,7 @@ before(async () => {
     publicDir,
     exportPath,
     llmEnv: {},
-    authEnv: { BW_ADMIN_PASSWORD: 'test1234' },
+    authEnv: { WA_ADMIN_PASSWORD: 'test1234' },
     ingestCandidates: async () => ({
       source: 'wikipedia',
       items: [
@@ -307,7 +307,7 @@ test('LLM 离线：normalize 可用 / edit 400 / analyze 可用（含 day/night�
   const edit = await api('POST', '/api/llm/edit', { id, instruction: '更口语一点' });
   assert.equal(edit.status, 400);
   assert.equal(edit.json.code, 'LLM_UNAVAILABLE');
-  assert.ok(edit.json.error.includes('BW_LLM_API_KEY'));
+  assert.ok(edit.json.error.includes('WA_LLM_API_KEY'));
 
   const analyzed = await api('POST', '/api/llm/analyze', { ids: [id] });
   assert.equal(analyzed.status, 200);

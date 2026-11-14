@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 struct WatchProgressView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onOpenHints: () -> Void = {}
 
     private var session: QuestSession? { store.session }
@@ -26,7 +26,7 @@ struct WatchProgressView: View {
             Button(action: onOpenHints) {
                 Text("线索 \(unlockedHints)/\(totalHints) · 点按查看")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(BWTheme.amber)
+                    .foregroundStyle(WATheme.amber)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -72,7 +72,7 @@ struct WatchProgressView: View {
                 .trim(from: 0, to: max(0.004, min(1, progress)))
                 .stroke(
                     AngularGradient(
-                        colors: [BWTheme.amber, BWTheme.ember],
+                        colors: [WATheme.amber, WATheme.ember],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 10, lineCap: .round)

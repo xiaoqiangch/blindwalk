@@ -1,6 +1,6 @@
 import os
 from PIL import Image, ImageDraw, ImageFont
-ROOT = "/Users/chenxiaoqiang/Projects/BlindWalk"
+ROOT = "/Users/chenxiaoqiang/Projects/Walkaholic"
 S = os.path.join(ROOT, "screenshots", "pwa")
 OUT = os.path.join(ROOT, "screenshots", "surprise-showcase.png")
 ENTRIES = [

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# 把步谜（Web PWA + 账号服务）部署到自己的服务器（xqlounge.top）
+# 把步迷（Web PWA + 账号服务）部署到自己的服务器（xqlounge.top）
 #
 #   bash scripts/deploy-server.sh [user@host]
 #
 # 前置（服务器已具备）：nginx、Node ≥22、certbot
 # 部署内容：
-#   /opt/blindwalk/web      静态 PWA（含 mapkeys.json，运行时注入、不进 git）
-#   /opt/blindwalk/account  账号服务（systemd，127.0.0.1:8803）
+#   /opt/walkaholic/web      静态 PWA（含 mapkeys.json，运行时注入、不进 git）
+#   /opt/walkaholic/account  账号服务（systemd，127.0.0.1:8803）
 #   nginx:  / → 静态； /api/ → 账号服务（同源，Cookie SameSite=Lax 可用）
 #   HTTPS:  certbot --nginx（首次自动申请证书）
 set -euo pipefail
@@ -15,14 +15,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 HOST="${1:-xqlounge.top}"
-DOMAIN="${BW_DOMAIN:-xqlounge.top}"
-REMOTE_DIR="/opt/blindwalk"
-DATA_DIR="/var/lib/blindwalk"
+DOMAIN="${WA_DOMAIN:-xqlounge.top}"
+REMOTE_DIR="/opt/walkaholic"
+DATA_DIR="/var/lib/walkaholic"
 
 echo "== 1) 生成 mapkeys.json（从后台数据库，不进 git）=="
 MAPKEYS_TMP="$(mktemp)"
-if [ -f admin/data/blindwalk.db ]; then
-  /opt/homebrew/bin/node scripts/export-mapkeys.mjs admin/data/blindwalk.db > "$MAPKEYS_TMP"
+if [ -f admin/data/walkaholic.db ]; then
+  /opt/homebrew/bin/node scripts/export-mapkeys.mjs admin/data/walkaholic.db > "$MAPKEYS_TMP"
   echo "   已从后台数据库导出 Key"
 else
   echo '{"keys":{"amap":"","baidu":""},"version":"0"}' > "$MAPKEYS_TMP"
@@ -46,13 +46,13 @@ ssh "$HOST" "mkdir -p $REMOTE_DIR/admin $DATA_DIR/admin"
 rsync -az --exclude 'data' --exclude 'node_modules' --exclude 'tests' --exclude '*.md' \
   admin/ "$HOST:$REMOTE_DIR/admin/"
 ssh "$HOST" "chown -R root:root $REMOTE_DIR/admin && echo '   后台文件已同步'"
-if [ -f admin/data/blindwalk.db ]; then
+if [ -f admin/data/walkaholic.db ]; then
   # 复制策展 POI 与地图 Key（数据库本身不进 git，也不会进公网）
-  scp -q admin/data/blindwalk.db "$HOST:$DATA_DIR/admin/blindwalk.db" && echo "   已同步后台数据库（含策展 POI / 地图 Key）"
+  scp -q admin/data/walkaholic.db "$HOST:$DATA_DIR/admin/walkaholic.db" && echo "   已同步后台数据库（含策展 POI / 地图 Key）"
 fi
 
 echo "== 3) 创建 systemd 服务（账号）=="
-ssh "$HOST" "cat > /etc/systemd/system/blindwalk-account.service <<'UNIT'
+ssh "$HOST" "cat > /etc/systemd/system/walkaholic-account.service <<'UNIT'
 [Unit]
 Description=Bumia account service
 After=network.target
@@ -63,11 +63,11 @@ WorkingDirectory=$REMOTE_DIR/account
 Environment=NODE_ENV=production
 Environment=PORT=8803
 Environment=HOST=127.0.0.1
-Environment=BW_DATA_DIR=$DATA_DIR/account
-Environment=BW_ALLOWED_ORIGINS=https://$DOMAIN,https://xiaoqiangch.github.io,http://127.0.0.1:*
-Environment=BW_COOKIE_SECURE=1
-Environment=BW_COOKIE_CROSS_SITE=1
-Environment=BW_TRUST_PROXY=1
+Environment=WA_DATA_DIR=$DATA_DIR/account
+Environment=WA_ALLOWED_ORIGINS=https://$DOMAIN,https://xiaoqiangch.github.io,http://127.0.0.1:*
+Environment=WA_COOKIE_SECURE=1
+Environment=WA_COOKIE_CROSS_SITE=1
+Environment=WA_TRUST_PROXY=1
 ExecStart=/usr/local/bin/node $REMOTE_DIR/account/server/index.mjs
 Restart=always
 RestartSec=3
@@ -78,13 +78,13 @@ PrivateTmp=true
 WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
-systemctl enable --now blindwalk-account
+systemctl enable --now walkaholic-account
 sleep 1
-systemctl is-active blindwalk-account"
+systemctl is-active walkaholic-account"
 
 echo "== 3.5) 创建 systemd 服务（后台）=="
 ADMIN_PASS="$(/opt/homebrew/bin/node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))")"
-ssh "$HOST" "cat > /etc/systemd/system/blindwalk-admin.service <<'UNIT'
+ssh "$HOST" "cat > /etc/systemd/system/walkaholic-admin.service <<'UNIT'
 [Unit]
 Description=Bumia admin backend
 After=network.target
@@ -95,8 +95,8 @@ WorkingDirectory=$REMOTE_DIR/admin
 Environment=NODE_ENV=production
 Environment=PORT=8802
 Environment=HOST=127.0.0.1
-Environment=BW_DATA_DIR=$DATA_DIR/admin
-Environment=BW_ADMIN_PASSWORD=$ADMIN_PASS
+Environment=WA_DATA_DIR=$DATA_DIR/admin
+Environment=WA_ADMIN_PASSWORD=$ADMIN_PASS
 ExecStart=/usr/local/bin/node $REMOTE_DIR/admin/server/index.mjs
 Restart=always
 RestartSec=3
@@ -107,13 +107,13 @@ PrivateTmp=true
 WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
-systemctl enable --now blindwalk-admin
+systemctl enable --now walkaholic-admin
 sleep 1
-systemctl is-active blindwalk-admin"
+systemctl is-active walkaholic-admin"
 printf '后台管理密码（请保存）：%s\n' "$ADMIN_PASS"
 
 echo "== 4) 配置 nginx =="
-ssh "$HOST" "cat > /etc/nginx/sites-available/blindwalk <<'NGINX'
+ssh "$HOST" "cat > /etc/nginx/sites-available/walkaholic <<'NGINX'
 server {
     listen 80;
     server_name $DOMAIN;
@@ -170,13 +170,13 @@ server {
     }
 }
 NGINX
-ln -sf /etc/nginx/sites-available/blindwalk /etc/nginx/sites-enabled/blindwalk
+ln -sf /etc/nginx/sites-available/walkaholic /etc/nginx/sites-enabled/walkaholic
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx && echo 'nginx ok'"
 
 # 补丁脚本：/check 自检页 + 备用端口 8443（幂等）
-scp -q scripts/server/patch-nginx.mjs "$HOST:/opt/blindwalk/patch-nginx.mjs"
-ssh "$HOST" "node /opt/blindwalk/patch-nginx.mjs && nginx -t && systemctl reload nginx"
+scp -q scripts/server/patch-nginx.mjs "$HOST:/opt/walkaholic/patch-nginx.mjs"
+ssh "$HOST" "node /opt/walkaholic/patch-nginx.mjs && nginx -t && systemctl reload nginx"
 
 echo "== 5) HTTPS（首次会申请证书）=="
 ssh "$HOST" "certbot --nginx -d $DOMAIN --non-interactive --agree-tos --register-unsafely-without-email --redirect --keep-until-expiring 2>&1 | tail -4 || true"

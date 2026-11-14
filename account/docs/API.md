@@ -1,17 +1,17 @@
-# 盲走 BlindWalk · 账号服务 API
+# 步迷 Walkaholic · 账号服务 API
 
 > 版本 1 · 零依赖 Node.js（`node:sqlite` + `node:crypto`）· 默认端口 `8803`
-> 用途：给盲走 PWA 提供个人账号登录与「资料整包同步」。
+> 用途：给步迷 PWA 提供个人账号登录与「资料整包同步」。
 
 启动：
 
 ```bash
-cd /Users/chenxiaoqiang/Projects/BlindWalk
+cd /Users/chenxiaoqiang/Projects/Walkaholic
 PORT=8803 node account/server/index.mjs
 # 或：cd account && npm start
 ```
 
-数据落盘：`account/data/blindwalk-users.db`（SQLite，WAL）。
+数据落盘：`account/data/walkaholic-users.db`（SQLite，WAL）。
 
 ---
 
@@ -29,17 +29,17 @@ Vary: Origin
 
 - `OPTIONS` 预检直接 **204**。
 - 请求没有 `Origin`（curl / 同源）时**不返回** `Access-Control-Allow-Origin: *`。
-- 可用 `BW_ALLOWED_ORIGINS`（逗号分隔）限制回显白名单；不配置时回显任意 Origin（方便本地预览）。
+- 可用 `WA_ALLOWED_ORIGINS`（逗号分隔）限制回显白名单；不配置时回显任意 Origin（方便本地预览）。
 - 前端 `fetch` 必须带 `credentials: 'include'`，否则浏览器不会保存/回传 Cookie。
 
 ## 2. 会话 Cookie
 
 ```
-Set-Cookie: bw_uid=<64 位 hex>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
+Set-Cookie: wa_uid=<64 位 hex>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
 ```
 
 - 30 天有效；`HttpOnly`（JS 读不到），`SameSite=Lax`。
-- **本地 http 不加 `Secure`**；部署到 HTTPS 时设置 `BW_COOKIE_SECURE=1`，服务会给 Cookie 追加 `Secure`。
+- **本地 http 不加 `Secure`**；部署到 HTTPS 时设置 `WA_COOKIE_SECURE=1`，服务会给 Cookie 追加 `Secure`。
 - 会话存在 SQLite `sessions` 表，重启服务不会掉登录。
 
 ## 3. 接口
@@ -80,36 +80,36 @@ Set-Cookie: bw_uid=<64 位 hex>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
 curl -s localhost:8803/api/health
 
 # 注册（带 Origin，保存 Cookie）
-curl -s -i -c /tmp/bw-cookie.txt \
+curl -s -i -c /tmp/wa-cookie.txt \
   -X POST localhost:8803/api/auth/register \
   -H 'content-type: application/json' \
   -H 'Origin: http://127.0.0.1:8799' \
   -d '{"username":"testuser","password":"secret123"}'
 
 # 当前用户 + 资料（此时 profile 为 null）
-curl -s -b /tmp/bw-cookie.txt localhost:8803/api/auth/me
+curl -s -b /tmp/wa-cookie.txt localhost:8803/api/auth/me
 
 # 整包同步资料
-curl -s -b /tmp/bw-cookie.txt \
+curl -s -b /tmp/wa-cookie.txt \
   -X PUT localhost:8803/api/me/profile \
   -H 'content-type: application/json' \
   -d '{"profile":{"xp":4240,"cards":[{"placeID":"river-steps"}],"settings":{"sound":true}}}'
 
 # 再读（应带 profile）
-curl -s -b /tmp/bw-cookie.txt localhost:8803/api/auth/me
+curl -s -b /tmp/wa-cookie.txt localhost:8803/api/auth/me
 
 # 登出
-curl -s -b /tmp/bw-cookie.txt -c /tmp/bw-cookie.txt -X POST localhost:8803/api/auth/logout
+curl -s -b /tmp/wa-cookie.txt -c /tmp/wa-cookie.txt -X POST localhost:8803/api/auth/logout
 
 # 登录
-curl -s -i -c /tmp/bw-cookie.txt \
+curl -s -i -c /tmp/wa-cookie.txt \
   -X POST localhost:8803/api/auth/login \
   -H 'content-type: application/json' \
   -H 'Origin: http://127.0.0.1:8799' \
   -d '{"username":"testuser","password":"secret123"}'
 
 # 删除账号（需密码二次确认）
-curl -s -b /tmp/bw-cookie.txt \
+curl -s -b /tmp/wa-cookie.txt \
   -X DELETE localhost:8803/api/me \
   -H 'content-type: application/json' \
   -d '{"password":"secret123"}'
@@ -126,8 +126,8 @@ curl -s -i -X OPTIONS localhost:8803/api/auth/register \
 1. **fetch 要带凭证**：`fetch(url, { credentials: 'include' })`，跨源 http 预览（例如 PWA 在 `http://127.0.0.1:8799`、账号服务在 `http://127.0.0.1:8803`）时 CORS 会回显 Origin。
 2. **Cookie 域**：服务通过 `Set-Cookie` 的 `Path=/` 生效；跨源时 Cookie 绑定在**账号服务主机**上，前端不需要手写 Cookie，浏览器自动回传（前提是 `credentials:'include'`）。
 3. **SameSite=Lax**：跨站（不同 site）的 `fetch` 仍会带 Cookie（因为请求是显式同源/跨源 XHR，不是顶层跳转）；如果你把前端部署到与账号服务不同的 site 且遇到 Cookie 不落地，优先检查浏览器对第三方 Cookie 的策略，必要时改为同 site 部署（例如同域名不同端口/反代）。
-4. **HTTPS**：线上必须走 HTTPS，并设置 `BW_COOKIE_SECURE=1`，否则浏览器会拒绝非 Secure Cookie 或前端请求被 mixed-content 拦截。
-5. **CORS 白名单**：生产设置 `BW_ALLOWED_ORIGINS=https://你的前端域名`；本地不设即可。
+4. **HTTPS**：线上必须走 HTTPS，并设置 `WA_COOKIE_SECURE=1`，否则浏览器会拒绝非 Secure Cookie 或前端请求被 mixed-content 拦截。
+5. **CORS 白名单**：生产设置 `WA_ALLOWED_ORIGINS=https://你的前端域名`；本地不设即可。
 6. **profile 上限 256KB**（按 JSON 序列化后的 UTF-8 字节）；超出返回 400，前端应提示「资料太大」并裁剪图片/base64。
 7. 资料是**整包覆盖**：PUT 的内容就是最终保存内容，不提供部分字段合并。
 8. 未登录 `/api/auth/me` 返回 401，前端据此显示登录框；登录态通过 Cookie 自动维持，不需要 token 存储。
@@ -138,7 +138,7 @@ curl -s -i -X OPTIONS localhost:8803/api/auth/register \
 |---|---|---|
 | `PORT` | `8803` | 监听端口 |
 | `HOST` | `127.0.0.1` | 监听地址（对外部署可设 `0.0.0.0`） |
-| `BW_DATA_DIR` | `account/data` | 数据目录 |
-| `BW_ALLOWED_ORIGINS` | 空（回显任意 Origin） | CORS 白名单，逗号分隔 |
-| `BW_COOKIE_SECURE` | `0` | HTTPS 部署时设 `1` |
-| `BW_TRUST_PROXY` | `0` | 反向代理后设 `1`，限流取 `X-Forwarded-For` |
+| `WA_DATA_DIR` | `account/data` | 数据目录 |
+| `WA_ALLOWED_ORIGINS` | 空（回显任意 Origin） | CORS 白名单，逗号分隔 |
+| `WA_COOKIE_SECURE` | `0` | HTTPS 部署时设 `1` |
+| `WA_TRUST_PROXY` | `0` | 反向代理后设 `1`，限流取 `X-Forwarded-For` |

@@ -91,7 +91,7 @@ extension LocationProviding {
 
 // MARK: - 演示实现（兜底）
 
-/// 模拟步行：不访问真实定位，配合 `BlindWalkStore.advance(byMeters:)` 演示整条链路。
+/// 模拟步行：不访问真实定位，配合 `WalkaholicStore.advance(byMeters:)` 演示整条链路。
 ///
 /// 演示流程里 JourneyView 每按一次「模拟步行 +50m」会：
 /// 1. `store.advance(byMeters: 50)` 推进业务状态（解锁线索 / 到达）
@@ -171,7 +171,7 @@ final class SimulatedLocationService: LocationProviding {
 /// 1. `start()`：请求 WhenInUse 权限 → 开启持续定位 + 朝向；
 /// 2. `didUpdateLocations`：拿到自己坐标 → 用 `GeoMath.distance/bearing`
 ///    算到目的地的距离与方位 → `onUpdate` 回调给 JourneyView；
-/// 3. JourneyView 把读数写进 `BlindWalkStore.updateLocation(...)`，
+/// 3. JourneyView 把读数写进 `WalkaholicStore.updateLocation(...)`，
 ///    由 Shared 层推进线索解锁 / 到达判定（≤30m 自动开盒）；
 /// 4. 目的地坐标由 `target` 注入（JourneyView 从 `store.session.target` 同步）。
 ///

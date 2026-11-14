@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 三端对齐规格（docs/parity.md）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 三端对齐规格（docs/parity.md）
  *
  * 本文件是 parity.md §1 / §2 的**唯一实现**，三端常量以这里为准：
  * - 17 类 POI 类别元数据（label / emoji / rarity / 区域 / 是否「值得走」）
@@ -42,7 +42,7 @@ export function landmarkKeywordList(): string[] {
  */
 export const LANDMARK_KEYWORD_LIMIT: number = 3;
 
-/** 硬排除：绝对不适合盲走的地方（去了也尴尬）→ 直接淘汰 */
+/** 硬排除：绝对不适合步迷的地方（去了也尴尬）→ 直接淘汰 */
 export const POI_NEVER_WORDS: RegExp =
   /公厕|厕所|垃圾|污水|变电|加油站|停车场|停车库|ATM|自助取款|售楼|工业园|物流|工厂|仓库|暂停开放|已关闭|停止营业|暂停营业|装修中|施工中/;
 

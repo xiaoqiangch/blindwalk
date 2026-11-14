@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 账号服务（cookie 会话）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 账号服务（cookie 会话）
  *
  * 接口契约：account/docs/API.md（三端一致，parity.md §4）
  *   POST /api/auth/register | /api/auth/login | /api/auth/logout
@@ -8,10 +8,10 @@
  *   DELETE /api/me
  *
  * 与 Web 的最大差异：**鸿蒙的 @ohos.net.http 不会自动保存/回传 Cookie**，
- * 所以这里手动管理 `bw_uid`：
- *   - 从响应头 `set-cookie` 里抠出 `bw_uid=...`
+ * 所以这里手动管理 `wa_uid`：
+ *   - 从响应头 `set-cookie` 里抠出 `wa_uid=...`
  *   - 存进 KeyValueStore（重启后仍保持登录）
- *   - 每次请求手动拼 `Cookie: bw_uid=...`
+ *   - 每次请求手动拼 `Cookie: wa_uid=...`
  *
  * 未登录也能用（本地单机），登录只是多一个「同步到账号 / 从账号恢复」。
  */
@@ -23,8 +23,8 @@ import { HttpClient, HttpMethod, errorText } from './http';
 export const ACCOUNT_BASE_DEFAULT: string = 'https://xqlounge.top';
 
 /** 账号配置 / 会话的存储键 */
-export const ACCOUNT_CONFIG_KEY: string = 'blindwalk.account.v1';
-export const ACCOUNT_SESSION_KEY: string = 'blindwalk.account.session.v1';
+export const ACCOUNT_CONFIG_KEY: string = 'walkaholic.account.v1';
+export const ACCOUNT_SESSION_KEY: string = 'walkaholic.account.session.v1';
 
 /** 整包同步上限：服务端 256KB，客户端留一点余量 */
 export const PROFILE_MAX_BYTES: number = 240 * 1024;
@@ -41,7 +41,7 @@ export interface AccountConfig {
   baseUrl: string;
   /** 已登录用户；undefined = 未登录 */
   user?: AccountUser;
-  /** 手动保管的 Cookie 值（bw_uid=xxx） */
+  /** 手动保管的 Cookie 值（wa_uid=xxx） */
   cookie?: string;
 }
 
@@ -140,7 +140,7 @@ export function normalizeBaseUrl(value: string): string {
 // Cookie：从 set-cookie 响应头里抠
 // ============================================================
 
-/** 从 set-cookie 头里提取 bw_uid=<token>；没有返回空串 */
+/** 从 set-cookie 头里提取 wa_uid=<token>；没有返回空串 */
 export function extractCookie(headers: Record<string, string> | undefined): string {
   if (headers === undefined) return '';
   const keys: string[] = Object.keys(headers);
@@ -155,9 +155,9 @@ export function extractCookie(headers: Record<string, string> | undefined): stri
       const pieces: string[] = cookies[c].split(';');
       for (let j = 0; j < pieces.length; j += 1) {
         const pair: string = pieces[j].trim();
-        if (pair.indexOf('bw_uid=') !== 0) continue;
-        const token: string = pair.substring('bw_uid='.length).trim();
-        if (token.length > 0) return 'bw_uid=' + token;
+        if (pair.indexOf('wa_uid=') !== 0) continue;
+        const token: string = pair.substring('wa_uid='.length).trim();
+        if (token.length > 0) return 'wa_uid=' + token;
       }
     }
   }

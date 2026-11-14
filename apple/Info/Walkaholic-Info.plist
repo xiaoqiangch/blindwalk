@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>步谜</string>
+	<string>步迷</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -39,13 +39,13 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>步谜需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。</string>
+	<string>步迷需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>步谜在散步过程中需要持续定位，才能在你接近目的地时提醒你。</string>
+	<string>步迷在散步过程中需要持续定位，才能在你接近目的地时提醒你。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>步谜需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。</string>
+	<string>步迷需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>步谜需要读取你选的照片，作为埋在某个地方的惊喜。</string>
+	<string>步迷需要读取你选的照片，作为埋在某个地方的惊喜。</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

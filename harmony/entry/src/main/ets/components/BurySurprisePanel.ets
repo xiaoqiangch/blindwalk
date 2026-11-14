@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 埋惊喜面板
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 埋惊喜面板
  *
  * 对齐 apple/App/Views/BurySurpriseView.swift（三端同一套语义）：
  *   选照片 → 写一句话 → 可选提示 → 确认位置 → 埋下 → 完成态
@@ -14,8 +14,8 @@
 import { common } from '@kit.AbilityKit';
 import { BuriedSurprise, GeoPoint } from '../core/types';
 import { getStore } from '../core/store';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
-import { BwIconButton, BwMicroLabel, BwPrimaryButton, BwQuietButton } from './Common';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
+import { WaIconButton, WaMicroLabel, WaPrimaryButton, WaQuietButton } from './Common';
 import { PickedPhoto, adoptPhoto, pickPhotoFromAlbum } from './PhotoPick';
 import { getCurrentLocationOnce, requestLocationPermission } from './Location';
 
@@ -209,19 +209,19 @@ export struct BurySurprisePanel {
   header() {
     Row() {
       Column({ space: 3 }) {
-        BwMicroLabel({ text: '埋惊喜' })
+        WaMicroLabel({ text: '埋惊喜' })
         Text(this.stage === 'done' ? '已埋下' : '埋下一张照片')
-          .fontSize(BWFont.hero)
+          .fontSize(WAFont.hero)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
-      BwIconButton({
+      WaIconButton({
         name: 'xmark',
-        iconSize: BWSize.iconSizeSm,
-        color: BWColor.ink2,
+        iconSize: WASize.iconSizeSm,
+        color: WAColor.ink2,
         filled: true,
         onTap: () => {
           this.onClose();
@@ -237,7 +237,7 @@ export struct BurySurprisePanel {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       if (this.stage === 'done') {
         this.doneStage()
@@ -261,8 +261,8 @@ export struct BurySurprisePanel {
           this.header()
 
           Text('它留在这里，等一个人来找到。')
-            .fontSize(BWFont.bodySm)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.bodySm)
+            .fontColor(WAColor.ink2)
             .width('100%')
             .margin({ top: 6 })
 
@@ -287,17 +287,17 @@ export struct BurySurprisePanel {
           .margin({ top: 20 })
 
           Text('照片只留在你自己的手机里，不上传。')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink3)
             .width('100%')
             .textAlign(TextAlign.Center)
             .margin({ top: 16, bottom: 12 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8
         })
       }
@@ -321,14 +321,14 @@ export struct BurySurprisePanel {
           .width('100%')
           .height(200)
           .objectFit(ImageFit.Cover)
-          .borderRadius(BWSize.cardRadiusSm)
+          .borderRadius(WASize.cardRadiusSm)
 
         Row({ space: 8 }) {
           Text('已选好一张')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink3)
           Blank()
-          BwQuietButton({
+          WaQuietButton({
             title: '换一张',
             bordered: true,
             onTap: () => {
@@ -340,37 +340,37 @@ export struct BurySurprisePanel {
       }
       .width('100%')
       .padding(12)
-      .backgroundColor(BWColor.paper)
-      .borderRadius(BWSize.cardRadius)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+      .backgroundColor(WAColor.paper)
+      .borderRadius(WASize.cardRadius)
+      .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
     } else {
       Column({ space: 10 }) {
         SymbolGlyph($r('sys.symbol.bag_fill'))
           .fontSize(34)
-          .fontColor([BWColor.ink4])
+          .fontColor([WAColor.ink4])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
 
         Text('先选一张。你觉得好的那一张。')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink2)
           .textAlign(TextAlign.Center)
 
         Button() {
           Row({ space: 6 }) {
             SymbolGlyph($r('sys.symbol.bag_fill'))
-              .fontSize(BWFont.bodySm)
-              .fontColor([BWColor.iconOnBrand])
+              .fontSize(WAFont.bodySm)
+              .fontColor([WAColor.iconOnBrand])
               .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             Text(this.busy ? '正在读取…' : '从相册选')
-              .fontSize(BWFont.bodySm)
+              .fontSize(WAFont.bodySm)
               .fontWeight(FontWeight.Medium)
-              .fontColor(BWColor.iconOnBrand)
+              .fontColor(WAColor.iconOnBrand)
           }
         }
         .type(ButtonType.Capsule)
-        .height(BWSize.buttonHeight)
+        .height(WASize.buttonHeight)
         .padding({ left: 22, right: 22 })
-        .backgroundColor(BWColor.amber)
+        .backgroundColor(WAColor.amber)
         .enabled(!this.busy)
         .opacity(this.busy ? 0.5 : 1)
         .onClick(() => {
@@ -379,12 +379,12 @@ export struct BurySurprisePanel {
       }
       .width('100%')
       .padding({ top: 26, bottom: 26, left: 16, right: 16 })
-      .backgroundColor(BWColor.paper)
-      .borderRadius(BWSize.cardRadius)
+      .backgroundColor(WAColor.paper)
+      .borderRadius(WASize.cardRadius)
       .border({
         width: 1,
-        color: BWColor.line,
-        radius: BWSize.cardRadius,
+        color: WAColor.line,
+        radius: WASize.cardRadius,
         style: BorderStyle.Dashed
       })
     }
@@ -396,22 +396,22 @@ export struct BurySurprisePanel {
   messageSection() {
     Column({ space: 8 }) {
       Row() {
-        BwMicroLabel({ text: '写一句话：为什么埋在这里' })
+        WaMicroLabel({ text: '写一句话：为什么埋在这里' })
         Blank()
         Text(String(this.message.length) + '/' + String(MESSAGE_LIMIT))
-          .fontSize(BWFont.micro)
-          .fontColor(this.message.length >= MESSAGE_LIMIT ? BWColor.gold : BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(this.message.length >= MESSAGE_LIMIT ? WAColor.gold : WAColor.ink3)
       }
       .width('100%')
 
       TextArea({ placeholder: '比如：这张是我在等一杯咖啡时拍的。', text: this.message })
-        .fontSize(BWFont.bodySm)
-        .fontColor(BWColor.ink)
-        .placeholderColor(BWColor.ink3)
+        .fontSize(WAFont.bodySm)
+        .fontColor(WAColor.ink)
+        .placeholderColor(WAColor.ink3)
         .height(84)
         .width('100%')
-        .backgroundColor(BWColor.paper2)
-        .borderRadius(BWSize.cardRadiusSm)
+        .backgroundColor(WAColor.paper2)
+        .borderRadius(WASize.cardRadiusSm)
         .onChange((value: string) => {
           this.message = value.length > MESSAGE_LIMIT
             ? value.slice(0, MESSAGE_LIMIT)
@@ -419,8 +419,8 @@ export struct BurySurprisePanel {
         })
 
       Text('别写地方名。让 TA 自己找。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -432,22 +432,22 @@ export struct BurySurprisePanel {
   hintSection() {
     Column({ space: 8 }) {
       Row() {
-        BwMicroLabel({ text: '（可选）给找它的人一句提示' })
+        WaMicroLabel({ text: '（可选）给找它的人一句提示' })
         Blank()
         Text(String(this.hint.length) + '/' + String(HINT_LIMIT))
-          .fontSize(BWFont.micro)
-          .fontColor(this.hint.length >= HINT_LIMIT ? BWColor.gold : BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(this.hint.length >= HINT_LIMIT ? WAColor.gold : WAColor.ink3)
       }
       .width('100%')
 
       TextArea({ placeholder: '不能直接说答案哦。', text: this.hint })
-        .fontSize(BWFont.bodySm)
-        .fontColor(BWColor.ink)
-        .placeholderColor(BWColor.ink3)
+        .fontSize(WAFont.bodySm)
+        .fontColor(WAColor.ink)
+        .placeholderColor(WAColor.ink3)
         .height(64)
         .width('100%')
-        .backgroundColor(BWColor.paper2)
-        .borderRadius(BWSize.cardRadiusSm)
+        .backgroundColor(WAColor.paper2)
+        .borderRadius(WASize.cardRadiusSm)
         .onChange((value: string) => {
           this.hint = value.length > HINT_LIMIT ? value.slice(0, HINT_LIMIT) : value;
         })
@@ -463,38 +463,38 @@ export struct BurySurprisePanel {
     Column({ space: 9 }) {
       Row({ space: 6 }) {
         Text('埋在这里')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
         Blank()
         if (this.locating) {
           Text('定位中…')
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
         } else if (this.staleLocation) {
           Text('上次位置')
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.gold)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.gold)
         } else if (this.point !== undefined) {
           Text('实时定位')
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.teal)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.teal)
         }
       }
       .width('100%')
 
       Row({ space: 10 }) {
         SymbolGlyph($r('sys.symbol.pin'))
-          .fontSize(BWSize.iconSizeSm)
-          .fontColor([this.staleLocation ? BWColor.gold : BWColor.amber])
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([this.staleLocation ? WAColor.gold : WAColor.amber])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
 
         Column({ space: 2 }) {
           Text(this.areaLabel())
-            .fontSize(BWFont.bodySm)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.bodySm)
+            .fontColor(WAColor.ink)
           Text(this.coordinateText())
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
@@ -504,9 +504,9 @@ export struct BurySurprisePanel {
             .type(ButtonType.Capsule)
             .height(30)
             .padding({ left: 12, right: 12 })
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink2)
-            .backgroundColor(BWColor.paper2)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink2)
+            .backgroundColor(WAColor.paper2)
             .onClick(() => {
               this.locate();
             })
@@ -516,20 +516,20 @@ export struct BurySurprisePanel {
 
       if (this.errorText.length > 0) {
         Text(this.errorText)
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ember)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ember)
           .width('100%')
       }
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(14)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
     .border({
       width: 1,
-      color: this.staleLocation ? BWColor.gold : BWColor.line,
-      radius: BWSize.cardRadius
+      color: this.staleLocation ? WAColor.gold : WAColor.line,
+      radius: WASize.cardRadius
     })
   }
 
@@ -538,7 +538,7 @@ export struct BurySurprisePanel {
   @Builder
   bottomBar() {
     Column({ space: 6 }) {
-      BwPrimaryButton({
+      WaPrimaryButton({
         title: this.ctaTitle(),
         large: true,
         isActive: this.canBury(),
@@ -548,18 +548,18 @@ export struct BurySurprisePanel {
       })
 
       Text('埋下后，它会一直留在这个位置，等一个人来。')
-        .fontSize(BWFont.micro)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.micro)
+        .fontColor(WAColor.ink3)
     }
     .width('100%')
     .padding({
-      left: BWSize.pagePadding,
-      right: BWSize.pagePadding,
+      left: WASize.pagePadding,
+      right: WASize.pagePadding,
       top: 12,
       bottom: 16
     })
-    .backgroundColor(BWColor.cream)
-    .border({ width: { top: 1 }, color: BWColor.line })
+    .backgroundColor(WAColor.cream)
+    .border({ width: { top: 1 }, color: WAColor.line })
   }
 
   // ============================================================
@@ -578,36 +578,36 @@ export struct BurySurprisePanel {
               Circle()
                 .width(120)
                 .height(120)
-                .fill(BWColor.amberSoft)
+                .fill(WAColor.amberSoft)
 
               SymbolGlyph($r('sys.symbol.checkmark_circle'))
                 .fontSize(52)
-                .fontColor([BWColor.amber])
+                .fontColor([WAColor.amber])
                 .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             }
 
             Text('已埋下。')
               .fontSize(26)
               .fontWeight(FontWeight.Bold)
-              .fontColor(BWColor.ink)
+              .fontColor(WAColor.ink)
 
             Text(this.buriedArea + ' · 等一个人来找到。')
-              .fontSize(BWFont.bodySm)
-              .fontColor(BWColor.ink2)
+              .fontSize(WAFont.bodySm)
+              .fontColor(WAColor.ink2)
               .textAlign(TextAlign.Center)
 
             if (this.message.length > 0) {
               Text(this.message)
-                .fontSize(BWFont.caption)
-                .fontColor(BWColor.ink3)
+                .fontSize(WAFont.caption)
+                .fontColor(WAColor.ink3)
                 .textAlign(TextAlign.Center)
                 .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
 
             Text('+30 惊喜值')
-              .fontSize(BWFont.caption)
-              .fontColor(BWColor.amber)
+              .fontSize(WAFont.caption)
+              .fontColor(WAColor.amber)
               .margin({ top: 2 })
           }
           .width('100%')
@@ -615,14 +615,14 @@ export struct BurySurprisePanel {
           .padding({ top: 30, bottom: 20 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
-        .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, top: 8 })
+        .constraintSize({ maxWidth: WASize.contentMaxWidth })
+        .padding({ left: WASize.pagePadding, right: WASize.pagePadding, top: 8 })
       }
       .layoutWeight(1)
       .scrollBar(BarState.Off)
 
       Column({ space: 8 }) {
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: '去寻宝看看',
           large: true,
           onTap: () => {
@@ -630,7 +630,7 @@ export struct BurySurprisePanel {
           }
         })
 
-        BwQuietButton({
+        WaQuietButton({
           title: '再埋一个',
           onTap: () => {
             this.resetForAnother();
@@ -639,8 +639,8 @@ export struct BurySurprisePanel {
       }
       .width('100%')
       .padding({
-        left: BWSize.pagePadding,
-        right: BWSize.pagePadding,
+        left: WASize.pagePadding,
+        right: WASize.pagePadding,
         top: 12,
         bottom: 16
       })

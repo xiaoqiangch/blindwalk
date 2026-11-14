@@ -1,10 +1,10 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI 设计 token
+ * 步迷 Walkaholic · HarmonyOS ArkUI 设计 token
  *
  * 严格对齐 HarmonyOS 官方设计规范（HarmonyOS NEXT 通用设计基础 · 视觉风格）：
  *   - 色彩：宇宙蓝（Brand）/ 雪域灰（背景）/ 三级文本透明度
  *   - 圆角：官方组件规格（卡片 16vp、面板 24vp、按钮全圆角胶囊）
- *   - 图标：统一走 SymbolGlyph 单色符号（见 components/BwSymbol.ets）
+ *   - 图标：统一走 SymbolGlyph 单色符号（见 components/WaSymbol.ets）
  *   - 字体：与系统一致的字号阶梯
  *   - 动效：官方标准曲线与时长
  *
@@ -30,7 +30,7 @@ import { Area, Rarity } from '../core/types';
 //   interactive_pressed     品牌色 10% 叠加
 // ============================================================
 
-export class BWColor {
+export class WAColor {
   // 文本与图标（四级，官方透明度阶梯）
   static readonly ink: string = '#182431';
   static readonly ink2: string = '#66182431';
@@ -97,7 +97,7 @@ export class BWColor {
 // 尺寸 —— 官方组件规格
 // ============================================================
 
-export class BWSize {
+export class WASize {
   static readonly pagePadding: number = 16;    // 官方页面边距 16vp
   static readonly cardRadius: number = 16;     // 官方卡片圆角
   static readonly panelRadius: number = 24;    // 官方弹层 / 半模态圆角
@@ -122,7 +122,7 @@ export class BWSize {
 // 字号 —— 与 HarmonyOS 系统字号阶梯一致
 // ============================================================
 
-export class BWFont {
+export class WAFont {
   static readonly display: number = 36;
   static readonly digits: number = 40;
   static readonly hero: number = 24;
@@ -141,11 +141,11 @@ export class BWFont {
 // 动效 —— 官方标准曲线（fastOutSlowIn / friction）
 // ============================================================
 
-export const BW_EASE = curves.cubicBezierCurve(0.2, 0, 0.2, 1);
-export const BW_DUR_QUICK: number = 150;
-export const BW_DUR_REGULAR: number = 250;
-export const BW_DUR_SLOW: number = 350;
-export const BW_DUR_OPEN_BOX: number = 600;
+export const WA_EASE = curves.cubicBezierCurve(0.2, 0, 0.2, 1);
+export const WA_DUR_QUICK: number = 150;
+export const WA_DUR_REGULAR: number = 250;
+export const WA_DUR_SLOW: number = 350;
+export const WA_DUR_OPEN_BOX: number = 600;
 
 // ============================================================
 // 稀有度 / 区域
@@ -169,7 +169,7 @@ export function rarityLabel(rarity: Rarity): string {
 export function rarityColor(rarity: Rarity): string {
   switch (rarity) {
     case Rarity.Common:
-      return BWColor.common;
+      return WAColor.common;
     case Rarity.Rare:
       return '#0A59F7';
     case Rarity.Epic:
@@ -177,7 +177,7 @@ export function rarityColor(rarity: Rarity): string {
     case Rarity.Hidden:
       return '#E84026';
     default:
-      return BWColor.common;
+      return WAColor.common;
   }
 }
 
@@ -265,7 +265,7 @@ export const LEVEL_NAMES: string[] = [
   '迷雾探险家',
   '黄昏猎人',
   '夜路诗人',
-  '盲走大师',
+  '步迷大师',
   '城市传说',
   '盲盒之神'
 ];

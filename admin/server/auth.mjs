@@ -1,7 +1,7 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 v2 — 登录鉴权
+ * 步迷 Walkaholic · 兴趣点管理后台 v2 — 登录鉴权
  *
- * - 密码：环境变量 BW_ADMIN_PASSWORD 优先；否则首次启动生成随机密码，
+ * - 密码：环境变量 WA_ADMIN_PASSWORD 优先；否则首次启动生成随机密码，
  *   scrypt（每密码独立 salt）哈希后写入 admin/data/admin.secret.json（0600），启动日志打印一次
  * - 会话：32 字节随机 token，HttpOnly + SameSite=Strict + Path=/，12 小时；
  *   持久化到 admin/data/sessions.json（重启不丢）
@@ -16,7 +16,7 @@ import path from 'node:path';
 
 import { PoiError } from './poi.mjs';
 
-export const SESSION_COOKIE = 'bw_session';
+export const SESSION_COOKIE = 'wa_session';
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 export const MAX_LOGIN_FAILURES = 5;
 export const LOGIN_FAILURE_WINDOW_MS = 10 * 60 * 1000;
@@ -122,7 +122,7 @@ export class AuthManager {
   // ---------- 密码 ----------
 
   initializePassword() {
-    const envPassword = String(this.env.BW_ADMIN_PASSWORD || '').trim();
+    const envPassword = String(this.env.WA_ADMIN_PASSWORD || '').trim();
     if (envPassword.length > 0) {
       const hashed = hashPassword(envPassword);
       this.passwordSalt = hashed.salt;

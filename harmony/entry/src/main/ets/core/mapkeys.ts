@@ -1,11 +1,11 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 地图 Key 下发
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 地图 Key 下发
  *
  * 产品要求（docs/parity.md §1）：**不写死、不让用户填**。
  * 按顺序读，任一成功即停止：
  *
  *   1. 应用包内 `mapkeys.json`（rawfile，部署时注入；结构 {keys:{amap,baidu},version}）
- *   2. 公网 `https://xiaoqiangch.github.io/blindwalk/mapkeys.json`（Pages 发布产物）
+ *   2. 公网 `https://xiaoqiangch.github.io/walkaholic/mapkeys.json`（Pages 发布产物）
  *   3. 后台公开端点 `GET {adminBase}/api/public/mapkeys`
  *
  * 三条都失败 → 空 Key（只用 OSM + 维基，功能不受影响）。
@@ -19,7 +19,7 @@ import { HttpClient, MapKeys, emptyKeys, errorText } from './http';
 import { parseJson, requestText } from './http';
 
 /** 公网 mapkeys.json（GitHub Pages 部署产物） */
-export const PAGES_MAPKEYS_URL: string = 'https://xiaoqiangch.github.io/blindwalk/mapkeys.json';
+export const PAGES_MAPKEYS_URL: string = 'https://xiaoqiangch.github.io/walkaholic/mapkeys.json';
 
 /** 后台公开端点（本地开发 / 局域网） */
 export const ADMIN_BASE_DEFAULT: string = 'http://127.0.0.1:8802';
@@ -27,12 +27,12 @@ export const ADMIN_MAPKEYS_PATH: string = '/api/public/mapkeys';
 
 /** 拉 Key 的请求头（原生 HTTP 客户端不会自动带 UA） */
 const MAPKEYS_HEADERS: Record<string, string> = {
-  'User-Agent': 'BlindWalk-Harmony/0.7 (https://github.com/xiaoqiangch/blindwalk)',
+  'User-Agent': 'Walkaholic-Harmony/0.7 (https://github.com/xiaoqiangch/walkaholic)',
   'Accept': 'application/json'
 };
 
 /** Key 缓存的存储键与有效期 */
-export const MAPKEYS_CACHE_KEY: string = 'blindwalk.mapkeys.v1';
+export const MAPKEYS_CACHE_KEY: string = 'walkaholic.mapkeys.v1';
 export const MAPKEYS_CACHE_TTL_MS: number = 12 * 3600 * 1000;
 
 /** 下发结果 */

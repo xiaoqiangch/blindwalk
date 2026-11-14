@@ -26,18 +26,18 @@ struct FogPathView: View {
         GeometryReader { geo in
             let size = geo.size
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .fill(BWTheme.paper2)
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .fill(WATheme.paper2)
                     .overlay(
-                        RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                            .stroke(BWTheme.line, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                            .stroke(WATheme.line, lineWidth: 1)
                     )
 
                 if let frame, !frame.isHidden {
                     Canvas { context, canvasSize in
                         draw(frame: frame, in: &context, size: canvasSize)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
                     .accessibilityHidden(true)
 
                     // 右下角指北针（heading-up：画布上方 = 行进方向，所以北 = -bearing）
@@ -54,12 +54,12 @@ struct FogPathView: View {
                         Text("迷雾路径 · 只看见前后一段")
                             .font(.system(size: 12.5, weight: .medium))
                     }
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(BWTheme.paper.opacity(0.92))
+                    .background(WATheme.paper.opacity(0.92))
                     .clipShape(Capsule())
-                    .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                    .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .accessibilityHidden(true)
@@ -67,10 +67,10 @@ struct FogPathView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "figure.walk")
                             .font(.system(size: 24, weight: .light))
-                            .foregroundStyle(BWTheme.ink3)
+                            .foregroundStyle(WATheme.ink3)
                         Text("就在附近 · 抬头看看周围")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(BWTheme.ink2)
+                            .foregroundStyle(WATheme.ink2)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityLabel("就在附近，抬头看看周围")
@@ -78,10 +78,10 @@ struct FogPathView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
                             .font(.system(size: 24, weight: .light))
-                            .foregroundStyle(BWTheme.ink3)
+                            .foregroundStyle(WATheme.ink3)
                         Text("正在规划路径…")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(BWTheme.ink2)
+                            .foregroundStyle(WATheme.ink2)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityLabel("正在规划路径")
@@ -91,10 +91,10 @@ struct FogPathView: View {
                 if let frame, !frame.isHidden {
                     Text(caption(for: frame))
                         .font(.system(size: 12.5, weight: .medium))
-                        .foregroundStyle(BWTheme.ink2)
+                        .foregroundStyle(WATheme.ink2)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(BWTheme.paper.opacity(0.92))
+                        .background(WATheme.paper.opacity(0.92))
                         .clipShape(Capsule())
                         .padding(12)
                         .accessibilityLabel(caption(for: frame))
@@ -134,7 +134,7 @@ struct FogPathView: View {
 
         // 1. 已走 / 前方路径（逐段透明度渐隐）
         let behindColor = Color(hex: 0xAEB8D6)
-        let aheadColor = BWTheme.amber
+        let aheadColor = WATheme.amber
         for index in 0..<max(0, frame.segments.count - 1) {
             let a = frame.segments[index]
             let b = frame.segments[index + 1]
@@ -163,7 +163,7 @@ struct FogPathView: View {
             transform = transform.rotated(by: chevron.angle * .pi / 180)
             context.stroke(
                 path.applying(transform),
-                with: .color(BWTheme.ink.opacity(0.50 * chevron.opacity)),
+                with: .color(WATheme.ink.opacity(0.50 * chevron.opacity)),
                 style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round)
             )
         }
@@ -177,15 +177,15 @@ struct FogPathView: View {
             deviation.addLine(to: CGPoint(x: userX, y: userY))
             context.stroke(
                 deviation,
-                with: .color(BWTheme.ember.opacity(0.7)),
+                with: .color(WATheme.ember.opacity(0.7)),
                 style: StrokeStyle(lineWidth: 2, dash: [4, 4])
             )
         }
         let halo = Path(ellipseIn: CGRect(x: userX - 17, y: userY - 17, width: 34, height: 34))
-        context.fill(halo, with: .color(BWTheme.amber.opacity(0.22)))
+        context.fill(halo, with: .color(WATheme.amber.opacity(0.22)))
         let ring = Path(ellipseIn: CGRect(x: userX - 12, y: userY - 12, width: 24, height: 24))
-        context.fill(ring, with: .color(BWTheme.paper))
-        context.stroke(ring, with: .color(BWTheme.amber), lineWidth: 2.5)
+        context.fill(ring, with: .color(WATheme.paper))
+        context.stroke(ring, with: .color(WATheme.amber), lineWidth: 2.5)
 
         // 「你」的箭头：朝向 = 设备朝向 - 地图朝上方向（北朝上时按你的实际方向旋转）
         var arrowRotation = 0.0
@@ -200,7 +200,7 @@ struct FogPathView: View {
         arrow.closeSubpath()
         var arrowTransform = CGAffineTransform(translationX: userX, y: userY)
         arrowTransform = arrowTransform.rotated(by: arrowRotation * .pi / 180)
-        context.fill(arrow.applying(arrowTransform), with: .color(BWTheme.ink))
+        context.fill(arrow.applying(arrowTransform), with: .color(WATheme.ink))
     }
 }
 
@@ -212,19 +212,19 @@ private struct CompassNeedle: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(BWTheme.paper.opacity(0.94))
-                .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                .fill(WATheme.paper.opacity(0.94))
+                .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
             VStack(spacing: 1) {
                 Text("北")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                 ZStack {
                     Triangle()
-                        .fill(BWTheme.ember)
+                        .fill(WATheme.ember)
                         .frame(width: 8, height: 12)
                         .offset(y: -5)
                     Triangle()
-                        .fill(BWTheme.ink3.opacity(0.6))
+                        .fill(WATheme.ink3.opacity(0.6))
                         .rotationEffect(.degrees(180))
                         .frame(width: 7, height: 10)
                         .offset(y: 5)

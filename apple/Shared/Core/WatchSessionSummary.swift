@@ -13,7 +13,7 @@ import Foundation
 /// 避免两端各写一份字段对不上。
 public struct WatchSessionSummary: Codable, Equatable, Sendable {
 
-    public static let applicationContextKey = "blindwalk.watch.session.v1"
+    public static let applicationContextKey = "walkaholic.watch.session.v1"
 
     // MARK: 旅程
     public var phase: String

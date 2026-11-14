@@ -1,5 +1,5 @@
 {
-  "name": "blindwalk-account-tests",
+  "name": "walkaholic-account-tests",
   "private": true,
   "type": "module",
   "main": "index.mjs"

@@ -40,13 +40,13 @@ test('cookie：跨站必须 SameSite=None + Secure', () => {
   assert.match(c, /SameSite=None/);
   assert.match(c, /Secure/);
   assert.match(c, /HttpOnly/);
-  assert.match(c, /bw_uid=tok/);
+  assert.match(c, /wa_uid=tok/);
   assert.match(clearCookie(), /Max-Age=0/);
 });
 
 test('cookie 解析', () => {
-  const parsed = parseCookies('a=1; bw_uid=abc%3D; c=3');
-  assert.equal(parsed.bw_uid, 'abc=');
+  const parsed = parseCookies('a=1; wa_uid=abc%3D; c=3');
+  assert.equal(parsed.wa_uid, 'abc=');
   assert.deepEqual(parseCookies(''), {});
   assert.deepEqual(parseCookies(undefined), {});
 });

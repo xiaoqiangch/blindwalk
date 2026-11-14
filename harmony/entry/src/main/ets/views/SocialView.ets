@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 圈子 Social（design-system §5.6）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 圈子 Social（design-system §5.6）
  *
  * 视觉基准：prototype/web/app.js socialHTML + screenshots/showcase.png（SOCIAL 屏）
  * 结构：圈子 header + 同频 → 同频码卡 → 本周榜（Top 3 + 折叠） → 动态流（本人置顶、反应可点）
@@ -8,7 +8,7 @@
 import { getStore } from '../core/store';
 import { AppSnapshot } from '../core/contract';
 import { FeedPost, LeaderboardEntry, ReactionKey } from '../core/types';
-import { BwEmptyState, BwSectionHead } from '../components/Common';
+import { WaEmptyState, WaSectionHead } from '../components/Common';
 import {
   emptySnapshot,
   hasReacted,
@@ -18,11 +18,11 @@ import {
   ReactionMeta,
   sortedFeed
 } from '../components/StoreBridge';
-import { bwCopyText, bwToast } from '../components/Async';
+import { waCopyText, waToast } from '../components/Async';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
+  WAColor,
+  WAFont,
+  WASize,
   rarityColor,
   rarityLabel
 } from '../theme/Theme';
@@ -89,8 +89,8 @@ export struct SocialView {
   }
 
   private copyCode(): void {
-    bwCopyText(this.snapshot.togetherCode).then(() => {
-      bwToast('已复制同频码');
+    waCopyText(this.snapshot.togetherCode).then(() => {
+      waToast('已复制同频码');
     });
   }
 
@@ -108,22 +108,22 @@ export struct SocialView {
   header() {
     Row() {
       Text('圈子')
-        .fontSize(BWFont.hero)
+        .fontSize(WAFont.hero)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
 
       Blank()
 
       Button() {
         Text('同频')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink2)
       }
       .type(ButtonType.Capsule)
       .height(30)
       .padding({ left: 14, right: 14 })
-      .backgroundColor(BWColor.paper)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+      .backgroundColor(WAColor.paper)
+      .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
       .onClick(() => {
         this.copyCode();
       })
@@ -136,20 +136,20 @@ export struct SocialView {
     Column({ space: 0 }) {
       Row() {
         Text('今晚一起走？')
-          .fontSize(BWFont.titleMd)
+          .fontSize(WAFont.titleMd)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Blank()
         SymbolGlyph($r('sys.symbol.arrowshape_turn_up_right'))
-          .fontSize(BWSize.iconSizeSm)
-          .fontColor([BWColor.ink2])
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.ink2])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .fontSize(16)
       }
       .width('100%')
 
       Text('把这串码给朋友，各自开盒。')
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontColor('#A6171410')
         .width('100%')
         .margin({ top: 4 })
@@ -158,21 +158,21 @@ export struct SocialView {
         Text(this.snapshot.togetherCode.length > 0 ? this.snapshot.togetherCode : 'K7M2QX')
           .fontSize(26)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .letterSpacing(6)
 
         Blank()
 
         Button() {
           Text('复制')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink)
         }
         .type(ButtonType.Capsule)
         .height(30)
         .padding({ left: 14, right: 14 })
         .backgroundColor('#B3FFFBF3')
-        .border({ width: 1, color: BWColor.amberBorder, radius: BWSize.chipRadius })
+        .border({ width: 1, color: WAColor.amberBorder, radius: WASize.chipRadius })
         .onClick(() => {
           this.copyCode();
         })
@@ -181,7 +181,7 @@ export struct SocialView {
       .margin({ top: 12 })
 
       Text('好友输入同频码，各自开盒，结束后交换线索')
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontColor('#A6171410')
         .width('100%')
         .margin({ top: 10 })
@@ -189,19 +189,19 @@ export struct SocialView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(18)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: '#52E89B4C', radius: BWSize.cardRadius })
-    .shadow({ radius: 18, color: BWColor.shadow, offsetX: 0, offsetY: 12 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: '#52E89B4C', radius: WASize.cardRadius })
+    .shadow({ radius: 18, color: WAColor.shadow, offsetX: 0, offsetY: 12 })
   }
 
   @Builder
   boardRow(entry: LeaderboardEntry) {
     Row({ space: 12 }) {
       Text(String(this.rankOf(entry)))
-        .fontSize(BWFont.titleSm)
+        .fontSize(WAFont.titleSm)
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.rankOf(entry) <= 3 ? BWColor.amberDeep : BWColor.ink3)
+        .fontColor(this.rankOf(entry) <= 3 ? WAColor.amberDeep : WAColor.ink3)
         .width(22)
 
       Text(entry.emoji)
@@ -209,28 +209,28 @@ export struct SocialView {
         .textAlign(TextAlign.Center)
         .width(32)
         .height(32)
-        .backgroundColor(BWColor.paper2)
+        .backgroundColor(WAColor.paper2)
         .borderRadius(16)
 
       Text(entry.name)
-        .fontSize(BWFont.bodySm)
-        .fontColor(BWColor.ink)
+        .fontSize(WAFont.bodySm)
+        .fontColor(WAColor.ink)
 
       if (entry.isMe) {
         Text('你')
-          .fontSize(BWFont.microSm)
+          .fontSize(WAFont.microSm)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.amberDeep)
+          .fontColor(WAColor.amberDeep)
           .padding({ left: 5, right: 5, top: 2, bottom: 2 })
-          .backgroundColor(BWColor.amberSoftStrong)
-          .borderRadius(BWSize.chipRadius)
+          .backgroundColor(WAColor.amberSoftStrong)
+          .borderRadius(WASize.chipRadius)
       }
 
       Blank()
 
       Text(String(entry.score))
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink2)
     }
     .width('100%')
     .padding({ left: 12, right: 12, top: 9, bottom: 9 })
@@ -242,13 +242,13 @@ export struct SocialView {
     Column({ space: 10 }) {
       Row() {
         Text('本周榜')
-          .fontSize(BWFont.titleMd)
+          .fontSize(WAFont.titleMd)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Blank()
         Text('惊喜指数')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
       }
       .width('100%')
 
@@ -258,15 +258,15 @@ export struct SocialView {
         }, (entry: LeaderboardEntry) => entry.id)
       }
       .width('100%')
-      .backgroundColor(BWColor.paperTranslucent)
-      .borderRadius(BWSize.cardRadiusSm)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+      .backgroundColor(WAColor.paperTranslucent)
+      .borderRadius(WASize.cardRadiusSm)
+      .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
 
       if (this.boardTotal() > 3) {
         Row({ space: 4 }) {
           Text(this.boardOpen ? '收起' : '展开 · 其余 ' + String(this.boardTotal() - 3) + ' 位')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.amberDeep)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.amberDeep)
         }
         .onClick(() => {
           this.boardOpen = !this.boardOpen;
@@ -283,29 +283,29 @@ export struct SocialView {
       Row({ space: 4 }) {
         if (meta.icon.length > 0) {
           SymbolGlyph($r('sys.symbol.' + meta.icon))
-            .fontSize(BWFont.captionSm)
-            .fontColor([hasReacted(post, meta.key) ? BWColor.amber : BWColor.ink3])
+            .fontSize(WAFont.captionSm)
+            .fontColor([hasReacted(post, meta.key) ? WAColor.amber : WAColor.ink3])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         }
         Text(String(reactionCount(post, meta.key)))
-          .fontSize(BWFont.captionSm)
+          .fontSize(WAFont.captionSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(hasReacted(post, meta.key) ? BWColor.amberDeep : BWColor.ink3)
+          .fontColor(hasReacted(post, meta.key) ? WAColor.amberDeep : WAColor.ink3)
         if (meta.icon.length === 0) {
           Text(meta.label)
-            .fontSize(BWFont.captionSm)
-            .fontColor(hasReacted(post, meta.key) ? BWColor.amberDeep : BWColor.ink3)
+            .fontSize(WAFont.captionSm)
+            .fontColor(hasReacted(post, meta.key) ? WAColor.amberDeep : WAColor.ink3)
         }
       }
     }
     .type(ButtonType.Capsule)
     .height(26)
     .padding({ left: 9, right: 9 })
-    .backgroundColor(hasReacted(post, meta.key) ? BWColor.amberSoftStrong : BWColor.paper2)
+    .backgroundColor(hasReacted(post, meta.key) ? WAColor.amberSoftStrong : WAColor.paper2)
     .border({
       width: 1,
-      color: hasReacted(post, meta.key) ? BWColor.amberBorder : BWColor.line,
-      radius: BWSize.chipRadius
+      color: hasReacted(post, meta.key) ? WAColor.amberBorder : WAColor.line,
+      radius: WASize.chipRadius
     })
     .onClick(() => {
       this.react(post, meta.key);
@@ -317,33 +317,33 @@ export struct SocialView {
     Column({ space: 0 }) {
       Row({ space: 10 }) {
         Text(post.authorEmoji)
-          .fontSize(BWFont.bodySm)
+          .fontSize(WAFont.bodySm)
           .textAlign(TextAlign.Center)
           .width(36)
           .height(36)
-          .backgroundColor(BWColor.paper2)
+          .backgroundColor(WAColor.paper2)
           .borderRadius(18)
 
         Column({ space: 2 }) {
           Text(post.authorName)
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink)
           Text(relativeTime(post.createdAt))
-            .fontSize(BWFont.microSm)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ink3)
         }
         .alignItems(HorizontalAlign.Start)
 
         Blank()
 
         Text('揭晓')
-          .fontSize(BWFont.microSm)
+          .fontSize(WAFont.microSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.amberDeep)
+          .fontColor(WAColor.amberDeep)
           .letterSpacing(1)
           .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-          .backgroundColor(BWColor.amberSoft)
-          .borderRadius(BWSize.chipRadius)
+          .backgroundColor(WAColor.amberSoft)
+          .borderRadius(WASize.chipRadius)
       }
       .width('100%')
 
@@ -353,12 +353,12 @@ export struct SocialView {
 
         Column({ space: 2 }) {
           Text(post.placeName)
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(rarityLabel(post.rarity))
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
             .fontWeight(FontWeight.Medium)
             .fontColor(rarityColor(post.rarity))
         }
@@ -368,13 +368,13 @@ export struct SocialView {
       }
       .width('100%')
       .padding(10)
-      .backgroundColor(BWColor.paper2)
+      .backgroundColor(WAColor.paper2)
       .borderRadius(14)
       .margin({ top: 12 })
 
       Text(post.caption)
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink)
         .lineHeight(21)
         .width('100%')
         .margin({ top: 10 })
@@ -391,20 +391,20 @@ export struct SocialView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-    .shadow({ radius: 12, color: BWColor.shadowSoft, offsetX: 0, offsetY: 8 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+    .shadow({ radius: 12, color: WAColor.shadowSoft, offsetX: 0, offsetY: 8 })
     .margin({ bottom: 12 })
   }
 
   @Builder
   feedSection() {
     Column({ space: 12 }) {
-      BwSectionHead({ title: '今晚的惊喜' })
+      WaSectionHead({ title: '今晚的惊喜' })
 
       if (sortedFeed(this.snapshot).length === 0) {
-        BwEmptyState({
+        WaEmptyState({
           title: '还没有人分享今晚的惊喜。',
           subtitle: '去开一个盲盒，把第一个留在这里。',
           actionText: '开一个盲盒',
@@ -423,7 +423,7 @@ export struct SocialView {
   }
 
   private isWide(): boolean {
-    return this.winWidth >= BWSize.wideBreakpoint;
+    return this.winWidth >= WASize.wideBreakpoint;
   }
 
   build() {
@@ -431,7 +431,7 @@ export struct SocialView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       Scroll() {
         Column({ space: 0 }) {
@@ -482,10 +482,10 @@ export struct SocialView {
           }
         }
         .width('100%')
-        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8,
           bottom: 26
         })

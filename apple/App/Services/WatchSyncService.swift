@@ -1,16 +1,16 @@
 //
 //  WatchSyncService.swift
-//  BlindWalk（iOS 端）
+//  Walkaholic（iOS 端）
 //
 //  iPhone → Apple Watch 的同步发送端（WatchConnectivity），与手表接收端
 //  `WatchApp/WatchBridge.swift` 严格共用 `Shared/Core/WatchSessionSummary.swift` 的 Schema：
 //    · 摘要一律由 `WatchSessionSummary.make(session:place:profile:todayCard:now:)` 生成
 //      —— 它保证 `phase == walking` 时 placeName / rarity / areaLabel 全为 nil（目的地保密，§5.3）；
 //    · 推送走 `updateApplicationContext`（只有一份最新快照，手表 `didReceiveApplicationContext` 收）；
-//    · 手表打卡 `["blindwalk.checkIn": true, "at": 时间戳]` 由 `didReceiveMessage` / `didReceiveUserInfo` 收下，
+//    · 手表打卡 `["walkaholic.checkIn": true, "at": 时间戳]` 由 `didReceiveMessage` / `didReceiveUserInfo` 收下，
 //      通过 `onCheckIn` 回调给 App。
 //
-//  ── Lead 在 `BlindWalkApp.swift` 里的接入示例（约 6 行，其余都是自动同步）────────────
+//  ── Lead 在 `WalkaholicApp.swift` 里的接入示例（约 6 行，其余都是自动同步）────────────
 //  1) 属性：   @State private var watchSync = WatchSyncService()
 //  2) onAppear：watchSync.start(store: store)          // ← 激活 + 立刻推首帧（冷启动 store 已有旅程时必须要）
 //  3) 回调：   watchSync.onCheckIn = { date in _ = store.arriveNow(now: date) }   // 手表打卡 → 手机推进到到达
@@ -48,7 +48,7 @@ final class WatchSyncService: NSObject {
         case unsupported
         /// 配对里没有 Apple Watch
         case notPaired
-        /// 配对了但手表上没装步谜
+        /// 配对了但手表上没装步迷
         case appNotInstalled
         /// 已配对已安装，但 WCSession 还没激活完成
         case activating
@@ -202,7 +202,7 @@ final class WatchSyncService: NSObject {
 
     /// 便捷同步（直接吃 store，接入时一行搞定）。
     @discardableResult
-    func sync(store: BlindWalkStore, todayCard: PlaceCard? = nil) -> WatchSessionSummary? {
+    func sync(store: WalkaholicStore, todayCard: PlaceCard? = nil) -> WatchSessionSummary? {
         sync(
             session: store.session,
             place: store.currentPlace,
@@ -216,14 +216,14 @@ final class WatchSyncService: NSObject {
     /// 冷启动时 `store` 往往已经有进行中的旅程（UserDefaults 恢复）而不会触发 onChange，
     /// 手表会一直停在它自己的本地演示 / 上一帧数据上。这个方法是唯一需要的「首帧推送」入口：
     /// 若 WCSession 还没激活，摘要会进 `pendingSummary`，激活回调里自动补发。
-    func start(store: BlindWalkStore, todayCard: PlaceCard? = nil) {
+    func start(store: WalkaholicStore, todayCard: PlaceCard? = nil) {
         activateIfNeeded()
         forceSync(store: store, todayCard: todayCard)
     }
 
     /// 无视去抖，强制推送当前状态（例如回到前台、刚解锁线索、刚打卡后）。
     @discardableResult
-    func forceSync(store: BlindWalkStore, todayCard: PlaceCard? = nil) -> WatchSessionSummary? {
+    func forceSync(store: WalkaholicStore, todayCard: PlaceCard? = nil) -> WatchSessionSummary? {
         guard let session = store.session else { return nil }
         let summary = WatchSessionSummary.make(
             session: session,
@@ -253,7 +253,7 @@ final class WatchSyncService: NSObject {
         switch status {
         case .unsupported: return "此设备不支持手表同步"
         case .notPaired: return "未配对 Apple Watch"
-        case .appNotInstalled: return "手表上还没装步谜"
+        case .appNotInstalled: return "手表上还没装步迷"
         case .activating: return "正在连接手表…"
         case .reachable: return "手表已连接"
         case .unreachable: return "手表同步中"
@@ -339,13 +339,13 @@ final class WatchSyncService: NSObject {
         }
     }
 
-    /// 识别并处理一条手表消息（`blindwalk.checkIn`）。
+    /// 识别并处理一条手表消息（`walkaholic.checkIn`）。
     /// - Returns: 若是打卡消息，返回打卡时间，否则 nil。
     @discardableResult
     nonisolated static func parseCheckIn(from message: [String: Any]) -> Date? {
         // 值可能是 Bool / NSNumber(true)，两种都接受
-        let flag = (message["blindwalk.checkIn"] as? Bool)
-            ?? (message["blindwalk.checkIn"] as? NSNumber)?.boolValue
+        let flag = (message["walkaholic.checkIn"] as? Bool)
+            ?? (message["walkaholic.checkIn"] as? NSNumber)?.boolValue
         guard flag == true else { return nil }
         return checkInDate(from: message["at"]) ?? Date()
     }
@@ -424,11 +424,11 @@ extension WatchSyncService: WCSessionDelegate {
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
         guard let date = Self.parseCheckIn(from: message) else {
-            replyHandler(["blindwalk.rejected": true])
+            replyHandler(["walkaholic.rejected": true])
             return
         }
         replyHandler([
-            "blindwalk.checkIn.received": true,
+            "walkaholic.checkIn.received": true,
             "at": Date().timeIntervalSince1970
         ])
         Task { @MainActor [weak self] in

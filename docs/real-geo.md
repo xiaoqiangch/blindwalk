@@ -87,7 +87,7 @@ public struct RealPlace: Codable, Sendable {   // 或直接扩展 Place
 }
 ```
 - `Place` 增加可选 `coordinate: GeoPoint?`、`address: String?`
-- `BlindWalkStore.startQuest` 增加 `realCandidates: [Place]` 参数（由 App 层先查好传入）
+- `WalkaholicStore.startQuest` 增加 `realCandidates: [Place]` 参数（由 App 层先查好传入）
 - `GeoMath` 已有 distance / bearing / offset，够用
 
 ### iOS
@@ -105,7 +105,7 @@ public struct RealPlace: Codable, Sendable {   // 或直接扩展 Place
 - `reverseGeocode`：Nominatim 反查「区 · 街道」中文名
 - `proceduralPlace`：**最终兜底也是真实的**——按真实方位/距离算出真实可行走的坐标，不依赖任何服务
 - `LOOKUP_BUDGET = 6.5s`：超预算立即用真实坐标，绝不阻塞用户
-- 缓存：`blindwalk:geocache:v1`，0.01° 网格、24h、最多 12 格
+- 缓存：`walkaholic:geocache:v1`，0.01° 网格、24h、最多 12 格
 - 真实模式：`watchPosition` 实时推进距离/线索、≤30m 自动开盒
 - 降级：POI 服务失败 → 真实坐标（仍是真实地理）→ 内置虚构地点（明确标「演示」）
 
@@ -196,7 +196,7 @@ https://zh.wikipedia.org/w/api.php?action=query&format=json&origin=*
 2. Mac 和鸿蒙上打开，显示的内容不一样
 
 ### 现象 1 的原因：安装卡二维码里带了 `?demo=1`
-二维码链接是 `…/blindwalk/?demo=1#/home`，`demo=1` 会直接灌入演示种子（18 张卡、305 惊喜值、演示旅程），
+二维码链接是 `…/walkaholic/?demo=1#/home`，`demo=1` 会直接灌入演示种子（18 张卡、305 惊喜值、演示旅程），
 而且**会持久化到 localStorage**，之后每次打开都还是演示数据。
 
 修复：

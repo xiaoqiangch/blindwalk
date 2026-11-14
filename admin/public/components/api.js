@@ -1,6 +1,6 @@
-/* 盲走 · 兴趣点后台 — API 调用层（零依赖）
+/* 步迷 · 兴趣点后台 — API 调用层（零依赖）
  * 严格按 admin/docs/CONTRACT.md §4 的端点与错误结构实现。
- * 暴露在 window.BWAPI。
+ * 暴露在 window.WAAPI。
  */
 (function () {
   'use strict';
@@ -35,8 +35,8 @@
     // 会话失效统一跳登录页（服务端 v2 提供 /admin/login）
     if (response.status === 401) {
       const isAuthCall = path.indexOf('/api/auth/') === 0;
-      if (!isAuthCall && !window.__BW_LOGIN_REDIRECT__) {
-        window.__BW_LOGIN_REDIRECT__ = true;
+      if (!isAuthCall && !window.__WA_LOGIN_REDIRECT__) {
+        window.__WA_LOGIN_REDIRECT__ = true;
         const next = encodeURIComponent(location.pathname + location.search);
         location.replace('/admin/login?next=' + next);
       }
@@ -62,7 +62,7 @@
     return parts.length ? '?' + parts.join('&') : '';
   }
 
-  window.BWAPI = {
+  window.WAAPI = {
     request: request,
 
     // 4.1 列表与查询（只使用契约声明的参数）

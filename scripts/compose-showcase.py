@@ -57,7 +57,7 @@ def main():
     sub_font = load_font(20)
     label_font = load_font(17)
 
-    draw.text((margin, 38), "盲走 BlindWalk", font=title_font, fill=INK)
+    draw.text((margin, 38), "步迷 Walkaholic", font=title_font, fill=INK)
     draw.text((margin + 2, 92), "散步盲盒 · 交互原型  ·  不看见终点，才看得见路。", font=sub_font, fill=INK2)
     draw.rectangle([(width - margin - 96, 46), (width - margin, 76)], fill=AMBER)
 

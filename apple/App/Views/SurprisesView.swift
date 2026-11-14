@@ -19,7 +19,7 @@ import UIKit
 
 struct SurpriseHubCard: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
     @State private var destination: SurpriseDestination?
 
@@ -35,19 +35,19 @@ struct SurpriseHubCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("惊喜社区")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                 Spacer(minLength: 8)
                 Text("我埋了 \(buriedCount) · 找到 \(foundCount)")
-                    .font(BWType.caption(12))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(12))
+                    .foregroundStyle(WATheme.ink3)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
 
             Text("留一张照片给陌生人，或者去找到别人的。")
-                .font(BWType.body(13.5))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WAType.body(13.5))
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
 
@@ -76,19 +76,19 @@ struct SurpriseHubCard: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                 }
-                .foregroundStyle(BWTheme.ink3)
+                .foregroundStyle(WATheme.ink3)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .padding(.top, 12)
             .accessibilityLabel("查看我埋的和我找到的惊喜")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .stroke(WATheme.line, lineWidth: 1)
         )
         .fullScreenCover(item: $destination) { destination in
             switch destination {
@@ -128,23 +128,23 @@ struct SurpriseHubCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
-            .foregroundStyle(emphasized ? BWTheme.amberDeep : BWTheme.ink)
+            .foregroundStyle(emphasized ? WATheme.amberDeep : WATheme.ink)
             .frame(maxWidth: .infinity)
             .frame(height: 40)
-            .background(emphasized ? BWTheme.amberSoft : BWTheme.paper)
+            .background(emphasized ? WATheme.amberSoft : WATheme.paper)
             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(emphasized ? BWTheme.amber.opacity(0.26) : BWTheme.line, lineWidth: 1)
+                    .stroke(emphasized ? WATheme.amber.opacity(0.26) : WATheme.line, lineWidth: 1)
             )
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel(title)
     }
 
-    /// 截图 / 走查专用：`SIMCTL_CHILD_BW_PREVIEW=bury|seek|surprises`
+    /// 截图 / 走查专用：`SIMCTL_CHILD_WA_PREVIEW=bury|seek|surprises`
     private func applyPreviewRoute() {
-        let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        let preview = ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? ""
         #if DEBUG
         // 照片算法自检（日志里看 [dhash-selfcheck]）
         if preview == "dhash-check" {
@@ -172,7 +172,7 @@ enum SurpriseDestination: String, Identifiable {
 
 struct SurprisesView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onClose: () -> Void = {}
     var onOpenBury: (() -> Void)? = nil
     var onOpenSeek: (() -> Void)? = nil
@@ -186,7 +186,7 @@ struct SurprisesView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -195,23 +195,23 @@ struct SurprisesView: View {
                         title: "惊喜",
                         onClose: onClose
                     )
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
 
                     statsCard
-                        .padding(.horizontal, BWTheme.pagePadding)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 16)
 
                     buriedSection
-                        .padding(.horizontal, BWTheme.pagePadding)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 26)
 
                     foundSection
-                        .padding(.horizontal, BWTheme.pagePadding)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 26)
 
                     Text("照片只留在你自己的手机里。")
-                        .font(BWType.caption(10.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .font(WAType.caption(10.5))
+                        .foregroundStyle(WATheme.ink3)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 22)
                         .padding(.bottom, 30)
@@ -219,15 +219,15 @@ struct SurprisesView: View {
                 .padding(.top, 6)
             }
         }
-        .bwTypeBounds()
+        .waTypeBounds()
         .onAppear(perform: seedPreviewDataIfNeeded)
     }
 
-    /// 截图 / 走查专用：`SIMCTL_CHILD_BW_PREVIEW=surprises-filled`
+    /// 截图 / 走查专用：`SIMCTL_CHILD_WA_PREVIEW=surprises-filled`
     /// 往 store 里塞两条真实形状的记录（照片用代码生成的占位图），验证列表排版。
     private func seedPreviewDataIfNeeded() {
         #if DEBUG
-        guard ProcessInfo.processInfo.environment["BW_PREVIEW"] == "surprises-filled" else { return }
+        guard ProcessInfo.processInfo.environment["WA_PREVIEW"] == "surprises-filled" else { return }
         guard store.mySurprises.isEmpty else { return }
 
         let here = store.lastKnownOrigin ?? SurpriseLocation.demoPoint
@@ -268,8 +268,8 @@ struct SurprisesView: View {
     // MARK: 统计
 
     private var statsCard: some View {
-        BWCard(padding: 16, background: BWTheme.paper) {
-            BWStatsRow(items: [
+        WACard(padding: 16, background: WATheme.paper) {
+            WAStatsRow(items: [
                 ("\(buried.count)", "我埋的"),
                 ("\(caught.count)", "被找到"),
                 ("\(foundByMe.count)", "我找到的")
@@ -281,7 +281,7 @@ struct SurprisesView: View {
 
     private var buriedSection: some View {
         VStack(alignment: .leading, spacing: 11) {
-            BWSectionHeader(title: "我埋的", trailingTitle: buried.isEmpty ? nil : "等待中 \(waiting.count) · 被找到 \(caught.count)")
+            WASectionHeader(title: "我埋的", trailingTitle: buried.isEmpty ? nil : "等待中 \(waiting.count) · 被找到 \(caught.count)")
 
             if buried.isEmpty {
                 emptyBuryCard
@@ -294,14 +294,14 @@ struct SurprisesView: View {
     }
 
     private var emptyBuryCard: some View {
-        BWCard(padding: 0) {
-            BWEmptyState(
+        WACard(padding: 0) {
+            WAEmptyState(
                 title: "你还没埋下过惊喜。",
                 subtitle: "找一个你觉得好的地方，放一张照片在那儿。"
             )
 
             if let onOpenBury {
-                BWSecondaryButton(title: "埋下一个", icon: "plus.viewfinder") {
+                WASecondaryButton(title: "埋下一个", icon: "plus.viewfinder") {
                     onOpenBury()
                 }
                 .padding(.horizontal, 16)
@@ -311,7 +311,7 @@ struct SurprisesView: View {
     }
 
     private func buriedRow(_ surprise: BuriedSurprise) -> some View {
-        BWCard(padding: 14) {
+        WACard(padding: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center, spacing: 11) {
                     SurpriseThumb(name: surprise.photoName, layout: .fixed(CGSize(width: 54, height: 68)))
@@ -324,27 +324,27 @@ struct SurprisesView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(surprise.areaLabel)
-                                .font(BWType.rowTitle(13))
-                                .foregroundStyle(BWTheme.ink)
+                                .font(WAType.rowTitle(13))
+                                .foregroundStyle(WATheme.ink)
                                 .lineLimit(1)
                             Spacer(minLength: 0)
                             SurpriseStatusBadge(status: surprise.status)
                         }
 
                         Text(surprise.message)
-                            .font(BWType.body(12.5))
-                            .foregroundStyle(BWTheme.ink2)
+                            .font(WAType.body(12.5))
+                            .foregroundStyle(WATheme.ink2)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text("埋于 \(BWFormat.relative(surprise.createdAt))")
-                            .font(BWType.caption(10.5))
-                            .foregroundStyle(BWTheme.ink3)
+                        Text("埋于 \(WAFormat.relative(surprise.createdAt))")
+                            .font(WAType.caption(10.5))
+                            .foregroundStyle(WATheme.ink3)
                     }
                 }
 
                 if surprise.status == .found {
-                    BWHairline()
+                    WAHairline()
                     foundNote(surprise)
                 }
             }
@@ -356,17 +356,17 @@ struct SurprisesView: View {
             SurpriseThumb(name: surprise.photoName, layout: .fixed(CGSize(width: 40, height: 50)))
             Image(systemName: "arrow.left.arrow.right")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(BWTheme.ink3)
+                .foregroundStyle(WATheme.ink3)
             SurpriseThumb(name: surprise.finderPhotoName ?? "", layout: .fixed(CGSize(width: 40, height: 50)))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("被 \(surprise.finderName ?? "有人") 找到了")
-                    .font(BWType.rowTitle(12.5))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WAType.rowTitle(12.5))
+                    .foregroundStyle(WATheme.ink)
                 if let score = surprise.matchScore {
-                    Text("\(Int((score * 100).rounded()))% 像 · \(BWFormat.relative(surprise.foundAt ?? surprise.createdAt))")
-                        .font(BWType.caption(10.5))
-                        .foregroundStyle(BWTheme.teal)
+                    Text("\(Int((score * 100).rounded()))% 像 · \(WAFormat.relative(surprise.foundAt ?? surprise.createdAt))")
+                        .font(WAType.caption(10.5))
+                        .foregroundStyle(WATheme.teal)
                 }
             }
 
@@ -378,16 +378,16 @@ struct SurprisesView: View {
 
     private var foundSection: some View {
         VStack(alignment: .leading, spacing: 11) {
-            BWSectionHeader(title: "我找到的", trailingTitle: foundByMe.isEmpty ? nil : "\(foundByMe.count) 张")
+            WASectionHeader(title: "我找到的", trailingTitle: foundByMe.isEmpty ? nil : "\(foundByMe.count) 张")
 
             if foundByMe.isEmpty {
-                BWCard(padding: 0) {
-                    BWEmptyState(
+                WACard(padding: 0) {
+                    WAEmptyState(
                         title: "还没找到别人的照片。",
                         subtitle: "附近有几个惊喜在等你。"
                     )
                     if let onOpenSeek {
-                        BWSecondaryButton(title: "去寻宝", icon: "sparkle.magnifyingglass") {
+                        WASecondaryButton(title: "去寻宝", icon: "sparkle.magnifyingglass") {
                             onOpenSeek()
                         }
                         .padding(.horizontal, 16)
@@ -403,19 +403,19 @@ struct SurprisesView: View {
     }
 
     private func foundByMeRow(_ surprise: BuriedSurprise) -> some View {
-        BWCard(padding: 14) {
+        WACard(padding: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center, spacing: 9) {
                     Text(surprise.authorEmoji)
                         .font(.system(size: 16))
                         .frame(width: 30, height: 30)
-                        .background(BWTheme.paper2)
+                        .background(WATheme.paper2)
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
 
                     Text("\(surprise.authorName) 埋在 · \(surprise.areaLabel)")
-                        .font(BWType.rowTitle(12.5))
-                        .foregroundStyle(BWTheme.ink)
+                        .font(WAType.rowTitle(12.5))
+                        .foregroundStyle(WATheme.ink)
                         .lineLimit(1)
 
                     Spacer(minLength: 0)
@@ -423,10 +423,10 @@ struct SurprisesView: View {
                     if let score = surprise.matchScore {
                         Text("\(Int((score * 100).rounded()))% 像")
                             .font(.system(size: 12.5, weight: .bold))
-                            .foregroundStyle(BWTheme.teal)
+                            .foregroundStyle(WATheme.teal)
                             .padding(.horizontal, 8)
                             .frame(height: 22)
-                            .background(BWTheme.teal.opacity(0.12))
+                            .background(WATheme.teal.opacity(0.12))
                             .clipShape(Capsule())
                     }
                 }
@@ -437,8 +437,8 @@ struct SurprisesView: View {
                 }
 
                 Text(surprise.message)
-                    .font(BWType.body(12))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(WAType.body(12))
+                    .foregroundStyle(WATheme.ink2)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -450,8 +450,8 @@ struct SurprisesView: View {
             SurpriseThumb(name: name, layout: .fill(aspect: 0.8))
                 .frame(maxWidth: .infinity)
             Text(title)
-                .font(BWType.caption(10))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.caption(10))
+                .foregroundStyle(WATheme.ink3)
         }
         .frame(maxWidth: .infinity)
     }
@@ -483,13 +483,13 @@ struct SurpriseScreenHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let eyebrow {
                     Text(eyebrow)
-                        .font(BWType.micro())
+                        .font(WAType.micro())
                         .tracking(1.1)
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
                 Text(title)
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -499,22 +499,22 @@ struct SurpriseScreenHeader: View {
             if let trailingLabel, let onTrailing {
                 Button(action: onTrailing) {
                     Text(trailingLabel)
-                        .font(BWType.caption(11))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WAType.caption(11))
+                        .foregroundStyle(WATheme.ink2)
                         .padding(.horizontal, 11)
                         .frame(height: 28)
-                        .background(BWTheme.paper)
+                        .background(WATheme.paper)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             }
         }
         .frame(height: 46)
     }
 
     private func circleButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
-        BWIconButton(systemName: systemName, size: 32, action: action)
+        WAIconButton(systemName: systemName, size: 32, action: action)
             .accessibilityLabel(label)
     }
 }
@@ -552,7 +552,7 @@ struct SurpriseThumb: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                    .stroke(WATheme.ink.opacity(0.08), lineWidth: 1)
             )
             .accessibilityLabel(image == nil ? "照片不在这台手机上" : "一张埋下的照片")
     }
@@ -569,14 +569,14 @@ struct SurpriseThumb: View {
 
     private var placeholder: some View {
         ZStack {
-            BWKraft.thumbGradient
+            WAKraft.thumbGradient
             VStack(spacing: 3) {
                 Text("?")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                 Text("照片不在本机")
                     .font(.system(size: 10.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                     .multilineTextAlignment(.center)
             }
             .padding(2)
@@ -603,9 +603,9 @@ struct SurpriseStatusBadge: View {
 
     private var styleInfo: (String, Color) {
         switch status {
-        case .waiting: return ("等待中", BWTheme.amberDeep)
-        case .found: return ("已找到", BWTheme.teal)
-        case .retired: return ("已收回", BWTheme.ink3)
+        case .waiting: return ("等待中", WATheme.amberDeep)
+        case .found: return ("已找到", WATheme.teal)
+        case .retired: return ("已收回", WATheme.ink3)
         }
     }
 }
@@ -614,8 +614,8 @@ struct SurpriseStatusBadge: View {
 struct SurprisePill: View {
     let text: String
     var icon: String? = nil
-    var tint: Color = BWTheme.ink2
-    var background: Color = BWTheme.paper2
+    var tint: Color = WATheme.ink2
+    var background: Color = WATheme.paper2
 
     var body: some View {
         HStack(spacing: 3) {
@@ -642,30 +642,30 @@ struct SurpriseDemoTag: View {
         SurprisePill(
             text: "演示位置",
             icon: "info.circle",
-            tint: BWTheme.ember,
-            background: BWTheme.ember.opacity(0.10)
+            tint: WATheme.ember,
+            background: WATheme.ember.opacity(0.10)
         )
     }
 }
 
 /// 底部 toast 堆叠层（与揭晓页一致的贴底样式）
 struct SurpriseToastLayer: View {
-    let toasts: [BWToast]
-    let onDismiss: (BWToast) -> Void
+    let toasts: [WAToast]
+    let onDismiss: (WAToast) -> Void
 
     var body: some View {
         VStack(spacing: 8) {
             Spacer(minLength: 0)
             ForEach(toasts) { toast in
-                BWToastView(toast: toast) { onDismiss(toast) }
+                WAToastView(toast: toast) { onDismiss(toast) }
                     .id(toast.id)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .padding(.horizontal, BWTheme.pagePadding)
+        .padding(.horizontal, WATheme.pagePadding)
         .padding(.bottom, 30)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .animation(BWAnimation.regular, value: toasts.map(\.id))
+        .animation(WAAnimation.regular, value: toasts.map(\.id))
         .allowsHitTesting(false)
     }
 }

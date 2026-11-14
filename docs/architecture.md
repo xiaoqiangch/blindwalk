@@ -7,7 +7,7 @@
 ## 1. 仓库结构
 
 ```
-Projects/BlindWalk/
+Projects/Walkaholic/
 ├── README.md
 ├── docs/                 # PRD / 设计系统 / 架构 / 路线图 / 决策 / 进度看板
 ├── prototype/web/        # 零依赖离线原型（index.html / app.js / data.js / watch.html）
@@ -27,7 +27,7 @@ Projects/BlindWalk/
 ```
 UI (SwiftUI / HTML+CSS)
   └── AppState / Store（观察者，驱动页面）
-        └── BlindWalkKit（Shared/Core）
+        └── WalkaholicKit（Shared/Core）
               ├── Models            地点/卡片/会话/成就/动态
               ├── PlaceCatalog      24 个内置地点（虚构，坐标归一化）
               ├── BlindBoxEngine    按心情/时长/区域抽盒（可复现随机）
@@ -68,15 +68,15 @@ Profile { xp, level, streakDays, totalKm, boxesOpened, cardsCollected,
 - **稀有度权重**：common 70 / rare 22 / epic 6 / hidden 2（按心情微调，hidden 只在 60 分钟档开放）。
 - **同频码**：6 位大写字母+数字（去掉易混 O/0/I/1），本机生成；好友加入为 mock「已同频」状态；完成后双方 +30 XP 与 `together_1`。
 - **惊喜指数（周榜）** = 完成次数×20 + 稀有卡×15 + 小任务×5 + 连续天数×3。
-- **等级**：每 800 XP 升一级，Lv1–Lv10 名称：出门新手 / 街角观察员 / 城市漫游者 / 惊喜收藏家 / 迷雾探险家 / 黄昏猎人 / 夜路诗人 / 盲走大师 / 城市传说 / 盲盒之神。
+- **等级**：每 800 XP 升一级，Lv1–Lv10 名称：出门新手 / 街角观察员 / 城市漫游者 / 惊喜收藏家 / 迷雾探险家 / 黄昏猎人 / 夜路诗人 / 步迷大师 / 城市传说 / 盲盒之神。
 
 ## 5. Native 工程
 
 - XcodeGen `project.yml` 定义两个 target：
-  - `BlindWalk`（iOS 17，application，sources: Shared/Core + Shared/Design + App，依赖并内嵌 watch）
-  - `BlindWalkWatch`（watchOS 10，application，sources: Shared/Core + Shared/Design + WatchApp）
+  - `Walkaholic`（iOS 17，application，sources: Shared/Core + Shared/Design + App，依赖并内嵌 watch）
+  - `WalkaholicWatch`（watchOS 10，application，sources: Shared/Core + Shared/Design + WatchApp）
 - Swift 6 语言模式关闭（`SWIFT_VERSION: 5.9`）降低学习成本。
-- 生成：`brew install xcodegen && cd apple && xcodegen generate` → 打开 `BlindWalk.xcodeproj`。
+- 生成：`brew install xcodegen && cd apple && xcodegen generate` → 打开 `Walkaholic.xcodeproj`。
 - **构建状态**：Xcode 27.2 + iOS 27.2 SDK 下 iOS/watchOS 两 target 均 BUILD SUCCEEDED（2026-11-08）。唯一修正：`WKHapticType` 为 WatchKit 顶层类型。构建脚本：`scripts/build-native.sh`。
 
 - **手表同步 Schema**：`Shared/Core/WatchSessionSummary.swift`（Codable，iOS/watchOS 共用，`applicationContext` 传输）；走路途中不下发 `placeName/rarity/areaLabel`，到达后才下发。iOS 发送端为 v0.2（见 roadmap）。

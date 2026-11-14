@@ -9,7 +9,7 @@ import SwiftUI
 @MainActor
 struct WatchRevealView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     let bridge: WatchBridge
 
     @State private var hasCheckedIn = false
@@ -44,7 +44,7 @@ struct WatchRevealView: View {
             Text("到了")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .tracking(3)
-                .foregroundStyle(BWTheme.amber)
+                .foregroundStyle(WATheme.amber)
                 .accessibilityAddTraits(.isHeader)
 
             Text(place.name)
@@ -56,11 +56,11 @@ struct WatchRevealView: View {
 
             HStack(spacing: 4) {
                 Circle()
-                    .fill(BWTheme.rarityColor(place.rarity))
+                    .fill(WATheme.rarityColor(place.rarity))
                     .frame(width: 7, height: 7)
                 Text(place.rarity.label)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(BWTheme.rarityColor(place.rarity))
+                    .foregroundStyle(WATheme.rarityColor(place.rarity))
                 Text("· \(place.area.label)")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.55))
@@ -76,9 +76,9 @@ struct WatchRevealView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    Capsule().fill(hasCheckedIn ? BWTheme.teal.opacity(0.22) : BWTheme.amber)
+                    Capsule().fill(hasCheckedIn ? WATheme.teal.opacity(0.22) : WATheme.amber)
                 )
-                .foregroundStyle(hasCheckedIn ? BWTheme.teal : Color.black)
+                .foregroundStyle(hasCheckedIn ? WATheme.teal : Color.black)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(hasCheckedIn ? "已打卡" : "轻点打卡")
@@ -91,7 +91,7 @@ struct WatchRevealView: View {
     /// §5.9「震动/发光动效」：暖光呼吸
     private var glowBackground: some View {
         Circle()
-            .fill(BWTheme.amber.opacity(0.16))
+            .fill(WATheme.amber.opacity(0.16))
             .frame(width: 190, height: 190)
             .blur(radius: 30)
             .scaleEffect(glow ? 1.06 : 0.9)
@@ -127,7 +127,7 @@ struct WatchRevealView: View {
                 Button(action: arriveForDemo) {
                     Text("演示：我到了")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(BWTheme.amber)
+                        .foregroundStyle(WATheme.amber)
                 }
                 .buttonStyle(.plain)
             }

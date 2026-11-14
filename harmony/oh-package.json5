@@ -1,6 +1,6 @@
 {
   "modelVersion": "6.0.0",
-  "description": "盲走 BlindWalk · HarmonyOS 移植版",
+  "description": "步迷 Walkaholic · HarmonyOS 移植版",
   "dependencies": {},
   "devDependencies": {
     "@ohos/hypium": "1.0.19",

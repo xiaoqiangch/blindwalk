@@ -1,9 +1,9 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 v2 — SQLite 连接 / 建表 / 迁移
+ * 步迷 Walkaholic · 兴趣点管理后台 v2 — SQLite 连接 / 建表 / 迁移
  *
  * 零依赖：Node 内置 `node:sqlite` 的 DatabaseSync（启动时的 ExperimentalWarning 是正常的）。
  *
- * - 文件：admin/data/blindwalk.db，PRAGMA journal_mode=WAL
+ * - 文件：admin/data/walkaholic.db，PRAGMA journal_mode=WAL
  * - 表：pois（字段同契约 §2，hints/tags/safety/llm 用 JSON 文本列）、meta、sessions
  * - 自动迁移：库为空且存在 admin/data/pois.json → 全量导入，成功后原文件改名
  *   `pois.json.migrated-<ts>`；JSON 损坏则备份 `pois.json.corrupt-<ts>` 并从空库启动。
@@ -29,7 +29,7 @@ import {
 } from './poi.mjs';
 import { completeSafety } from './safety.mjs';
 
-export const DB_FILENAME = 'blindwalk.db';
+export const DB_FILENAME = 'walkaholic.db';
 export const SCHEMA_VERSION = 2;
 const JSON_FIELDS = ['hints', 'tags', 'safety', 'llm'];
 

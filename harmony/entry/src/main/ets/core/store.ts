@@ -1,7 +1,7 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 全局编排 Store
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 全局编排 Store
  *
- * 对应 apple/Shared/Core/BlindWalkStore.swift，但遵循 harmony 的 core/contract.ts：
+ * 对应 apple/Shared/Core/WalkaholicStore.swift，但遵循 harmony 的 core/contract.ts：
  * - UI 只通过 `getStore()` 访问；`snapshot()` 同步返回只读快照（浅拷贝数组/对象）
  * - 状态变更 → 保存到注入的 KeyValueStore（profile + surprises）
  * - 保密：到达前 snapshot / 返回值里不出现当前目的地名称（含图鉴地点库里的那一条）
@@ -39,7 +39,7 @@ import {
 } from './types';
 import {
   AppSnapshot,
-  BlindWalkStoreApi,
+  WalkaholicStoreApi,
   BuryParams,
   CollectResult,
   DataSourceStatus,
@@ -197,7 +197,7 @@ function emptyDataSourceStatus(): DataSourceStatus {
 // Store 实现
 // ============================================================
 
-export class BlindWalkStore implements BlindWalkStoreApi {
+export class WalkaholicStore implements WalkaholicStoreApi {
   private kv: KeyValueStore;
   private profile: Profile;
   private extras: StoreExtras;
@@ -1075,29 +1075,29 @@ function cloneDataSourceStatus(status: DataSourceStatus): DataSourceStatus {
 // 单例：UI 在 EntryAbility / Index 启动时调用 initStore(kv) 一次
 // ============================================================
 
-let singleton: BlindWalkStore | undefined = undefined;
+let singleton: WalkaholicStore | undefined = undefined;
 
 /**
  * 幂等初始化单例：
  * - 有存档 → 读回 profile + surprises
- * - 无存档 → 预置演示态（与 iOS `BlindWalkStore.demo()` 一致的 demo 开关）
+ * - 无存档 → 预置演示态（与 iOS `WalkaholicStore.demo()` 一致的 demo 开关）
  */
 export async function initStore(kv: KeyValueStore): Promise<void> {
-  singleton = new BlindWalkStore(kv);
+  singleton = new WalkaholicStore(kv);
 }
 
 /** UI 唯一的状态访问入口；未初始化时抛错，便于尽早发现启动顺序问题 */
-export function getStore(): BlindWalkStoreApi {
+export function getStore(): WalkaholicStoreApi {
   if (singleton === undefined) {
-    throw new Error('BlindWalkStore 未初始化：请先在 EntryAbility / Index 启动时调用 initStore(kv)');
+    throw new Error('WalkaholicStore 未初始化：请先在 EntryAbility / Index 启动时调用 initStore(kv)');
   }
   return singleton;
 }
 
 /** 当前 store 实例（需要调试辅助方法时用；常规 UI 请用 getStore()） */
-export function getStoreInstance(): BlindWalkStore {
+export function getStoreInstance(): WalkaholicStore {
   if (singleton === undefined) {
-    throw new Error('BlindWalkStore 未初始化：请先在 EntryAbility / Index 启动时调用 initStore(kv)');
+    throw new Error('WalkaholicStore 未初始化：请先在 EntryAbility / Index 启动时调用 initStore(kv)');
   }
   return singleton;
 }
@@ -1109,14 +1109,14 @@ export function getStoreInstance(): BlindWalkStore {
  */
 export function setNearbyPlaces(places: Place[]): void {
   if (singleton === undefined) {
-    throw new Error('BlindWalkStore 未初始化：请先调用 initStore(kv)');
+    throw new Error('WalkaholicStore 未初始化：请先调用 initStore(kv)');
   }
   singleton.setNearbyPlaces(places);
 }
 
 export function registerPlaces(places: Place[]): void {
   if (singleton === undefined) {
-    throw new Error('BlindWalkStore 未初始化：请先调用 initStore(kv)');
+    throw new Error('WalkaholicStore 未初始化：请先调用 initStore(kv)');
   }
   singleton.registerPlaces(places);
 }

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 旅程 Journey（design-system §5.3 + parity.md §3）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 旅程 Journey（design-system §5.3 + parity.md §3）
  *
  * 结构：顶栏（盲盒进行中 + 计时 + 暂停）→ **迷雾路径视图**（真实模式）
  *       → 距离 + 方位 → 三阶线索 → 底部操作
@@ -28,20 +28,20 @@ import {
   QuestSession
 } from '../core/types';
 import {
-  BwIconButton,
-  BwMicroLabel,
-  BwPrimaryButton,
-  BwQuietButton
+  WaIconButton,
+  WaMicroLabel,
+  WaPrimaryButton,
+  WaQuietButton
 } from '../components/Common';
-import { BwAbstractMap } from '../components/AbstractMap';
-import { BwFogPath } from '../components/FogPath';
+import { WaAbstractMap } from '../components/AbstractMap';
+import { WaFogPath } from '../components/FogPath';
 import { CompassWatcher, GeoWatcher } from '../components/Location';
-import { bwSleep } from '../components/Async';
+import { waSleep } from '../components/Async';
 import { activeSession, emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
+  WAColor,
+  WAFont,
+  WASize,
   walkCopy
 } from '../theme/Theme';
 import {
@@ -147,14 +147,14 @@ export struct JourneyView {
   }
 
   private isShort(): boolean {
-    return this.winHeight < BWSize.shortHeightBreakpoint;
+    return this.winHeight < WASize.shortHeightBreakpoint;
   }
 
   private mapHeight(): number {
     if (this.isShort()) {
       return 176;
     }
-    if (this.winWidth >= BWSize.wideBreakpoint) {
+    if (this.winWidth >= WASize.wideBreakpoint) {
       return 300;
     }
     return 268;
@@ -284,11 +284,11 @@ export struct JourneyView {
     animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
       this.flashOpacity = 1;
     });
-    await bwSleep(900);
+    await waSleep(900);
     animateTo({ duration: 220, curve: Curve.EaseIn }, () => {
       this.flashOpacity = 0;
     });
-    await bwSleep(240);
+    await waSleep(240);
     this.onArrived();
   }
 
@@ -403,7 +403,7 @@ export struct JourneyView {
   @Builder
   topBar() {
     Row({ space: 10 }) {
-      BwIconButton({
+      WaIconButton({
         name: 'chevron_left',
         onTap: () => {
           this.onBack();
@@ -411,10 +411,10 @@ export struct JourneyView {
       })
 
       Column({ space: 2 }) {
-        BwMicroLabel({ text: '盲盒进行中' })
+        WaMicroLabel({ text: '盲盒进行中' })
         Text(clockHHMMSS(this.elapsedSeconds()))
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
           .maxLines(1)
       }
       .alignItems(HorizontalAlign.Start)
@@ -423,20 +423,20 @@ export struct JourneyView {
 
       Button() {
         Text(this.paused ? '继续' : '暂停')
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ink2)
       }
       .type(ButtonType.Capsule)
       .height(28)
       .padding({ left: 11, right: 11 })
-      .backgroundColor(BWColor.paper2)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+      .backgroundColor(WAColor.paper2)
+      .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
       .onClick(() => {
         this.togglePause();
       })
     }
     .width('100%')
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, top: 6, bottom: 6 })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding, top: 6, bottom: 6 })
   }
 
   @Builder
@@ -446,28 +446,28 @@ export struct JourneyView {
         Circle()
           .width(6)
           .height(6)
-          .fill(this.isRealMode() ? BWColor.teal : BWColor.amberDeep)
+          .fill(this.isRealMode() ? WAColor.teal : WAColor.amberDeep)
         Text(this.isRealMode() ? '实时定位 · 真实坐标' : '演示模式 · 内置地点')
-          .fontSize(BWFont.micro)
-          .fontColor(this.isRealMode() ? BWColor.teal : BWColor.amberDeep)
+          .fontSize(WAFont.micro)
+          .fontColor(this.isRealMode() ? WAColor.teal : WAColor.amberDeep)
       }
       .padding({ left: 9, right: 9, top: 4, bottom: 4 })
-      .backgroundColor(this.isRealMode() ? BWColor.tealSoft : BWColor.amberSoft)
-      .borderRadius(BWSize.chipRadius)
+      .backgroundColor(this.isRealMode() ? WAColor.tealSoft : WAColor.amberSoft)
+      .borderRadius(WASize.chipRadius)
 
       if (this.isRealMode()) {
         Text('GPS')
-          .fontSize(BWFont.microSm)
+          .fontSize(WAFont.microSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink3)
+          .fontColor(WAColor.ink3)
           .padding({ left: 7, right: 7, top: 3, bottom: 3 })
-          .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+          .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
       }
 
       Blank()
     }
     .width('100%')
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, bottom: 8 })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding, bottom: 8 })
   }
 
   /** 当前路线折线（真实模式才有） */
@@ -495,7 +495,7 @@ export struct JourneyView {
   pathSection() {
     if (this.isRealMode() && this.hasRoute()) {
       Column({ space: 6 }) {
-        BwFogPath({
+        WaFogPath({
           routePoints: this.routePoints(),
           routeDistance: this.routeDistance(),
           hereLat: this.fixLat,
@@ -510,13 +510,13 @@ export struct JourneyView {
 
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.eye'))
-            .fontSize(BWFont.caption)
-            .fontColor([BWColor.ink3])
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.ink3])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
           Text(this.fogCaption)
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
@@ -525,7 +525,7 @@ export struct JourneyView {
         .padding({ left: 4, right: 4 })
       }
       .width('100%')
-      .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding })
+      .padding({ left: WASize.pagePadding, right: WASize.pagePadding })
     } else {
       this.mapSection()
     }
@@ -534,33 +534,33 @@ export struct JourneyView {
   @Builder
   mapSection() {
     Stack({ alignContent: Alignment.BottomStart }) {
-      BwAbstractMap({
+      WaAbstractMap({
         progress: this.progressValue(),
         realMode: this.isRealMode()
       })
 
       Row({ space: 5 }) {
         SymbolGlyph($r('sys.symbol.eye'))
-          .fontSize(BWFont.caption)
-          .fontColor([BWColor.ink3])
+          .fontSize(WAFont.caption)
+          .fontColor([WAColor.ink3])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-          .fontSize(BWFont.microSm)
+          .fontSize(WAFont.microSm)
         Text((this.isRealMode() ? '真实位置 · ' : '') + '目的地保密中 · 还有 ' +
           this.remainingMeters() + ' 米')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink2)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-      .backgroundColor(BWColor.creamTranslucent)
-      .borderRadius(BWSize.chipRadius)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+      .backgroundColor(WAColor.creamTranslucent)
+      .borderRadius(WASize.chipRadius)
+      .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
       .margin(12)
     }
     .width('100%')
     .height(this.mapHeight())
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding })
   }
 
   private remainingMeters(): number {
@@ -574,12 +574,12 @@ export struct JourneyView {
       Row() {
         Row() {
           Text(String(this.remainingMeters()))
-            .fontSize(this.isShort() ? 46 : BWFont.digits)
+            .fontSize(this.isShort() ? 46 : WAFont.digits)
             .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.ink)
+            .fontColor(WAColor.ink)
           Text(' 米')
-            .fontSize(BWFont.titleMd)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.titleMd)
+            .fontColor(WAColor.ink2)
             .margin({ left: 4 })
         }
         .alignItems(VerticalAlign.Bottom)
@@ -589,38 +589,38 @@ export struct JourneyView {
         Text(this.bearingGlyph())
           .fontSize(34)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.amberDeep)
+          .fontColor(WAColor.amberDeep)
       }
       .width('100%')
 
       Text(this.directionCopy())
-        .fontSize(BWFont.bodySm)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.bodySm)
+        .fontColor(WAColor.ink2)
         .width('100%')
 
       Stack({ alignContent: Alignment.Start }) {
         Row()
           .width('100%')
           .height(5)
-          .backgroundColor(BWColor.line)
+          .backgroundColor(WAColor.line)
           .borderRadius(3)
 
         Row()
           .width((this.progressValue() * 100) + '%')
           .height(5)
-          .backgroundColor(BWColor.amber)
+          .backgroundColor(WAColor.amber)
           .borderRadius(3)
       }
       .width('100%')
       .margin({ top: 4 })
 
       Text('已走 ' + String(this.walkedMeters()) + ' 米 · 共 ' + String(this.totalMeters()) + ' 米')
-        .fontSize(BWFont.micro)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.micro)
+        .fontColor(WAColor.ink3)
         .width('100%')
     }
     .width('100%')
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, top: 18 })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding, top: 18 })
   }
 
   private walkedMeters(): number {
@@ -643,52 +643,52 @@ export struct JourneyView {
         Circle()
           .width(26)
           .height(26)
-          .fill(this.isClueUnlocked(index) ? '#292E7D78' : BWColor.paper2)
-          .stroke(this.isClueUnlocked(index) ? '#662E7D78' : BWColor.line)
+          .fill(this.isClueUnlocked(index) ? '#292E7D78' : WAColor.paper2)
+          .stroke(this.isClueUnlocked(index) ? '#662E7D78' : WAColor.line)
           .strokeWidth(1)
 
         if (this.isClueUnlocked(index)) {
           SymbolGlyph($r('sys.symbol.checkmark'))
-            .fontSize(BWFont.micro)
-            .fontColor([BWColor.teal])
+            .fontSize(WAFont.micro)
+            .fontColor([WAColor.teal])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         } else {
           Text(String(index + 1))
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
             .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.ink3)
+            .fontColor(WAColor.ink3)
         }
       }
 
       if (this.isClueUnlocked(index)) {
         Row({ space: 8 }) {
           SymbolGlyph($r('sys.symbol.checkmark_circle'))
-            .fontSize(BWFont.caption)
-            .fontColor([BWColor.teal])
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.teal])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-            .fontSize(BWFont.caption)
+            .fontSize(WAFont.caption)
           Text(this.clueText(index))
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink)
             .lineHeight(21)
             .layoutWeight(1)
         }
         .width('100%')
         .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-        .backgroundColor(BWColor.paper)
+        .backgroundColor(WAColor.paper)
         .borderRadius(18)
-        .border({ width: 1, color: BWColor.line, radius: 18 })
-        .shadow({ radius: 10, color: BWColor.shadowSoft, offsetX: 0, offsetY: 6 })
+        .border({ width: 1, color: WAColor.line, radius: 18 })
+        .shadow({ radius: 10, color: WAColor.shadowSoft, offsetX: 0, offsetY: 6 })
       } else {
         Row({ space: 8 }) {
           SymbolGlyph($r('sys.symbol.lock'))
-            .fontSize(BWFont.caption)
-            .fontColor([BWColor.ink3])
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.ink3])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-            .fontSize(BWFont.captionSm)
+            .fontSize(WAFont.captionSm)
           Text(this.lockedClueCopy(index))
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink3)
             .lineHeight(20)
             .layoutWeight(1)
         }
@@ -696,7 +696,7 @@ export struct JourneyView {
         .padding({ left: 14, right: 14, top: 12, bottom: 12 })
         .backgroundColor('#8CFBF4E9')
         .borderRadius(18)
-        .border({ width: 1, color: BWColor.line, style: BorderStyle.Dashed, radius: 18 })
+        .border({ width: 1, color: WAColor.line, style: BorderStyle.Dashed, radius: 18 })
       }
     }
     .width('100%')
@@ -708,12 +708,12 @@ export struct JourneyView {
     Column({ space: 12 }) {
       Row({ space: 8 }) {
         Text('线索')
-          .fontSize(BWFont.titleMd)
+          .fontSize(WAFont.titleMd)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Text(this.unlockedHintCountText())
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink3)
         Blank()
       }
       .width('100%')
@@ -726,7 +726,7 @@ export struct JourneyView {
       .width('100%')
     }
     .width('100%')
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, top: 16 })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding, top: 16 })
   }
 
   private unlockedHintCountText(): string {
@@ -741,28 +741,28 @@ export struct JourneyView {
   actionSection() {
     Column({ space: 8 }) {
       if (this.isArrived()) {
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: '揭晓盲盒',
           onTap: () => {
             this.beginArrival();
           }
         })
       } else if (this.snapshot.demoMode) {
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: '模拟步行 +50m',
           tag: '演示',
           onTap: () => {
             this.simulateWalk();
           }
         })
-        BwQuietButton({
+        WaQuietButton({
           title: '我到了',
           onTap: () => {
             this.arriveNow();
           }
         })
       } else {
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: '走累了？直接揭晓',
           tag: '兜底',
           onTap: () => {
@@ -770,8 +770,8 @@ export struct JourneyView {
           }
         })
         Text('位置没动？改用演示模式 ›')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)
           .onClick(() => {
@@ -781,8 +781,8 @@ export struct JourneyView {
     }
     .width('100%')
     .padding({
-      left: BWSize.pagePadding,
-      right: BWSize.pagePadding,
+      left: WASize.pagePadding,
+      right: WASize.pagePadding,
       top: 14,
       bottom: 18
     })
@@ -799,22 +799,22 @@ export struct JourneyView {
       this.actionSection()
     }
     .width('100%')
-    .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+    .constraintSize({ maxWidth: WASize.contentMaxWidth })
   }
 
   @Builder
   emptyBody() {
     Column({ space: 14 }) {
-      BwMicroLabel({ text: '盲盒进行中' })
+      WaMicroLabel({ text: '盲盒进行中' })
       Text('还没有正在进行的盲盒。')
-        .fontSize(BWFont.body)
+        .fontSize(WAFont.body)
         .fontWeight(FontWeight.Medium)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
       Text('让城市替你选一个。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
       Row() {
-        BwQuietButton({
+        WaQuietButton({
           title: '返回今日',
           onTap: () => {
             this.onBack();
@@ -834,7 +834,7 @@ export struct JourneyView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       if (this.session() === undefined) {
         this.emptyBody()
@@ -858,15 +858,15 @@ export struct JourneyView {
           Text('到了')
             .fontSize(46)
             .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.creamOnStage)
+            .fontColor(WAColor.creamOnStage)
           Text('这个地点，只为你亮一次。')
-            .fontSize(BWFont.bodySm)
-            .fontColor(BWColor.creamOnStageDim)
+            .fontSize(WAFont.bodySm)
+            .fontColor(WAColor.creamOnStageDim)
         }
         .width('100%')
         .height('100%')
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(BWColor.stage)
+        .backgroundColor(WAColor.stage)
         .opacity(this.flashOpacity)
       }
     }

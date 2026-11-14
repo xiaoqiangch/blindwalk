@@ -1,4 +1,4 @@
-/* 盲走 BlindWalk · Web 原型数据（零依赖，可直接 file:// 打开）
+/* 步迷 Walkaholic · Web 原型数据（零依赖，可直接 file:// 打开）
  * 地点 / 成就 / 动态 / 周榜 逐字镜像自：
  *   apple/Shared/Core/PlaceCatalog.swift
  *   apple/Shared/Core/AchievementEngine.swift
@@ -454,8 +454,8 @@
 
   /* MARK: - 成就（AchievementEngine.swift，与 design-system §5.8 一致） */
   var ACHIEVEMENTS = [
-    { id: 'first_box', name: '第一次拆盒', icon: '🎁', detail: '完成第 1 次盲走', target: 1 },
-    { id: 'walker_10', name: '城市漫游者', icon: '🚶', detail: '完成 10 次盲走', target: 10 },
+    { id: 'first_box', name: '第一次拆盒', icon: '🎁', detail: '完成第 1 次步迷', target: 1 },
+    { id: 'walker_10', name: '城市漫游者', icon: '🚶', detail: '完成 10 次步迷', target: 10 },
     { id: 'rare_first', name: '稀有体质', icon: '💎', detail: '首次获得稀有卡', target: 1 },
     { id: 'hidden_first', name: '挖到隐藏款', icon: '🗝️', detail: '首次获得隐藏卡', target: 1 },
     { id: 'early_bird', name: '早起的鸟', icon: '🌅', detail: '07:00 前到达', target: 1 },
@@ -463,7 +463,7 @@
     { id: 'streak_7', name: '七日不断', icon: '🔥', detail: '连续 7 天开盒', target: 7 },
     { id: 'together_1', name: '同频共振', icon: '📡', detail: '完成 1 次同频散步', target: 1 },
     { id: 'share_3', name: '分享欲', icon: '📣', detail: '发布 3 条动态', target: 3 },
-    { id: 'km_100', name: '盲走百公里', icon: '🧭', detail: '累计 100 km', target: 100 },
+    { id: 'km_100', name: '步迷百公里', icon: '🧭', detail: '累计 100 km', target: 100 },
     { id: 'bury_1', name: '埋下一颗', icon: '🌱', detail: '第一次给别人埋下惊喜', target: 1 },
     { id: 'seek_3', name: '寻光者', icon: '🔎', detail: '找到 3 个别人埋的惊喜', target: 3 },
     { id: 'found_5', name: '被找到的人', icon: '💌', detail: '你埋的惊喜被找到 5 次', target: 5 }
@@ -669,7 +669,7 @@
     }
   ];
 
-  window.BW_DATA = {
+  window.WA_DATA = {
     PLACES: PLACES,
     PLACE_MAP: PLACES.reduce(function (map, place) {
       map[place.id] = place;

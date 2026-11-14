@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 我的 Profile（design-system §5.7）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 我的 Profile（design-system §5.7）
  *
  * 视觉基准：prototype/web/app.js profileHTML + screenshots/showcase.png（PROFILE 屏）
  * 结构：我的 header → 等级卡 → 成就横滚 + 全部成就 → 设置列表 → 版本号
@@ -11,16 +11,16 @@
 import { AppSnapshot } from '../core/contract';
 import { Achievement } from '../core/types';
 import {
-  BwProgressBar,
-  BwStatsRow,
-  BwToastBar,
+  WaProgressBar,
+  WaStatsRow,
+  WaToastBar,
   StatItem
 } from '../components/Common';
 import { achievementsOf, emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
+  WAColor,
+  WAFont,
+  WASize,
   LevelInfo,
   levelInfo
 } from '../theme/Theme';
@@ -108,9 +108,9 @@ export struct ProfileView {
   header() {
     Row() {
       Text('我的')
-        .fontSize(BWFont.hero)
+        .fontSize(WAFont.hero)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
 
       Blank()
 
@@ -119,9 +119,9 @@ export struct ProfileView {
         .textAlign(TextAlign.Center)
         .width(44)
         .height(44)
-        .backgroundColor(BWColor.paper2)
+        .backgroundColor(WAColor.paper2)
         .borderRadius(22)
-        .border({ width: 1, color: BWColor.line, radius: 22 })
+        .border({ width: 1, color: WAColor.line, radius: 22 })
     }
     .width('100%')
   }
@@ -131,44 +131,44 @@ export struct ProfileView {
     Column({ space: 12 }) {
       Row() {
         Text('散步 Lv.' + this.level().level + ' · ' + this.level().name)
-          .fontSize(this.winWidth >= BWSize.wideBreakpoint ? BWFont.title : 20)
+          .fontSize(this.winWidth >= WASize.wideBreakpoint ? WAFont.title : 20)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .maxLines(1)
         Blank()
       }
       .width('100%')
 
       Column({ space: 6 }) {
-        BwProgressBar({
+        WaProgressBar({
           progress: this.level().progress,
-          barColor: BWColor.amber,
-          trackColor: BWColor.line,
+          barColor: WAColor.amber,
+          trackColor: WAColor.line,
           barHeight: 8
         })
 
         Row() {
           Text(this.level().into + ' / 800')
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
           Blank()
           Text('距离下一级 ' + (800 - this.level().into))
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
         }
         .width('100%')
       }
       .width('100%')
 
-      BwStatsRow({ items: this.statsItems(), roomy: true })
+      WaStatsRow({ items: this.statsItems(), roomy: true })
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(20)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-    .shadow({ radius: 16, color: BWColor.shadowSoft, offsetX: 0, offsetY: 10 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+    .shadow({ radius: 16, color: WAColor.shadowSoft, offsetX: 0, offsetY: 10 })
   }
 
   @Builder
@@ -179,18 +179,18 @@ export struct ProfileView {
         .textAlign(TextAlign.Center)
         .width(48)
         .height(48)
-        .backgroundColor(achievement.unlockedAt !== undefined ? BWColor.amberSoftStrong : BWColor.paper2)
-        .borderRadius(BWSize.cardRadius)
+        .backgroundColor(achievement.unlockedAt !== undefined ? WAColor.amberSoftStrong : WAColor.paper2)
+        .borderRadius(WASize.cardRadius)
         .border({
           width: 1,
-          color: achievement.unlockedAt !== undefined ? BWColor.amberBorder : BWColor.line,
+          color: achievement.unlockedAt !== undefined ? WAColor.amberBorder : WAColor.line,
           radius: 24
         })
         .opacity(achievement.unlockedAt !== undefined ? 1 : 0.55)
 
       Text(achievement.name)
-        .fontSize(BWFont.microSm)
-        .fontColor(achievement.unlockedAt !== undefined ? BWColor.ink2 : BWColor.ink3)
+        .fontSize(WAFont.microSm)
+        .fontColor(achievement.unlockedAt !== undefined ? WAColor.ink2 : WAColor.ink3)
         .maxLines(1)
         .width(64)
         .textAlign(TextAlign.Center)
@@ -206,17 +206,17 @@ export struct ProfileView {
     Column({ space: 12 }) {
       Row() {
         Text('成就')
-          .fontSize(BWFont.titleMd)
+          .fontSize(WAFont.titleMd)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Blank()
         Row({ space: 2 }) {
           Text('全部成就')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.amberDeep)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.amberDeep)
           Text('›')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.amberDeep)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.amberDeep)
         }
         .onClick(() => {
           this.onOpenAchievements();
@@ -244,12 +244,12 @@ export struct ProfileView {
   settingRow(title: string, danger: boolean) {
     Row({ space: 12 }) {
       Text(title)
-        .fontSize(BWFont.bodySm)
-        .fontColor(danger ? BWColor.ember : BWColor.ink)
+        .fontSize(WAFont.bodySm)
+        .fontColor(danger ? WAColor.ember : WAColor.ink)
       Blank()
       Text('›')
-        .fontSize(BWFont.caption)
-        .fontColor(danger ? '#99D25C3A' : BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(danger ? '#99D25C3A' : WAColor.ink3)
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
@@ -270,37 +270,37 @@ export struct ProfileView {
     Row({ space: 12 }) {
       Stack({ alignContent: Alignment.Center }) {
         SymbolGlyph($r('sys.symbol.' + (this.accountLabel === '未登录' ? 'info_circle' : 'person')))
-          .fontSize(BWSize.iconSizeSm)
-          .fontColor([BWColor.amber])
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.amber])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
       }
       .width(38)
       .height(38)
-      .backgroundColor(BWColor.amberSoft)
+      .backgroundColor(WAColor.amberSoft)
       .borderRadius(12)
 
       Column({ space: 2 }) {
         Text(this.accountLabel === '未登录' ? '登录 / 注册账号' : '已登录 · ' + this.accountLabel)
-          .fontSize(BWFont.bodySm)
+          .fontSize(WAFont.bodySm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Text(this.accountLabel === '未登录' ? '把卡片和进度存到云端，换手机也不丢（可选）' : '进度已可跨设备同步 · 点这里管理')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .maxLines(2)
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       Text('›')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .backgroundColor('#F2EEF1FF')
     .borderRadius(16)
-    .border({ width: 1, color: BWColor.line })
+    .border({ width: 1, color: WAColor.line })
     .alignItems(VerticalAlign.Center)
     .onClick(() => {
       this.onOpenAccount();
@@ -312,11 +312,11 @@ export struct ProfileView {
     Column({ space: 0 }) {
       Row({ space: 12 }) {
         Text('音效')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
         Blank()
         Toggle({ type: ToggleType.Switch, isOn: this.soundOn })
-          .selectedColor(BWColor.amberDeep)
+          .selectedColor(WAColor.amberDeep)
           .onChange((isOn: boolean) => {
             this.soundOn = isOn;
           })
@@ -324,37 +324,37 @@ export struct ProfileView {
       .width('100%')
       .padding({ left: 16, right: 16, top: 9, bottom: 9 })
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       Row({ space: 12 }) {
         Text('触感')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
         Blank()
         Toggle({ type: ToggleType.Switch, isOn: this.hapticOn })
-          .selectedColor(BWColor.amberDeep)
+          .selectedColor(WAColor.amberDeep)
           .onChange((isOn: boolean) => {
             this.hapticOn = isOn;
           })
       }
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       Row({ space: 12 }) {
         Column({ space: 2 }) {
           Text('地图跟随我转身')
-            .fontSize(BWFont.bodySm)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.bodySm)
+            .fontColor(WAColor.ink)
           Text(this.mapFollowsHeading ? '开 · 转身地图会转' : '关 · 地图固定北朝上')
-            .fontSize(BWFont.micro)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.micro)
+            .fontColor(WAColor.ink3)
         }
         .alignItems(HorizontalAlign.Start)
 
         Blank()
 
         Toggle({ type: ToggleType.Switch, isOn: this.mapFollowsHeading })
-          .selectedColor(BWColor.amberDeep)
+          .selectedColor(WAColor.amberDeep)
           .onChange((isOn: boolean) => {
             this.mapFollowsHeading = isOn;
           })
@@ -362,20 +362,20 @@ export struct ProfileView {
       .width('100%')
       .padding({ left: 16, right: 16, top: 9, bottom: 9 })
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       // 数据源（parity.md §1：Key 后台统一下发，这里只展示状态）
       Row({ space: 12 }) {
         Text('数据源')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
         Blank()
         Text('高德 / 百度 / OSM / 维基')
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ink3)
         Text('›')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink3)
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 14, bottom: 14 })
@@ -383,22 +383,22 @@ export struct ProfileView {
         this.onOpenDataSource();
       })
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       this.settingRow('隐私与安全', false)
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       this.settingRow('清除演示数据', true)
 
-      Divider().strokeWidth(1).color(BWColor.line)
+      Divider().strokeWidth(1).color(WAColor.line)
 
       this.settingRow('关于', false)
     }
     .width('100%')
-    .backgroundColor(BWColor.paperTranslucent)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .backgroundColor(WAColor.paperTranslucent)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
   }
 
   @Builder
@@ -407,52 +407,52 @@ export struct ProfileView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.scrim)
+        .backgroundColor(WAColor.scrim)
         .onClick(() => {
           this.modal = '';
         })
 
       Column({ space: 12 }) {
-        Text(this.modal === 'privacy' ? '隐私与安全' : '关于盲走')
-          .fontSize(BWFont.titleMd)
+        Text(this.modal === 'privacy' ? '隐私与安全' : '关于步迷')
+          .fontSize(WAFont.titleMd)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .width('100%')
 
         Text(this.modal === 'privacy'
           ? '位置只在本地判断距离，不上传；照片与卡片都留在你的手机里。目的地在你到达前不会显示。'
-          : '步谜 StepRiddle 0.3 · 原型\n不看见终点，才看得见路。')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink2)
+          : '步迷 Walkaholic 0.3 · 原型\n不看见终点，才看得见路。')
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink2)
           .lineHeight(22)
           .width('100%')
 
         Button() {
           Text('知道了')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink)
         }
         .type(ButtonType.Capsule)
         .height(40)
         .width('100%')
-        .backgroundColor(BWColor.amber)
+        .backgroundColor(WAColor.amber)
         .onClick(() => {
           this.modal = '';
         })
       }
       .width('100%')
       .padding(20)
-      .backgroundColor(BWColor.paper)
-      .borderRadius(BWSize.cardRadius)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-      .shadow({ radius: 24, color: BWColor.shadowLift, offsetX: 0, offsetY: 16 })
+      .backgroundColor(WAColor.paper)
+      .borderRadius(WASize.cardRadius)
+      .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+      .shadow({ radius: 24, color: WAColor.shadowLift, offsetX: 0, offsetY: 16 })
     }
     .width('100%')
     .height('100%')
   }
 
   private isWide(): boolean {
-    return this.winWidth >= BWSize.wideBreakpoint;
+    return this.winWidth >= WASize.wideBreakpoint;
   }
 
   build() {
@@ -460,7 +460,7 @@ export struct ProfileView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       Scroll() {
         Column({ space: 0 }) {
@@ -519,18 +519,18 @@ export struct ProfileView {
             .width('100%')
           }
 
-          Text('步谜 StepRiddle · 原型')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink3)
+          Text('步迷 Walkaholic · 原型')
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink3)
             .width('100%')
             .textAlign(TextAlign.Center)
             .margin({ top: 22, bottom: 12 })
         }
         .width('100%')
-        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8,
           bottom: 20
         })
@@ -542,7 +542,7 @@ export struct ProfileView {
 
       if (this.toastText.length > 0) {
         Column() {
-          BwToastBar({ text: this.toastText, iconName: 'heart_fill' })
+          WaToastBar({ text: this.toastText, iconName: 'heart_fill' })
         }
         .width('100%')
         .height('100%')

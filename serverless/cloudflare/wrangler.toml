@@ -1,12 +1,12 @@
-# 步谜 · 账号服务（Cloudflare Workers + D1）
+# 步迷 · 账号服务（Cloudflare Workers + D1）
 # 部署步骤见 README.md
-name = "bumia-account"
+name = "walkaholic-account"
 main = "worker.mjs"
 compatibility_date = "2026-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "bumia_account"
+database_name = "walkaholic_account"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 [vars]

@@ -2,16 +2,16 @@
 // 在服务器上把 nginx 配置补齐（幂等）：
 // 1) 443 的 server 里加 listen 8443 ssl（备用端口）
 // 2) 80 的 server 里加 /check（手机自检页，HTTP 直接可开，不跳转）
-// 用法（服务器上）：node /opt/blindwalk/scripts/patch-nginx.mjs
+// 用法（服务器上）：node /opt/walkaholic/scripts/patch-nginx.mjs
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 
-const CONF = '/etc/nginx/sites-available/blindwalk';
+const CONF = '/etc/nginx/sites-available/walkaholic';
 if (!existsSync(CONF)) {
   console.error('找不到 nginx 配置:', CONF);
   process.exit(1);
 }
 let s = readFileSync(CONF, 'utf8');
-copyFileSync(CONF, '/tmp/blindwalk.nginx.bak');
+copyFileSync(CONF, '/tmp/walkaholic.nginx.bak');
 let changed = [];
 
 // 1) 备用端口 8443
@@ -24,13 +24,13 @@ if (!/listen 8443/.test(s)) {
 if (!/location \^~ \/\.well-known\/acme-challenge\//.test(s) || !/location = \/check/.test(s)) {
   const checkBlock = `    # ACME 续期验证：必须在 301 之前放行，否则 certbot renew 会失败
     location ^~ /.well-known/acme-challenge/ {
-        root /opt/blindwalk/web;
+        root /opt/walkaholic/web;
         default_type "text/plain";
     }
 
     # 手机自检页：HTTP 也可打开（诊断 HTTPS 为何失败）
     location = /check {
-        root /opt/blindwalk/web;
+        root /opt/walkaholic/web;
         try_files /check.html =404;
         add_header Cache-Control "no-store" always;
     }

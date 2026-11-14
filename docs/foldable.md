@@ -74,14 +74,14 @@ public static func isShort(_ height: CGFloat) -> Bool
 ## 3.1 怎么看效果（四种方式）
 
 ### 方式 A：并排预览页（最快，浏览器打开即可）
-👉 **https://xiaoqiangch.github.io/blindwalk/duo-preview.html**
+👉 **https://xiaoqiangch.github.io/walkaholic/duo-preview.html**
 
 同一份数据、两套尺寸并排：折叠 466×678 / 展开 669×951。
 **iframe 里是真实运行的应用**（不是截图），顶部可切换页面（首页 / 抽盒 / 旅程 / 图鉴 / 我的），两边同步跳转。
 本地文件：`prototype/web/duo-preview.html`；截图：`screenshots/duo-preview/`。
 
 ### 方式 B：在 iPhone Duo 真机上
-浏览器直接打开 https://xiaoqiangch.github.io/blindwalk/ ，折叠/展开时自动切布局。
+浏览器直接打开 https://xiaoqiangch.github.io/walkaholic/ ，折叠/展开时自动切布局。
 （SW 有缓存，新版需下拉刷新一次；「我的」页标题旁有版本号可核对。）
 
 ### 方式 C：Mac 浏览器模拟

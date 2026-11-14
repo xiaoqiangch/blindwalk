@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 附近兴趣点发现
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 附近兴趣点发现
  *
  * 用途：图鉴「附近的兴趣点」区块。把多数据源 POI 列表转成 Place，
  * 供 UI 展示「未知用 ? + 类别 + 距离」并支持点击开始探索。

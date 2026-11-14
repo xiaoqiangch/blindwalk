@@ -71,7 +71,7 @@
 - 「你」的箭头：屏幕角度 = 设备朝向 − 地图朝上方向（跟随模式恒为 0）
 
 Web：旅程页路径卡左上角胶囊可点击快速切换（`data-action="toggle-map-orientation"`），
-「我的 → 地图跟随我转身」有开关；iOS：`@AppStorage("bw.mapFollowsHeading")`；
+「我的 → 地图跟随我转身」有开关；iOS：`@AppStorage("wa.mapFollowsHeading")`；
 鸿蒙：`@StorageLink('mapFollowsHeading')` + `PersistentStorage.persistProp`。
 
 ## 4. 账号（三端一致）
@@ -88,7 +88,7 @@ Web：旅程页路径卡左上角胶囊可点击快速切换（`data-action="tog
 
 ## 6. 名称
 
-用户可见名：**步谜**（英文 StepRiddle）。内部代号 BlindWalk 不变。
+用户可见名：**步迷**（英文 Walkaholic）。内部代号 Walkaholic 不变。
 
 ## 7. 演示模式
 

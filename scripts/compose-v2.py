@@ -19,7 +19,7 @@ rows = (len(ENTRIES)+cols-1)//cols
 W = margin*2 + cols*tw + (cols-1)*gap
 H = header + margin + rows*(th+40) + margin
 c = Image.new("RGB",(W,H),BG); d = ImageDraw.Draw(c)
-d.text((margin,30),"盲走 BlindWalk · v0.2",font=font(38),fill=INK)
+d.text((margin,30),"步迷 Walkaholic · v0.2",font=font(38),fill=INK)
 d.text((margin+2,82),"iOS 原生 · 真实 GPS 旅程 + 手表同步 + UI 对齐 Web 原型（iPhone 18 Pro 模拟器）",font=font(17),fill=INK2)
 d.rectangle([(W-margin-86,38),(W-margin,64)],fill=AMBER)
 for i,(n,label) in enumerate(ENTRIES):

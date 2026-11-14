@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 真实地点搜索编排（三档放宽）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 真实地点搜索编排（三档放宽）
  *
  * 移植自 prototype/web/app.js 的 `searchAttempt` / `finishReal` / `failSearch`，
  * 严格按 docs/parity.md §1 + §2：
@@ -22,7 +22,7 @@ import { nearby } from './providers';
 import { makeRealPlace, realCategoryFromKey } from './catalog';
 
 /** 公网策展数据地址（后台导出 → GitHub Pages；与 Web/iOS 三端同源） */
-export const CURATED_URL: string = 'https://xiaoqiangch.github.io/blindwalk/pois.json';
+export const CURATED_URL: string = 'https://xiaoqiangch.github.io/walkaholic/pois.json';
 export const CURATED_TIMEOUT_MS: number = 3500;
 /** 策展数据缓存有效期：6 小时（人工审核过的数据变化慢） */
 export const CURATED_CACHE_TTL_MS: number = 6 * 3600 * 1000;

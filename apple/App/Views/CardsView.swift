@@ -4,7 +4,7 @@ import SwiftUI
 
 struct CardsView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
     @State private var filter: CardFilter = .all
     @State private var selectedPlace: Place?
@@ -41,7 +41,7 @@ struct CardsView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -51,7 +51,7 @@ struct CardsView: View {
                     filterRow.padding(.bottom, 15)
                     grid
                 }
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
                 .padding(.top, 6)
                 .padding(.bottom, 24)
             }
@@ -71,13 +71,13 @@ struct CardsView: View {
             )
         }
         .toolbar(.hidden, for: .navigationBar)
-        .bwTabBarChrome()
-        .bwTypeBounds()
-        .animation(BWAnimation.regular, value: selectedPlace?.id)
+        .waTabBarChrome()
+        .waTypeBounds()
+        .animation(WAAnimation.regular, value: selectedPlace?.id)
         .onAppear {
-            // 仅用于截图/演示：`BW_PREVIEW_DETAIL=1` 打开第一张已收集卡的详情
-            guard ProcessInfo.processInfo.environment["BW_PREVIEW_DETAIL"] == "1", selectedPlace == nil else { return }
-            bwAfter(0.5) {
+            // 仅用于截图/演示：`WA_PREVIEW_DETAIL=1` 打开第一张已收集卡的详情
+            guard ProcessInfo.processInfo.environment["WA_PREVIEW_DETAIL"] == "1", selectedPlace == nil else { return }
+            waAfter(0.5) {
                 selectedPlace = allPlaces.first { collectedIDs.contains($0.id) }
             }
         }
@@ -126,11 +126,11 @@ struct CardsView: View {
             HStack(spacing: 8) {
                 Text("附近的惊喜")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                 Spacer(minLength: 0)
                 Text(list.isEmpty ? "这一带暂时没有" : "\(list.count) 个还没被找到")
                     .font(.system(size: 12))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
             .padding(.bottom, 10)
 
@@ -144,17 +144,17 @@ struct CardsView: View {
                         Text("这一带还没人埋过，你来第一个")
                             .font(.system(size: 13, weight: .medium))
                     }
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(BWTheme.paper)
-                    .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                    .background(WATheme.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                            .stroke(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                            .stroke(WATheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     )
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(list.enumerated()), id: \.element.id) { index, surprise in
@@ -166,40 +166,40 @@ struct CardsView: View {
                                 Text(surprise.authorEmoji)
                                     .font(.system(size: 15))
                                     .frame(width: 32, height: 32)
-                                    .background(BWTheme.paper2)
+                                    .background(WATheme.paper2)
                                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(distanceBucket(store.lastKnownOrigin.map { GeoMath.distance(from: $0, to: surprise.location) }))
                                         .font(.system(size: 14, weight: .medium))
-                                        .foregroundStyle(BWTheme.ink)
+                                        .foregroundStyle(WATheme.ink)
                                     Text(atmosphere(for: surprise))
                                         .font(.system(size: 12.5))
-                                        .foregroundStyle(BWTheme.ink3)
+                                        .foregroundStyle(WATheme.ink3)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
                                 }
                                 Spacer(minLength: 0)
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(BWTheme.ink3)
+                                    .foregroundStyle(WATheme.ink3)
                             }
                             .padding(.vertical, 11)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(BWPressEffectStyle())
+                        .buttonStyle(WAPressEffectStyle())
 
                         if index < list.count - 1 {
-                            BWHairline()
+                            WAHairline()
                         }
                     }
                 }
                 .padding(.horizontal, 14)
-                .background(BWTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+                .background(WATheme.paper)
+                .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                        .stroke(WATheme.line, lineWidth: 1)
                 )
             }
         }
@@ -210,8 +210,8 @@ struct CardsView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Text("回忆册")
-                .font(BWType.pageTitle())
-                .foregroundStyle(BWTheme.ink)
+                .font(WAType.pageTitle())
+                .foregroundStyle(WATheme.ink)
 
             Spacer(minLength: 0)
 
@@ -226,11 +226,11 @@ struct CardsView: View {
             } label: {
                 Image(systemName: "line.3.horizontal.decrease")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
                     .frame(width: 34, height: 34)
-                    .background(BWTheme.paper)
+                    .background(WATheme.paper)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                    .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
             }
             .accessibilityLabel("筛选")
         }
@@ -253,19 +253,19 @@ struct CardsView: View {
     private func statPiece(_ label: String, _ value: String) -> some View {
         HStack(spacing: 3) {
             Text(label)
-                .font(BWType.body(12.5))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.body(12.5))
+                .foregroundStyle(WATheme.ink3)
             Text(value)
                 .font(.system(size: 12.5, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
         }
     }
 
     private var dot: some View {
         Text("·")
-            .font(BWType.body(12.5))
-            .foregroundStyle(BWTheme.ink3)
+            .font(WAType.body(12.5))
+            .foregroundStyle(WATheme.ink3)
     }
 
     // MARK: 筛选 chips
@@ -273,8 +273,8 @@ struct CardsView: View {
     private var filterRow: some View {
         HStack(spacing: 8) {
             ForEach(CardFilter.allCases) { item in
-                BWPill(title: item.rawValue, selected: filter == item) {
-                    withAnimation(BWAnimation.quick) {
+                WAPill(title: item.rawValue, selected: filter == item) {
+                    withAnimation(WAAnimation.quick) {
                         filter = item
                     }
                 }
@@ -295,7 +295,7 @@ struct CardsView: View {
                 } label: {
                     cardCell(place)
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
                 .disabled(!collectedIDs.contains(place.id))
             }
         }
@@ -314,7 +314,7 @@ struct CardsView: View {
 
                 Text(place.name)
                     .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
                     .fixedSize(horizontal: false, vertical: true)
@@ -324,38 +324,38 @@ struct CardsView: View {
 
                 HStack(alignment: .center, spacing: 0) {
                     if let card {
-                        Text(BWFormat.compactDate(card.collectedAt))
+                        Text(WAFormat.compactDate(card.collectedAt))
                             .font(.system(size: 11))
                             .monospacedDigit()
-                            .foregroundStyle(BWTheme.ink3)
+                            .foregroundStyle(WATheme.ink3)
                     }
                     Spacer(minLength: 0)
-                    BWRarityDot(rarity: place.rarity)
+                    WARarityDot(rarity: place.rarity)
                 }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .aspectRatio(0.8, contentMode: .fit)
-            .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
         } else {
             VStack(spacing: 6) {
                 Image(systemName: "lock")
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                 Text("未解锁")
                     .font(.system(size: 11.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .aspectRatio(0.8, contentMode: .fit)
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .strokeBorder(WATheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             )
         }
     }
@@ -364,7 +364,7 @@ struct CardsView: View {
 
     private func detailOverlay(_ place: Place) -> some View {
         ZStack {
-            BWTheme.ink.opacity(0.38)
+            WATheme.ink.opacity(0.38)
                 .ignoresSafeArea()
                 .onTapGesture {
                     selectedPlace = nil
@@ -373,9 +373,9 @@ struct CardsView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top) {
-                        BWMicroLabel("图鉴 · \(BWFormat.areaName(place.area))")
+                        WAMicroLabel("图鉴 · \(WAFormat.areaName(place.area))")
                         Spacer(minLength: 8)
-                        BWRarityBadge(rarity: place.rarity)
+                        WARarityBadge(rarity: place.rarity)
                     }
                     .padding(.bottom, 16)
 
@@ -384,32 +384,32 @@ struct CardsView: View {
                             .font(.system(size: 38))
                         Text(place.name)
                             .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(BWTheme.ink)
+                            .foregroundStyle(WATheme.ink)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                         if let card = store.card(for: place.id) {
-                            Text("\(card.serialDisplay) · \(BWFormat.shortDate(card.collectedAt))")
-                                .font(BWType.caption(12))
+                            Text("\(card.serialDisplay) · \(WAFormat.shortDate(card.collectedAt))")
+                                .font(WAType.caption(12))
                                 .monospacedDigit()
-                                .foregroundStyle(BWTheme.ink3)
+                                .foregroundStyle(WATheme.ink3)
                         }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 16)
 
-                    BWHairline()
+                    WAHairline()
 
                     VStack(alignment: .leading, spacing: 6) {
-                        BWMicroLabel("为什么是这里")
+                        WAMicroLabel("为什么是这里")
                         Text(place.why)
                             .font(.system(size: 14))
-                            .foregroundStyle(BWTheme.ink2)
+                            .foregroundStyle(WATheme.ink2)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 14)
 
-                    BWHairline()
+                    WAHairline()
 
                     taskView(place)
                         .padding(.top, 14)
@@ -419,22 +419,22 @@ struct CardsView: View {
                             selectedPlace = nil
                         } label: {
                             Text("关闭")
-                                .font(BWType.cta(14.5))
-                                .foregroundStyle(BWTheme.ink)
+                                .font(WAType.cta(14.5))
+                                .foregroundStyle(WATheme.ink)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 46)
-                                .background(BWTheme.paper2)
+                                .background(WATheme.paper2)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
-                        .buttonStyle(BWPressEffectStyle())
+                        .buttonStyle(WAPressEffectStyle())
                     }
                     .padding(.top, 16)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
                 .padding(.bottom, 20)
-                .background(BWTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: BWTheme.panelRadius, style: .continuous))
+                .background(WATheme.paper)
+                .clipShape(RoundedRectangle(cornerRadius: WATheme.panelRadius, style: .continuous))
                 .frame(maxWidth: 322)
                 .padding(.horizontal, 26)
                 .padding(.vertical, 40)
@@ -451,26 +451,26 @@ struct CardsView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checklist")
                         .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(BWTheme.ink3)
-                    BWMicroLabel("小任务")
+                        .foregroundStyle(WATheme.ink3)
+                    WAMicroLabel("小任务")
                 }
                 Text(place.task)
                     .font(.system(size: 13.5))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let card = store.card(for: place.id) {
                     Text(card.taskDone ? "已完成" : "还没打卡 · 下次再去补上")
                         .font(.system(size: 12))
-                        .foregroundStyle(card.taskDone ? BWTheme.teal : BWTheme.ink3)
+                        .foregroundStyle(card.taskDone ? WATheme.teal : WATheme.ink3)
                 }
             }
             Spacer(minLength: 0)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper2)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
+        .background(WATheme.paper2)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous))
     }
 
     // MARK: 数据

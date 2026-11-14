@@ -5,16 +5,16 @@
 ## 1. 构建
 
 ```bash
-xcodebuild -project apple/BlindWalk.xcodeproj -scheme BlindWalk \
+xcodebuild -project apple/Walkaholic.xcodeproj -scheme Walkaholic \
   -destination 'platform=iOS Simulator,id=34802F5B-…' \
-  -derivedDataPath /tmp/bw-dd-t4 CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath /tmp/wa-dd-t4 CODE_SIGNING_ALLOWED=NO build
 → ** BUILD SUCCEEDED **
 ```
 
 > ⚠️ 踩坑记录：**不要重新跑 `xcodegen generate`**。xcodegen 2.44.1 生成的工程里
 > `PRODUCT_NAME` 为空、`SUPPORTED_PLATFORMS` 落到 `macosx`，导致
 > "iPhone's iOS platform doesn't match .app's supported platforms"。
-> 用 git 里的 pbxproj（`git checkout -- apple/BlindWalk.xcodeproj/`）可直接构建。
+> 用 git 里的 pbxproj（`git checkout -- apple/Walkaholic.xcodeproj/`）可直接构建。
 
 ## 2. 页面走查（截图 `screenshots/ios-test/`）
 

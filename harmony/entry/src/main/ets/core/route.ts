@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 步行路线（Valhalla）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 步行路线（Valhalla）
  *
  * 移植自 prototype/web/geo.js 的 fetchRoute / decodePolyline6 / routeProgress。
  * 用途：迷雾路径视图需要「沿路线的折线」，而不是直线。
@@ -216,7 +216,7 @@ export async function fetchWalkingRoute(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'BlindWalk-Harmony/0.7 (https://github.com/xiaoqiangch/blindwalk)',
+        'User-Agent': 'Walkaholic-Harmony/0.7 (https://github.com/xiaoqiangch/walkaholic)',
         'Accept': 'application/json'
       },
       body: JSON.stringify(body),

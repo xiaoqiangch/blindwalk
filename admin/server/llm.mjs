@@ -1,7 +1,7 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — 大模型客户端 + 离线规则降级
+ * 步迷 Walkaholic · 兴趣点管理后台 — 大模型客户端 + 离线规则降级
  *
- * - OpenAI 兼容：POST {BW_LLM_BASE_URL}/chat/completions，Authorization: Bearer
+ * - OpenAI 兼容：POST {WA_LLM_BASE_URL}/chat/completions，Authorization: Bearer
  * - 提示词要求严格 JSON；解析时去掉 ```json 包裹、截取首个 { 到最后一个 }
  * - 超时 30s；失败重试 1 次；仍失败则降级离线规则（mode: "offline"）
  * - 没有 API Key 时**绝不假装 AI**：normalize/analyze 用真实可用的类别模板与规则；
@@ -30,9 +30,9 @@ const OFFLINE_MODEL = 'offline-rules';
 
 /** 读取环境变量配置（测试可传入 env） */
 export function resolveConfig(env = process.env) {
-  const baseUrl = String(env.BW_LLM_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, '');
-  const apiKey = String(env.BW_LLM_API_KEY || '').trim();
-  const model = String(env.BW_LLM_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
+  const baseUrl = String(env.WA_LLM_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, '');
+  const apiKey = String(env.WA_LLM_API_KEY || '').trim();
+  const model = String(env.WA_LLM_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
   return { baseUrl, apiKey, model };
 }
 
@@ -76,7 +76,7 @@ export function extractJson(text) {
 export async function chatCompletion(messages, options = {}) {
   const config = options.config || resolveConfig(options.env || process.env);
   if (!config.apiKey) {
-    throw new PoiError('需要配置 BW_LLM_API_KEY', 'LLM_UNAVAILABLE', 400);
+    throw new PoiError('需要配置 WA_LLM_API_KEY', 'LLM_UNAVAILABLE', 400);
   }
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw new Error('当前 Node 没有可用的 fetch');
@@ -154,7 +154,7 @@ export async function callLlmJson(messages, options = {}) {
 // ============================================================
 
 const SYSTEM_PROMPT = [
-  '你是「盲走 BlindWalk」的地点文案编辑。盲走是一个散步盲盒 App：用户抽一个目的地，',
+  '你是「步迷 Walkaholic」的地点文案编辑。步迷是一个散步盲盒 App：用户抽一个目的地，',
   '出发前只知道距离、方向和随距离解锁的线索；到了才揭晓地点名。',
   '所以：线索（hints）里绝对不能出现地点名称，连名称的前两个字都不行；也不能出现地址、店招。',
   '语气温柔、轻微诗意、有一点点坏笑；短句，不卖萌，不喊口号。',
@@ -216,7 +216,7 @@ export function buildAnalyzeMessages(poi) {
     {
       role: 'user',
       content: [
-        '请评估这个地点适不适合作为「盲走」的盲盒目的地，只输出 JSON：',
+        '请评估这个地点适不适合作为「步迷」的盲盒目的地，只输出 JSON：',
         '{ "safety": { "score": 1-5 的整数（越高越安全）,',
         '              "walkable": true/false（是否适合步行到达）,',
         '              "crowded": "low|medium|high",',
@@ -394,7 +394,7 @@ export async function editPoi(poi, instruction, options = {}) {
   const config = options.config || resolveConfig(options.env || process.env);
   if (!config.apiKey) {
     throw new PoiError(
-      'AI 编辑需要配置 BW_LLM_API_KEY（当前为离线规则模式）',
+      'AI 编辑需要配置 WA_LLM_API_KEY（当前为离线规则模式）',
       'LLM_UNAVAILABLE',
       400
     );

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 迷雾路径几何（parity.md §3）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 迷雾路径几何（parity.md §3）
  *
  * 为什么单独抽一个纯 TS 文件：Canvas 绘制只能在真机/DevEco 里看效果，
  * 但「窗口取哪一段、每段透明度多少、箭头画在哪、指北针转多少度」这些

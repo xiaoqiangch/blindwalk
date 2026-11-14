@@ -8,7 +8,7 @@
 
 ## 1. 目标
 
-给「盲走 BlindWalk」的兴趣点（POI）建一个**可管理的数据后台**：
+给「步迷 Walkaholic」的兴趣点（POI）建一个**可管理的数据后台**：
 
 1. **收集整理**：按坐标+半径从公开数据（中文维基百科 / OpenStreetMap）抓候选，落成草稿
 2. **编辑处理**：人工编辑字段；也可让大模型改写文案、生成线索、补任务
@@ -100,7 +100,7 @@
 | `POST /api/auth/logout` | 清除会话，返回 `{ "ok": true }` |
 
 规则：
-- 密码来源：环境变量 `BW_ADMIN_PASSWORD`；未设置时**首次启动**生成随机密码写入 `admin/data/admin.secret.json`（文件权限 0600）并在启动日志打印一次
+- 密码来源：环境变量 `WA_ADMIN_PASSWORD`；未设置时**首次启动**生成随机密码写入 `admin/data/admin.secret.json`（文件权限 0600）并在启动日志打印一次
 - 密码哈希：`node:crypto` 的 `scrypt`，每个密码独立 salt；**不存明文**
 - 会话：随机 32 字节 token，`HttpOnly; SameSite=Strict; Path=/`，有效期 12 小时；持久化到 `admin/data/sessions.json`（重启不丢）
 - 本地 http 调试时 Cookie **不加 `Secure`**；部署到 HTTPS 时应在反代或代码里补 `Secure`（见 docs/SECURITY.md）
@@ -112,7 +112,7 @@
 ## 3.2 存储（v2 改为 SQLite）
 
 - 使用 **Node 内置 `node:sqlite`**（`DatabaseSync`），仍然零 npm 依赖
-- 文件：`admin/data/blindwalk.db`；`PRAGMA journal_mode=WAL`
+- 文件：`admin/data/walkaholic.db`；`PRAGMA journal_mode=WAL`
 - 表：`pois`（字段同 §2，`tags`/`safety`/`llm` 用 JSON 文本列）、`meta`（schema 版本）、`sessions`（预留，v2 未使用）
 - **会话权威存储是 `admin/data/sessions.json`**（§3.1）；SQLite 的 `sessions` 表只是预留，不要写它
 - **自动迁移**：首次启动若存在 `admin/data/pois.json` 且库为空 → 全量导入并备份为 `pois.json.migrated-<ts>`
@@ -174,7 +174,7 @@ POST /api/llm/analyze-all body: { "status": "draft" }           → { "analyzed"
 GET /api/llm/status
 → { "mode": "llm" | "offline", "model": "deepseek-chat", "baseUrl": "https://api.deepseek.com/v1", "ready": true }
 ```
-- 环境变量：`BW_LLM_BASE_URL`、`BW_LLM_API_KEY`、`BW_LLM_MODEL`
+- 环境变量：`WA_LLM_BASE_URL`、`WA_LLM_API_KEY`、`WA_LLM_MODEL`
 - **无 Key 时 `model` 返回 `"offline-rules"`**（不是配置里的模型名），避免让人误以为模型在跑
 - **`ready` 的语义**：表示「服务端可以响应请求」，**不代表模型可用**；
   判断是否用真模型一律看 `mode`（`ready` 在离线时也可能为 `true`）
@@ -237,7 +237,7 @@ GET /api/stats
 
 不能用「假装 AI」。没有 key 时：
 - `normalize`：按类别模板补齐 `why/task/hints`（复用 `prototype/web/geo.js` 的 CATEGORY_META / HINTS 思路），返回 `mode: "offline"`
-- `edit`：返回 400 `LLM_UNAVAILABLE`，并提示「需要配置 BW_LLM_API_KEY」
+- `edit`：返回 400 `LLM_UNAVAILABLE`，并提示「需要配置 WA_LLM_API_KEY」
 - `analyze`：用规则打分（有图片 +1、类别是公园/河岸 +1、hints 含地名 -3、缺 why/task -1），`verdict` 按分数给出
 - UI 必须显式标注「离线规则模式（未配置大模型）」，让用户知道这不是模型输出
 
@@ -263,9 +263,9 @@ node server/index.mjs          # → http://127.0.0.1:8802/admin
 
 可选环境变量：
 ```bash
-BW_LLM_BASE_URL=https://api.deepseek.com/v1
-BW_LLM_API_KEY=sk-xxxx
-BW_LLM_MODEL=deepseek-chat
+WA_LLM_BASE_URL=https://api.deepseek.com/v1
+WA_LLM_API_KEY=sk-xxxx
+WA_LLM_MODEL=deepseek-chat
 PORT=8802
 ```
 
@@ -290,7 +290,7 @@ PORT=8802
 
 - [ ] 「＋ 新建空白 POI」入口（契约已支持 `POST /api/pois`，界面暂缺）
 - [ ] 批量通过/拒绝改批量端点（当前逐条 PUT，量小无所谓）
-- [ ] 真实大模型联调（需配置 `BW_LLM_API_KEY`）
+- [ ] 真实大模型联调（需配置 `WA_LLM_API_KEY`）
 
 ## 9. 实现状态（2026-11-09）
 
@@ -300,4 +300,4 @@ PORT=8802
 | 管理界面（三栏 + AI 操作台） | ✅ 真实 API 联调通过 |
 | 离线规则模式 | ✅ normalize/analyze 可用，edit 明确 400 |
 | 导出 → App | ✅ `prototype/web/pois.json`，App 端 `source: "curated"` |
-| 真实大模型调用 | ⏳ 待用户配置 `BW_LLM_API_KEY` |
+| 真实大模型调用 | ⏳ 待用户配置 `WA_LLM_API_KEY` |

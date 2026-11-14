@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 照片感知哈希与埋惊喜
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 照片感知哈希与埋惊喜
  *
  * 移植自 apple/Shared/Core/Surprise.swift：
  * - 9×8 灰度 → 64 位 dHash（每行相邻像素比较，左 < 右 记 1）

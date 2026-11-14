@@ -35,7 +35,7 @@ test('注册：成功 + Set-Cookie 属性 + /me 返回 user 与 profile:null', a
     assert.equal(typeof registered.result.json.user.createdAt, 'number');
 
     const setCookie = registered.result.setCookies[0];
-    assert.ok(setCookie.includes('bw_uid='));
+    assert.ok(setCookie.includes('wa_uid='));
     assert.ok(setCookie.includes('HttpOnly'));
     assert.ok(setCookie.includes('SameSite=Lax'));
     assert.ok(setCookie.includes('Path=/'));
@@ -159,7 +159,7 @@ test('me：未登录 / 无效 Cookie → 401 UNAUTHENTICATED', async () => {
     assert.equal(anonymous.json.code, 'UNAUTHENTICATED');
 
     const invalid = await request(server.base, 'GET', '/api/auth/me', undefined, {
-      Cookie: 'bw_uid=deadbeef'
+      Cookie: 'wa_uid=deadbeef'
     });
     assert.equal(invalid.status, 401);
     assert.equal(invalid.json.code, 'UNAUTHENTICATED');

@@ -48,7 +48,7 @@ def main():
     height = header + margin + rows * (thumb_h + 42) + 44 + watch_h + 42 + margin
     canvas = Image.new("RGB", (width, height), BG)
     d = ImageDraw.Draw(canvas)
-    d.text((margin, 34), "盲走 BlindWalk", font=font(40), fill=INK)
+    d.text((margin, 34), "步迷 Walkaholic", font=font(40), fill=INK)
     d.text((margin + 2, 84), "iOS 原生 App · Xcode 27.2 / iPhone 18 Pro 模拟器实跑截图", font=font(18), fill=INK2)
     d.rectangle([(width - margin - 90, 42), (width - margin, 70)], fill=AMBER)
     for i, (name, label) in enumerate(ENTRIES):

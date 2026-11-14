@@ -1,4 +1,4 @@
-# 盲走 BlindWalk · HarmonyOS 移植
+# 步迷 Walkaholic · HarmonyOS 移植
 
 > 状态：v0.7 功能对齐 Web v32 完成（2026-11-09）
 > 目标平台：**HarmonyOS NEXT**（API 12 / 5.0.0），ArkTS + ArkUI 声明式
@@ -20,7 +20,7 @@
 entry/src/main/ets/
 ├── core/            ← 纯逻辑（TypeScript，可在 Node 里跑测试，不依赖 ArkUI）
 │   ├── types.ts         数据契约（对应 apple/Shared/Core/Models.swift）
-│   ├── contract.ts      UI↔逻辑 调用契约（对应 @Observable BlindWalkStore 的公开面）
+│   ├── contract.ts      UI↔逻辑 调用契约（对应 @Observable WalkaholicStore 的公开面）
 │   ├── geo.ts           Haversine 距离 / 方位角 / 按方位偏移 / WGS↔GCJ↔BD 坐标转换
 │   ├── catalog.ts       24 个内置地点（对应 PlaceCatalog.swift）
 │   ├── engine.ts        种子随机 + 抽盒权重 + 序列号 + 心情亲和
@@ -226,7 +226,7 @@ bash scripts/check-harmony.sh
 | `components/HttpClient.ets` | **`http.createHttp()` / `request()` 的 API 12 签名**、`expectDataType`、`header` 键名大小写、`responseCode` 类型 |
 | `components/HttpClient.ets` | **`resourceManager.getRawFileContent('mapkeys.json')`**（包内 Key 下发；文件不存在时必须走 catch 分支） |
 | `components/AccountPanel.ets` | `TextInput` 的 `InputType.Password`、`promptAction.showToast` |
-| `components/SeekPanel.ets` | `@Prop @Watch` 多字段联动（hints 数组 + 坐标同时变）是否只触发一次；`BwQuietButton` 的 `tag` 参数（本轮未用 tag） |
+| `components/SeekPanel.ets` | `@Prop @Watch` 多字段联动（hints 数组 + 坐标同时变）是否只触发一次；`WaQuietButton` 的 `tag` 参数（本轮未用 tag） |
 
 首次编译报错大概率集中在这 8 处，改起来都是机械调整。其余（组件树、装饰器、状态管理）是按 ArkTS 规范写的。
 
@@ -247,7 +247,7 @@ bash scripts/check-harmony.sh
 
 鸿蒙浏览器（华为浏览器）内核是 Chromium，**现有 PWA 可以直接在鸿蒙手机上跑**：
 
-1. 鸿蒙手机用「浏览器」打开 https://xiaoqiangch.github.io/blindwalk/
+1. 鸿蒙手机用「浏览器」打开 https://xiaoqiangch.github.io/walkaholic/
 2. 菜单 → 添加到桌面
 3. 从桌面启动，允许定位，即可体验真实街道 + 真实距离
 

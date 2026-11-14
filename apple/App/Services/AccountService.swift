@@ -15,7 +15,7 @@ struct AccountUser: Codable, Hashable, Sendable {
 }
 
 struct AccountSyncEnvelope: Codable, Sendable {
-    var app: String = "blindwalk"
+    var app: String = "walkaholic"
     var version: Int = 1
     var savedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
     var profile: Profile?
@@ -34,7 +34,7 @@ final class AccountService {
 
     static let shared = AccountService()
 
-    private static let storeKey = "bw.account.v1"
+    private static let storeKey = "wa.account.v1"
     private static let defaultBaseURL = "https://xqlounge.top"
 
     var baseURL: String

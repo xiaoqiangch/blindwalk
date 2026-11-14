@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 v2 — POI 存储（SQLite）
+ * 步迷 Walkaholic · 兴趣点管理后台 v2 — POI 存储（SQLite）
  *
  * 底层从 v1 的 JSON 文件换成 Node 内置 `node:sqlite`（DatabaseSync），
  * **PoiStore 的公开方法签名保持不变**：load / save / all / get / list /

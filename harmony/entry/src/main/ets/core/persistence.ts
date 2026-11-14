@@ -1,10 +1,10 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 持久化
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 持久化
  *
  * - 只依赖 contract.KeyValueStore；HarmonyOS 端由 UI 层注入 `@ohos.data.preferences` 的实现
  *   （本文件**不 import 任何 @ohos.***，因此在 Node 里可以直接测试）。
  * - 内存实现 `MemoryKV` 供 Node 测试 / 预览使用。
- * - Profile 存 `blindwalk.profile.v1`；埋惊喜存 `blindwalk.surprises.v1`。
+ * - Profile 存 `walkaholic.profile.v1`；埋惊喜存 `walkaholic.surprises.v1`。
  * - Profile 契约里没有累计里程 / 到达时间 / 动态等运行时字段，
  *   为了成就（km_100）与「本周惊喜值」口径稳定，这里把运行时数据放进同一份 JSON 的 `extras` 字段。
  * - 反序列化全部做 try/catch 容错：坏数据 → 返回 undefined / 空数组，绝不抛给 UI。
@@ -26,8 +26,8 @@ import {
 } from './types';
 import { KeyValueStore } from './contract';
 
-export const PROFILE_KEY: string = 'blindwalk.profile.v1';
-export const SURPRISES_KEY: string = 'blindwalk.surprises.v1';
+export const PROFILE_KEY: string = 'walkaholic.profile.v1';
+export const SURPRISES_KEY: string = 'walkaholic.surprises.v1';
 const SCHEMA_VERSION: number = 1;
 
 /** 契约 Profile 之外的运行时数据（随 profile 一起序列化） */

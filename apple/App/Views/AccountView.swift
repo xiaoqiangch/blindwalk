@@ -7,7 +7,7 @@ import SwiftUI
 
 struct AccountView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var account = AccountService.shared
@@ -18,8 +18,8 @@ struct AccountView: View {
     @State private var showDeleteConfirm = false
     @State private var localMessage: String?
 
-    @AppStorage("bw.soundEnabled") private var soundEnabled = true
-    @AppStorage("bw.hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("wa.soundEnabled") private var soundEnabled = true
+    @AppStorage("wa.hapticsEnabled") private var hapticsEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -35,7 +35,7 @@ struct AccountView: View {
                 }
                 .padding(20)
             }
-            .background(BWPaperBackground())
+            .background(WAPaperBackground())
             .navigationTitle("账号")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -49,14 +49,14 @@ struct AccountView: View {
                     await account.refresh()
                     baseURL = account.baseURL
                     let env = ProcessInfo.processInfo.environment
-                    if env["BW_ACCOUNT_AUTO_LOGIN"] == "1", !account.isLoggedIn {
-                        let username = env["BW_ACCOUNT_USER"] ?? "bwscreenshot"
-                        let password = env["BW_ACCOUNT_PASS"] ?? "screenshot123"
+                    if env["WA_ACCOUNT_AUTO_LOGIN"] == "1", !account.isLoggedIn {
+                        let username = env["WA_ACCOUNT_USER"] ?? "wascreenshot"
+                        let password = env["WA_ACCOUNT_PASS"] ?? "screenshot123"
                         if !(await account.login(username: username, password: password)) {
                             _ = await account.register(username: username, password: password)
                         }
                         localMessage = account.lastMessage
-                        if env["BW_ACCOUNT_AUTO_SYNC"] == "1", account.isLoggedIn {
+                        if env["WA_ACCOUNT_AUTO_SYNC"] == "1", account.isLoggedIn {
                             let envelope = AccountSyncEnvelope(
                                 profile: store.profile,
                                 surprises: store.surprises,
@@ -65,7 +65,7 @@ struct AccountView: View {
                             _ = await account.push(envelope)
                             localMessage = account.lastMessage
                         }
-                        if env["BW_ACCOUNT_AUTO_SYNC"] == "1", account.isLoggedIn {
+                        if env["WA_ACCOUNT_AUTO_SYNC"] == "1", account.isLoggedIn {
                             let envelope = AccountSyncEnvelope(
                                 profile: store.profile,
                                 surprises: store.surprises,
@@ -101,14 +101,14 @@ struct AccountView: View {
             HStack(spacing: 8) {
                 Image(systemName: account.isLoggedIn ? "person.crop.circle.badge.checkmark" : "person.crop.circle")
                     .font(.system(size: 20))
-                    .foregroundStyle(account.isLoggedIn ? BWTheme.teal : BWTheme.ink3)
+                    .foregroundStyle(account.isLoggedIn ? WATheme.teal : WATheme.ink3)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.isLoggedIn ? "已登录：\(account.user?.username ?? "")" : "未登录 · 数据只存在这台设备")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink)
+                        .foregroundStyle(WATheme.ink)
                     Text(account.isLoggedIn ? account.baseURL : "不登录也能用，数据留在本机。")
                         .font(.system(size: 13))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -117,12 +117,12 @@ struct AccountView: View {
             if let message = localMessage ?? account.lastMessage {
                 Text(message)
                     .font(.system(size: 13))
-                    .foregroundStyle(BWTheme.teal)
+                    .foregroundStyle(WATheme.teal)
             }
             if let error = account.lastError {
                 Text(error)
                     .font(.system(size: 13))
-                    .foregroundStyle(BWTheme.ember)
+                    .foregroundStyle(WATheme.ember)
             }
 
             HStack(spacing: 14) {
@@ -133,15 +133,15 @@ struct AccountView: View {
             }
         }
         .padding(16)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(BWTheme.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(WATheme.line, lineWidth: 1))
     }
 
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 18, weight: .bold)).monospacedDigit().foregroundStyle(BWTheme.ink)
-            Text(label).font(.system(size: 12)).foregroundStyle(BWTheme.ink3)
+            Text(value).font(.system(size: 18, weight: .bold)).monospacedDigit().foregroundStyle(WATheme.ink)
+            Text(label).font(.system(size: 12)).foregroundStyle(WATheme.ink3)
         }
     }
 
@@ -165,7 +165,7 @@ struct AccountView: View {
                 } label: {
                     buttonLabel("登录", filled: true)
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
 
                 Button {
                     commitBaseURL()
@@ -178,26 +178,26 @@ struct AccountView: View {
                 } label: {
                     buttonLabel("注册并登录", filled: false)
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             }
             .disabled(account.isBusy || username.isEmpty || password.isEmpty)
 
             if account.isBusy {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    Text("正在连接账号服务…").font(.system(size: 13)).foregroundStyle(BWTheme.ink3)
+                    Text("正在连接账号服务…").font(.system(size: 13)).foregroundStyle(WATheme.ink3)
                 }
             }
         }
         .padding(16)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(BWTheme.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(WATheme.line, lineWidth: 1))
     }
 
     private func field(_ label: String, text: Binding<String>, placeholder: String, secure: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.system(size: 12, weight: .semibold)).foregroundStyle(BWTheme.ink3)
+            Text(label).font(.system(size: 12, weight: .semibold)).foregroundStyle(WATheme.ink3)
             Group {
                 if secure {
                     SecureField(placeholder, text: text)
@@ -210,9 +210,9 @@ struct AccountView: View {
             .font(.system(size: 14))
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(BWTheme.paper2)
+            .background(WATheme.paper2)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(BWTheme.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(WATheme.line, lineWidth: 1))
         }
     }
 
@@ -234,7 +234,7 @@ struct AccountView: View {
             } label: {
                 buttonLabel("同步到账号（覆盖云端）", filled: true)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
 
             Button {
                 Task {
@@ -253,7 +253,7 @@ struct AccountView: View {
             } label: {
                 buttonLabel("从账号恢复（覆盖本机）", filled: false)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
 
             Button {
                 Task {
@@ -263,42 +263,42 @@ struct AccountView: View {
             } label: {
                 buttonLabel("退出登录", filled: false)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
 
             Button {
                 showDeleteConfirm = true
             } label: {
                 Text("删除账号")
                     .font(.system(size: 14.5, weight: .medium))
-                    .foregroundStyle(BWTheme.ember)
+                    .foregroundStyle(WATheme.ember)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
         }
         .padding(16)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(BWTheme.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(WATheme.line, lineWidth: 1))
         .disabled(account.isBusy)
     }
 
     private var hintCard: some View {
         Text("账号是可选的。不登录也能用，数据留在本机。\n默认连公网 https://xqlounge.top（已部署），单元测试/本地开发也可改成 http://127.0.0.1:8803。")
             .font(.system(size: 13))
-            .foregroundStyle(BWTheme.ink3)
+            .foregroundStyle(WATheme.ink3)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private func buttonLabel(_ title: String, filled: Bool) -> some View {
         Text(title)
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(filled ? BWTheme.paper : BWTheme.ink)
+            .foregroundStyle(filled ? WATheme.paper : WATheme.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
-            .background(filled ? BWTheme.amberDeep : BWTheme.paper2)
+            .background(filled ? WATheme.amberDeep : WATheme.paper2)
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(filled ? Color.clear : BWTheme.line, lineWidth: 1))
+            .overlay(Capsule().stroke(filled ? Color.clear : WATheme.line, lineWidth: 1))
     }
 
     private func commitBaseURL() {

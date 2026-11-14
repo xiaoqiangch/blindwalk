@@ -34,10 +34,10 @@ struct JourneyMapView: View {
                     .position(x: startPoint(size: size).x, y: startPoint(size: size).y)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .stroke(WATheme.line, lineWidth: 1)
         )
         .accessibilityLabel("抽象街区地图，目的地保密")
         .onAppear {
@@ -45,7 +45,7 @@ struct JourneyMapView: View {
                 breathing = true
                 return
             }
-            withAnimation(BWAnimation.breathing) {
+            withAnimation(WAAnimation.breathing) {
                 breathing = true
             }
         }
@@ -57,17 +57,17 @@ struct JourneyMapView: View {
     private var youMarker: some View {
         ZStack {
             Circle()
-                .fill(BWTheme.amber.opacity(0.22))
+                .fill(WATheme.amber.opacity(0.22))
                 .frame(width: 26, height: 26)
 
             Circle()
-                .fill(BWTheme.ink)
+                .fill(WATheme.ink)
                 .frame(width: 9, height: 9)
         }
         .overlay(alignment: .leading) {
             Text("你")
                 .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize()
                 .offset(x: 18)
         }
@@ -77,21 +77,21 @@ struct JourneyMapView: View {
     private var targetMarker: some View {
         ZStack {
             Circle()
-                .fill(BWTheme.amber.opacity(0.20))
+                .fill(WATheme.amber.opacity(0.20))
                 .frame(width: 38, height: 38)
                 .scaleEffect(breathing ? 1.06 : 0.94)
 
             Circle()
-                .stroke(BWTheme.amber.opacity(0.50), lineWidth: 1)
+                .stroke(WATheme.amber.opacity(0.50), lineWidth: 1)
                 .frame(width: 20, height: 20)
 
             Circle()
-                .fill(BWTheme.amber)
+                .fill(WATheme.amber)
                 .frame(width: 8, height: 8)
 
             Text("?")
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
                 .offset(y: 22)
         }
     }
@@ -102,56 +102,56 @@ struct JourneyMapView: View {
         // 纸底
         context.fill(
             Path(CGRect(origin: .zero, size: size)),
-            with: .color(BWTheme.cream)
+            with: .color(WATheme.cream)
         )
 
         // 河：宽带 + 细虚线
         let river = riverPath(size: size)
         context.stroke(
             river,
-            with: .color(BWTheme.teal.opacity(0.10)),
+            with: .color(WATheme.teal.opacity(0.10)),
             style: StrokeStyle(lineWidth: 46, lineCap: .round)
         )
         context.stroke(
             river,
-            with: .color(BWTheme.teal.opacity(0.18)),
+            with: .color(WATheme.teal.opacity(0.18)),
             style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [5, 9])
         )
 
         // 路：先铺纸色宽路，再画车行道虚线
         let mainRoads = mainRoadPaths(size: size)
         for road in mainRoads {
-            context.stroke(road, with: .color(BWTheme.line.opacity(0.75)), style: StrokeStyle(lineWidth: 13, lineCap: .round))
-            context.stroke(road, with: .color(BWTheme.ink.opacity(0.10)), style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3, 6]))
+            context.stroke(road, with: .color(WATheme.line.opacity(0.75)), style: StrokeStyle(lineWidth: 13, lineCap: .round))
+            context.stroke(road, with: .color(WATheme.ink.opacity(0.10)), style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3, 6]))
         }
 
         // 支路
         for road in minorRoadPaths(size: size) {
-            context.stroke(road, with: .color(BWTheme.line.opacity(0.45)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+            context.stroke(road, with: .color(WATheme.line.opacity(0.45)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
         }
 
         // 绿地
         for park in parkRects(size: size) {
-            context.fill(park, with: .color(BWTheme.teal.opacity(0.06)))
+            context.fill(park, with: .color(WATheme.teal.opacity(0.06)))
         }
 
         // 建筑
         for block in blockPaths(size: size) {
-            context.fill(block, with: .color(BWTheme.ink.opacity(0.10)))
-            context.stroke(block, with: .color(BWTheme.ink.opacity(0.12)), style: StrokeStyle(lineWidth: 0.8))
+            context.fill(block, with: .color(WATheme.ink.opacity(0.10)))
+            context.stroke(block, with: .color(WATheme.ink.opacity(0.12)), style: StrokeStyle(lineWidth: 0.8))
         }
 
         // 树
         for tree in treeCircles(size: size) {
-            context.fill(tree, with: .color(BWTheme.teal.opacity(0.14)))
-            context.stroke(tree, with: .color(BWTheme.ink.opacity(0.10)), style: StrokeStyle(lineWidth: 1))
+            context.fill(tree, with: .color(WATheme.teal.opacity(0.14)))
+            context.stroke(tree, with: .color(WATheme.ink.opacity(0.10)), style: StrokeStyle(lineWidth: 1))
         }
 
         // 路线：整条虚线（design-system §5.3「一条虚线路线从底部「你」出发向前弯曲」，
         // 与 web .map-route 一致；不额外加实线，避免地图自己讲太多）
         context.stroke(
             routePath(size: size),
-            with: .color(BWTheme.ink2.opacity(0.55)),
+            with: .color(WATheme.ink2.opacity(0.55)),
             style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [4, 8])
         )
     }

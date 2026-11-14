@@ -4,7 +4,7 @@ import Foundation
 //
 // 用户不填 Key，也不硬编码：
 //   1. 同 bundle 内 mapkeys.json（部署产物）
-//   2. 远程 https://xiaoqiangch.github.io/blindwalk/mapkeys.json
+//   2. 远程 https://xiaoqiangch.github.io/walkaholic/mapkeys.json
 //   3. 后台公开端点 {adminBase}/api/public/mapkeys（可选）
 // 缓存 12 小时；都没有时只用 OSM + 维基。
 
@@ -20,10 +20,10 @@ final class MapKeysService {
 
     static let shared = MapKeysService()
 
-    private static let remoteURL = "https://xiaoqiangch.github.io/blindwalk/mapkeys.json"
+    private static let remoteURL = "https://xiaoqiangch.github.io/walkaholic/mapkeys.json"
     private static let cacheTTL: TimeInterval = 12 * 3600
-    private static let dataKey = "bw.mapkeys.data.v1"
-    private static let dateKey = "bw.mapkeys.date.v1"
+    private static let dataKey = "wa.mapkeys.data.v1"
+    private static let dateKey = "wa.mapkeys.date.v1"
 
     private(set) var keys = MapKeys()
     private(set) var lastSource = "none"
@@ -69,9 +69,9 @@ final class MapKeysService {
             lastSource = "remote"
             return remote
         }
-        // 3. 后台公开端点（可选，用 BW_ADMIN_BASE 覆盖）
+        // 3. 后台公开端点（可选，用 WA_ADMIN_BASE 覆盖）
         let env = ProcessInfo.processInfo.environment
-        let adminBase = env["BW_ADMIN_BASE"] ?? UserDefaults.standard.string(forKey: "bw.adminBase.v1") ?? ""
+        let adminBase = env["WA_ADMIN_BASE"] ?? UserDefaults.standard.string(forKey: "wa.adminBase.v1") ?? ""
         if !adminBase.isEmpty,
            let admin = await fetchKeys(urlString: adminBase.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/api/public/mapkeys") {
             saveCache(admin)
@@ -94,8 +94,8 @@ final class MapKeysService {
 
     private func fetchKeys(urlString: String) async -> MapKeys? {
         let env = ProcessInfo.processInfo.environment
-        // 离线/失败模拟：`BW_MAPKEYS_URL=https://invalid.invalid/mapkeys.json`
-        let rawURL = env["BW_MAPKEYS_URL"] ?? urlString
+        // 离线/失败模拟：`WA_MAPKEYS_URL=https://invalid.invalid/mapkeys.json`
+        let rawURL = env["WA_MAPKEYS_URL"] ?? urlString
         guard let url = URL(string: rawURL) else { return nil }
 
         var request = URLRequest(url: url)

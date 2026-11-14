@@ -20,7 +20,7 @@ iOS 抽盒现在**优先**用后台审核通过的「编辑精选」兴趣点（
 admin 后台（人工审核 + AI 整理/分析）
         │  POST /api/export
         ▼
-prototype/web/pois.json  ──部署──▶  https://xiaoqiangch.github.io/blindwalk/pois.json
+prototype/web/pois.json  ──部署──▶  https://xiaoqiangch.github.io/walkaholic/pois.json
         │
         │  URLSession（3s 超时）
         ▼
@@ -44,7 +44,7 @@ RevealView：AsyncImage 实景照片 + 「编辑精选」标记 + 图片署名
 
 | 能力 | 行为 |
 |---|---|
-| 数据源 | 默认 `https://xiaoqiangch.github.io/blindwalk/pois.json`；环境变量 `BW_POIS_URL` 可覆盖（调试 / 内网） |
+| 数据源 | 默认 `https://xiaoqiangch.github.io/walkaholic/pois.json`；环境变量 `WA_POIS_URL` 可覆盖（调试 / 内网） |
 | 超时 | `URLRequest.timeoutInterval = 3`；失败静默（不弹错、不阻塞抽盒、不崩） |
 | 内存缓存 | 6 小时（按 `fetchedAt` 判断），过期才重新拉取 |
 | 落盘兜底 | `UserDefaults` 保存原始 JSON + 拉取时间；冷启动先读盘；**断网 / URL 失效时继续用上次数据** |
@@ -55,7 +55,7 @@ RevealView：AsyncImage 实景照片 + 「编辑精选」标记 + 图片署名
 | 照片 side-channel | `Place`（`Shared/Core`，Lead 拥有）没有 `photoUrl/photoCredit/summary` 字段 → 服务内部维护 `placeID → CuratedPlaceInfo`；落盘数据冷启动后仍能按 placeID 找回照片。`info(for:)` 供 Reveal 使用 |
 | 预留 | `place(for: placeID)` 可按 id 还原策展 Place，供后续图鉴 / 首页接入（见 §8 已知缺口） |
 
-调试用日志（仅 `BW_DEBUG_POI=1` 时输出）：`[BlindWalk][poi] curated pick name=… id=… source=curated photo=true pool=3`。
+调试用日志（仅 `WA_DEBUG_POI=1` 时输出）：`[Walkaholic][poi] curated pick name=… id=… source=curated photo=true pool=3`。
 
 ---
 
@@ -93,23 +93,23 @@ RevealView：AsyncImage 实景照片 + 「编辑精选」标记 + 图片署名
 | 截图 | 内容 | 结果 |
 |---|---|---|
 | `00-home-sanity.png` | 正常启动首页（不带任何 preview 环境变量） | ✅ 无回归 |
-| `01-setup.png` | `BW_PREVIEW=setup` 抽盒 sheet | ✅ |
+| `01-setup.png` | `WA_PREVIEW=setup` 抽盒 sheet | ✅ |
 | `02-curated-journey.png` | 抽到策展点后的旅程页 | ✅ 来源标签「编辑精选」、提示气泡、真实地图不显终点；剩余 299m、已走 0m、线索 1/3（「再走 99 米」按真实剩余距离计算） |
 | `03-curated-reveal.png` | 策展点揭晓页 | ✅ 上海博物馆实景照片、图片署名「Wikimedia Commons」、编辑精选标记 |
-| `04-fallback-journey.png` | `BW_POIS_URL` 指向不存在域名（冷启动、无缓存） | ✅ 来源标签「真实地标」，MapKit 兜底（人民公园-相亲角） |
+| `04-fallback-journey.png` | `WA_POIS_URL` 指向不存在域名（冷启动、无缓存） | ✅ 来源标签「真实地标」，MapKit 兜底（人民公园-相亲角） |
 | `05-fallback-reveal.png` | 兜底后的揭晓页 | ✅ 普通卡片，无编辑精选/无照片，不崩 |
 | `06-disk-cache-fallback.png` | 先用正常 URL 成功拉取 → 再指向不存在域名重启 | ✅ 仍从 UserDefaults 缓存抽到策展点（落盘兜底生效） |
 
-证据（模拟器 stdout，`SIMCTL_CHILD_BW_DEBUG_POI=1`）：
+证据（模拟器 stdout，`SIMCTL_CHILD_WA_DEBUG_POI=1`）：
 
 ```
 # 命中策展点（不同 seed 会抽到 3 个 approved 点里的不同一个，以下为两轮实测）
-[BlindWalk][poi] curated pick name=上海博物馆 id=curated-poi-b2f39b source=curated photo=true pool=3
-[BlindWalk][poi] curated pick name=上海音乐厅 id=curated-poi-191b1b source=curated photo=true pool=3
+[Walkaholic][poi] curated pick name=上海博物馆 id=curated-poi-b2f39b source=curated photo=true pool=3
+[Walkaholic][poi] curated pick name=上海音乐厅 id=curated-poi-191b1b source=curated photo=true pool=3
 
-# 冷启动 + BW_POIS_URL 指向不存在域名 → 降级 MapKit
-[BlindWalk][poi] curated miss (pool=0) → MapKit fallback
-[BlindWalk][poi] mapkit pick name=人民公园-相亲角 id=real-apple-31.23225_121.47264 source=apple
+# 冷启动 + WA_POIS_URL 指向不存在域名 → 降级 MapKit
+[Walkaholic][poi] curated miss (pool=0) → MapKit fallback
+[Walkaholic][poi] mapkit pick name=人民公园-相亲角 id=real-apple-31.23225_121.47264 source=apple
 ```
 
 构建：
@@ -117,15 +117,15 @@ RevealView：AsyncImage 实景照片 + 「编辑精选」标记 + 图片署名
 ```bash
 cd apple
 /tmp/xcodegen-download/xcodegen/bin/xcodegen generate --spec project.yml
-xcodebuild -project BlindWalk.xcodeproj -scheme BlindWalk \
+xcodebuild -project Walkaholic.xcodeproj -scheme Walkaholic \
   -destination 'platform=iOS Simulator,id=34802F5B-9219-4B7F-A092-81AD670B9D67' \
-  -derivedDataPath /tmp/blindwalk-dd-ios-poi CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath /tmp/walkaholic-dd-ios-poi CODE_SIGNING_ALLOWED=NO build
 # → BUILD SUCCEEDED（0 error；Xcode 27.2 / iOS 27.2 模拟器）
 ```
 
 > 截图辅助环境变量（都只在显式设置时生效，线上无影响）：
-> `BW_PREVIEW=setup` 直达抽盒 sheet；`BW_AUTO_START=1` sheet 出现后自动摇盒（用模拟器坐标 31.2304/121.4737 作为起点）；
-> `BW_AUTO_ARRIVE=<毫秒>` 进入旅程后自动触发到达，便于 headless 截揭晓页；`BW_DEBUG_POI=1` 打印抽盒来源。
+> `WA_PREVIEW=setup` 直达抽盒 sheet；`WA_AUTO_START=1` sheet 出现后自动摇盒（用模拟器坐标 31.2304/121.4737 作为起点）；
+> `WA_AUTO_ARRIVE=<毫秒>` 进入旅程后自动触发到达，便于 headless 截揭晓页；`WA_DEBUG_POI=1` 打印抽盒来源。
 
 ---
 

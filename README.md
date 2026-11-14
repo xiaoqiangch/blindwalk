@@ -1,10 +1,10 @@
-# 步谜（BlindWalk）
+# 步迷（Walkaholic）
 
 > **不看见终点，才看得见路。**
 > 打开一个「散步盲盒」，它只带你走，不告诉你去哪；到了，才揭晓这个地方藏着的小惊喜。
 > 给一个人散步的孤独时刻，一点未知、一点仪式感、一张可以收藏的卡片。
 
-**项目位置**：`~/Projects/BlindWalk`（即 `/Volumes/XQProjects/projects/BlindWalk`），git 仓库随目录一起。
+**项目位置**：`~/Projects/Walkaholic`（即 `/Volumes/XQProjects/projects/Walkaholic`），git 仓库随目录一起。
 
 这是 **v0.1 原型**，包含两部分交付：
 
@@ -33,7 +33,7 @@
 | 入口 | 说明 |
 |---|---|
 | **https://xqlounge.top/** | 完整版（自有服务器 + 同源账号 + 后台），需备案后 443 才稳定 |
-| https://xiaoqiangch.github.io/blindwalk/ | 静态版（GitHub Pages，账号走跨域） |
+| https://xiaoqiangch.github.io/walkaholic/ | 静态版（GitHub Pages，账号走跨域） |
 | https://xqlounge.top/admin | 兴趣点后台（POI / 地图 Key 管理） |
 
 
@@ -54,7 +54,7 @@ cd prototype/web && python3 -m http.server 8788
 
 ### 在 iPhone 上安装（PWA，明天就能真机测试）
 
-**直接扫码或打开：https://xiaoqiangch.github.io/blindwalk/**
+**直接扫码或打开：https://xiaoqiangch.github.io/walkaholic/**
 
 ![扫码打开](screenshots/public-qr.png)
 
@@ -92,7 +92,7 @@ iPhone 用 **Safari** 打开该地址 → 分享 → **添加到主屏幕** → 
 ## 二、项目结构
 
 ```
-BlindWalk/
+Walkaholic/
 ├── README.md
 ├── docs/
 │   ├── PRD.md              # 需求、用户、核心循环、功能清单、指标、风险
@@ -130,13 +130,13 @@ BlindWalk/
 
 ```bash
 cd apple
-open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
+open Walkaholic.xcodeproj          # 直接在 Xcode 里 Run
 # 或命令行构建：
 ../scripts/build-native.sh
 ```
 
-- 选择 `BlindWalk` scheme → iOS 模拟器 / 真机 Run；App 内自动嵌入 `BlindWalkWatch`
-- `BlindWalkWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
+- 选择 `Walkaholic` scheme → iOS 模拟器 / 真机 Run；App 内自动嵌入 `WalkaholicWatch`
+- `WalkaholicWatch` scheme → Apple Watch 模拟器（watchOS runtime 需在 Xcode Settings → Components 下载）
 - 工程已配置定位权限文案、watch 伴随 App、`WKCompanionAppBundleIdentifier`、`WKApplication`
 - 真实定位需要在 `App/Services/LocationService.swift` 里把 `LiveLocationService` 接上（骨架已留，含权限/距离/方位角）
 - v0.2 六屏（真实定位 + 手表同步 + UI 打磨后）：[`screenshots/v2-showcase.png`](screenshots/v2-showcase.png)
@@ -145,17 +145,17 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
   ```bash
   xcrun simctl create "Watch" com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-9-45mm com.apple.CoreSimulator.SimRuntime.watchOS-27-2
   xcrun simctl pair <watch-udid> <iphone-udid>
-  xcodebuild -project apple/BlindWalk.xcodeproj -scheme BlindWalkWatch \
+  xcodebuild -project apple/Walkaholic.xcodeproj -scheme WalkaholicWatch \
     -destination 'platform=watchOS Simulator,id=<watch-udid>' build
-  xcrun simctl install <watch-udid> <build>/BlindWalkWatch.app
-  xcrun simctl launch <watch-udid> com.blindwalk.app.watchkitapp
+  xcrun simctl install <watch-udid> <build>/WalkaholicWatch.app
+  xcrun simctl launch <watch-udid> com.walkaholic.app.watchkitapp
   ```
-- 截图/演示专用入口：`SIMCTL_CHILD_BW_PREVIEW=journey|reveal|cards|social|profile xcrun simctl launch <UDID> com.blindwalk.app`
+- 截图/演示专用入口：`SIMCTL_CHILD_WA_PREVIEW=journey|reveal|cards|social|profile xcrun simctl launch <UDID> com.walkaholic.app`
 
 > 构建期修正记录：`WatchApp/Haptics.swift` 的 `WKInterfaceDevice.WKHapticType` → 顶层 `WKHapticType`（watchOS SDK 实际定义）；`project.yml` 的 watch target 补 `WKApplication: true`（否则 iOS 模拟器拒绝安装内嵌 watch App）。
 
 > 注意：XcodeGen 生成后，watch App 的嵌入关系若提示异常，在 Xcode 的
-> `BlindWalk → General → Frameworks/Libraries/Embedded Content` 里确认 `BlindWalkWatch.app` 已嵌入即可（XcodeGen 版本差异）。
+> `Walkaholic → General → Frameworks/Libraries/Embedded Content` 里确认 `WalkaholicWatch.app` 已嵌入即可（XcodeGen 版本差异）。
 
 ### 真机体验要点
 
@@ -195,7 +195,7 @@ open BlindWalk.xcodeproj          # 直接在 Xcode 里 Run
 | **转向导航（v2.2）** | ✅ 旅程页不再画地图，只显示「30 米后左拐」这类带提前量的指令 + 接下来两步；无路由服务时退回方向提示。见 [docs/navigation.md](docs/navigation.md) |
 | **iOS 接入策展 POI（v2.1）** | ✅ 抽盒优先用后台「编辑精选」，揭晓展示实景照片；断网自动退回 MapKit。见 [docs/ios-poi.md](docs/ios-poi.md) |
 | **公开数据兴趣点 + 图片（v0.7）** | ✅ 维基百科地理搜索：真实地标 + 简介 + 实景照片（Wikimedia Commons），无需 API Key |
-| 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/blindwalk/ （HTTPS + 可装主屏 + 离线） |
+| 公网 PWA 部署 | ✅ https://xiaoqiangch.github.io/walkaholic/ （HTTPS + 可装主屏 + 离线） |
 | **鸿蒙移植（HarmonyOS NEXT）** | ✅ v0.6 代码完成：ArkTS/ArkUI 工程 + 逻辑层 39 项测试全绿 + 7 个主界面，待 DevEco 首编，见 [harmony/docs/HARMONY.md](harmony/docs/HARMONY.md) |
 | **折叠屏适配（iPhone Duo）** | ✅ Web 已全量验证（466×678 / 669×951）；iOS 已实现待 GUI 复核，见 [foldable.md](docs/foldable.md) |
 | iPhone↔Watch 同步 | ✅ 完成（摘要推送 + 打卡回传，端到端实测） |

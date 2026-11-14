@@ -1,6 +1,6 @@
-# 盲走 · 兴趣点管理后台
+# 步迷 · 兴趣点管理后台
 
-给「盲走」的 POI 数据做管理：**公开数据收集 → 大模型整理/分析 → 人工审核 → 导出给 App**。
+给「步迷」的 POI 数据做管理：**公开数据收集 → 大模型整理/分析 → 人工审核 → 导出给 App**。
 
 ```bash
 bash scripts/start-admin.sh
@@ -39,6 +39,6 @@ prototype/web/pois.json
 
 | 项 | 说明 |
 |---|---|
-| **登录** | 必须登录才能访问；`BW_ADMIN_PASSWORD` 或首次启动自动生成随机密码（见 [docs/SECURITY.md](docs/SECURITY.md)） |
+| **登录** | 必须登录才能访问；`WA_ADMIN_PASSWORD` 或首次启动自动生成随机密码（见 [docs/SECURITY.md](docs/SECURITY.md)） |
 | **SQLite** | 存储从 JSON 改为 `node:sqlite`（仍零 npm 依赖），启动自动迁移旧数据 |
 | **安全分级** | 每条 POI 有 `safety.day / night / nightVerdict`，用于判断「夜里安不安全」；导出到 App 时一并带上 |

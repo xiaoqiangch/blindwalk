@@ -9,7 +9,7 @@ import Foundation
 
 struct RevealView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onCollected: (CollectResult) -> Void
     /// 可选：右上角「关闭」的回调。
     /// 由于揭晓页是从旅程页全屏推入的，只有调用方（JourneyView）能真正收起它；
@@ -34,7 +34,7 @@ struct RevealView: View {
     @State private var hasCollected = false
     @State private var isCollecting = false
     @State private var lastCollectedResult: CollectResult?
-    @State private var toasts: [BWToast] = []
+    @State private var toasts: [WAToast] = []
 
     private var place: Place? {
         store.reveal?.place ?? store.currentPlace
@@ -68,13 +68,13 @@ struct RevealView: View {
 
             toastLayer
         }
-        .animation(BWAnimation.slow, value: showCard)
+        .animation(WAAnimation.slow, value: showCard)
         .interactiveDismissDisabled(true)
         .onAppear(perform: startOpening)
         .onAppear {
-            // 仅用于截图/演示：`BW_PREVIEW_TOAST=1` 自动点一次「收进图鉴」，验证 toast 层级
-            guard ProcessInfo.processInfo.environment["BW_PREVIEW_TOAST"] == "1" else { return }
-            bwAfter(1.6) {
+            // 仅用于截图/演示：`WA_PREVIEW_TOAST=1` 自动点一次「收进图鉴」，验证 toast 层级
+            guard ProcessInfo.processInfo.environment["WA_PREVIEW_TOAST"] == "1" else { return }
+            waAfter(1.6) {
                 guard showCard, !hasCollected else { return }
                 collectCard()
             }
@@ -91,8 +91,8 @@ struct RevealView: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            BWTheme.amber.opacity(lightOn ? 0.50 : 0.0),
-                            BWTheme.amber.opacity(0.0)
+                            WATheme.amber.opacity(lightOn ? 0.50 : 0.0),
+                            WATheme.amber.opacity(0.0)
                         ],
                         center: .center,
                         startRadius: 2,
@@ -108,10 +108,10 @@ struct RevealView: View {
 
                     // 盒盖
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(BWKraft.boxLid)
+                        .fill(WAKraft.boxLid)
                         .overlay(
                             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .stroke(BWTheme.ink.opacity(0.9), lineWidth: 1.8)
+                                .stroke(WATheme.ink.opacity(0.9), lineWidth: 1.8)
                         )
                         .frame(width: 156, height: 35)
                         .rotationEffect(.degrees(lidUp ? -26 : 0))
@@ -119,15 +119,15 @@ struct RevealView: View {
 
                     // 盒体
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(BWKraft.boxBody)
+                        .fill(WAKraft.boxBody)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(BWTheme.ink.opacity(0.9), lineWidth: 1.8)
+                                .stroke(WATheme.ink.opacity(0.9), lineWidth: 1.8)
                         )
                         .overlay(
                             Text("?")
                                 .font(.system(size: 50, weight: .bold))
-                                .foregroundStyle(BWTheme.ink)
+                                .foregroundStyle(WATheme.ink)
                         )
                         .frame(width: 140, height: 92)
                         .offset(y: 26)
@@ -138,7 +138,7 @@ struct RevealView: View {
                 Text("这次，城市选了这个地方。")
                     .font(.system(size: 14))
                     .tracking(0.3)
-                    .foregroundStyle(BWTheme.cream.opacity(lightOn ? 0.92 : 0.62))
+                    .foregroundStyle(WATheme.cream.opacity(lightOn ? 0.92 : 0.62))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
@@ -162,7 +162,7 @@ struct RevealView: View {
         let diameter = 4.0 + Double(index % 3) * 2.0
 
         return RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(index % 2 == 0 ? BWTheme.amber : BWTheme.ember)
+            .fill(index % 2 == 0 ? WATheme.amber : WATheme.ember)
             .frame(width: CGFloat(diameter), height: CGFloat(diameter * 1.4))
             .offset(
                 x: CGFloat(cos(angle) * distance * factor),
@@ -189,7 +189,7 @@ struct RevealView: View {
                                 Text("这个地点，只为你亮一次。")
                                     .font(.system(size: 12))
                                     .tracking(0.6)
-                                    .foregroundStyle(BWTheme.cream.opacity(0.42))
+                                    .foregroundStyle(WATheme.cream.opacity(0.42))
                                     .padding(.top, 14)
                             }
                             .padding(.horizontal, 26)
@@ -200,7 +200,7 @@ struct RevealView: View {
                     }
                 }
             } else {
-                BWEmptyState(title: "今晚的盲盒还没准备好。", showsArt: false)
+                WAEmptyState(title: "今晚的盲盒还没准备好。", showsArt: false)
             }
         }
     }
@@ -208,9 +208,9 @@ struct RevealView: View {
     private var revealStageBackground: some View {
         RadialGradient(
             colors: [
-                Color.bwMix(BWTheme.ink, BWTheme.amberDeep, 0.16),
-                Color.bwMix(BWTheme.ink, BWTheme.amberDeep, 0.06),
-                BWTheme.ink
+                Color.waMix(WATheme.ink, WATheme.amberDeep, 0.16),
+                Color.waMix(WATheme.ink, WATheme.amberDeep, 0.06),
+                WATheme.ink
             ],
             center: UnitPoint(x: 0.5, y: 0.26),
             startRadius: 12,
@@ -223,10 +223,10 @@ struct RevealView: View {
     private var stageBar: some View {
         HStack {
             TimelineView(.periodic(from: Date(), by: 20)) { context in
-                Text(BWFormat.clock(seconds: elapsed(context.date)))
+                Text(WAFormat.clock(seconds: elapsed(context.date)))
                     .font(.system(size: 14, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(BWTheme.cream.opacity(0.92))
+                    .foregroundStyle(WATheme.cream.opacity(0.92))
             }
 
             Spacer(minLength: 0)
@@ -240,17 +240,17 @@ struct RevealView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(BWTheme.cream.opacity(0.72))
+                        .foregroundStyle(WATheme.cream.opacity(0.72))
                         .frame(width: 30, height: 30)
-                        .background(BWTheme.cream.opacity(0.08))
+                        .background(WATheme.cream.opacity(0.08))
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(BWTheme.cream.opacity(0.14), lineWidth: 1))
+                        .overlay(Circle().stroke(WATheme.cream.opacity(0.14), lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
                 .accessibilityLabel("关闭揭晓")
             }
         }
-        .padding(.horizontal, BWTheme.pagePadding)
+        .padding(.horizontal, WATheme.pagePadding)
         .frame(height: 46)
     }
 
@@ -261,14 +261,14 @@ struct RevealView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .tracking(1)
                     .monospacedDigit()
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
 
                 Spacer(minLength: 8)
 
                 if isCurated {
                     curatedTag
                 }
-                BWRarityBadge(rarity: place.rarity)
+                WARarityBadge(rarity: place.rarity)
             }
             .padding(.bottom, 13)
 
@@ -286,30 +286,30 @@ struct RevealView: View {
                 }
                 Text(place.name)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(BWFormat.areaName(place.area)) · \(place.category)")
+                Text("\(WAFormat.areaName(place.area)) · \(place.category)")
                     .font(.system(size: 12.5))
                     .tracking(0.8)
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
             .frame(maxWidth: .infinity)
             .padding(.bottom, 11)
 
-            BWHairline()
+            WAHairline()
 
             VStack(alignment: .leading, spacing: 6) {
-                BWMicroLabel("为什么是这里：")
+                WAMicroLabel("为什么是这里：")
                 Text(place.why)
                     .font(.system(size: 14))
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
                     .lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 12)
 
-            BWHairline()
+            WAHairline()
 
             taskCard(place)
                 .padding(.top, 12)
@@ -321,7 +321,7 @@ struct RevealView: View {
                 Text("它现在是你的了。")
                     .font(.system(size: 12))
                     .tracking(0.5)
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 9)
             }
@@ -329,9 +329,9 @@ struct RevealView: View {
         .padding(.horizontal, 20)
         .padding(.top, 17)
         .padding(.bottom, 18)
-        .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
-        .shadow(color: BWTheme.ink.opacity(0.30), radius: 32, x: 0, y: 20)
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+        .shadow(color: WATheme.ink.opacity(0.30), radius: 32, x: 0, y: 20)
         .rotationEffect(.degrees(-1.2))
         .scaleEffect(isCollecting ? 0.26 : 1)
         .opacity(isCollecting ? 0 : 1)
@@ -346,12 +346,12 @@ struct RevealView: View {
                 .font(.system(size: 11.5, weight: .bold))
                 .tracking(0.6)
         }
-        .foregroundStyle(BWTheme.amberDeep)
+        .foregroundStyle(WATheme.amberDeep)
         .padding(.horizontal, 8)
         .frame(height: 22)
-        .background(BWTheme.amber.opacity(0.14))
+        .background(WATheme.amber.opacity(0.14))
         .clipShape(Capsule())
-        .overlay(Capsule().stroke(BWTheme.amber.opacity(0.40), lineWidth: 1))
+        .overlay(Capsule().stroke(WATheme.amber.opacity(0.40), lineWidth: 1))
         .accessibilityLabel("编辑精选地点")
     }
 
@@ -360,7 +360,7 @@ struct RevealView: View {
     private func curatedPhoto(url: URL, credit: String?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             ZStack(alignment: .topLeading) {
-                AsyncImage(url: url, transaction: Transaction(animation: BWAnimation.regular)) { phase in
+                AsyncImage(url: url, transaction: Transaction(animation: WAAnimation.regular)) { phase in
                     switch phase {
                     case .success(let image):
                         image
@@ -380,7 +380,7 @@ struct RevealView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
+                        .stroke(WATheme.line, lineWidth: 1)
                 )
                 .accessibilityLabel("编辑精选地点实景照片")
 
@@ -391,10 +391,10 @@ struct RevealView: View {
                         .font(.system(size: 11.5, weight: .bold))
                         .tracking(0.6)
                 }
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
                 .padding(.horizontal, 9)
                 .frame(height: 22)
-                .background(BWTheme.amber)
+                .background(WATheme.amber)
                 .clipShape(Capsule())
                 .padding(10)
             }
@@ -404,7 +404,7 @@ struct RevealView: View {
                     Spacer(minLength: 0)
                     Text("图片：\(credit)")
                         .font(.system(size: 11))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
                 .padding(.trailing, 2)
             }
@@ -413,14 +413,14 @@ struct RevealView: View {
 
     private func photoPlaceholder(showProgress: Bool) -> some View {
         ZStack {
-            BWTheme.paper2
+            WATheme.paper2
             if showProgress {
                 ProgressView()
                     .controlSize(.small)
             } else {
                 Image(systemName: "photo")
                     .font(.system(size: 22, weight: .light))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -431,11 +431,11 @@ struct RevealView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 3) {
                     Text("🎯").font(.system(size: 12))
-                    BWMicroLabel("小任务：")
+                    WAMicroLabel("小任务：")
                 }
                 Text(place.task)
                     .font(.system(size: 13.5))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -444,11 +444,11 @@ struct RevealView: View {
             Button {
                 guard !isCollecting else { return }
                 taskDone.toggle()
-                BWHaptics.light()
+                WAHaptics.light()
             } label: {
                 Text(taskDone ? "已完成" : "完成后点一下")
                     .font(.system(size: 11.5))
-                    .foregroundStyle(taskDone ? BWTheme.teal : BWTheme.ink3)
+                    .foregroundStyle(taskDone ? WATheme.teal : WATheme.ink3)
                     .padding(.top, 1)
             }
             .buttonStyle(.plain)
@@ -456,11 +456,11 @@ struct RevealView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper2)
+        .background(WATheme.paper2)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+                .stroke(WATheme.line, lineWidth: 1)
         )
     }
 
@@ -468,30 +468,30 @@ struct RevealView: View {
         HStack(spacing: 8) {
             Button(action: collectCard) {
                 Text(hasCollected ? "去看看图鉴" : "收进图鉴")
-                    .font(BWType.cta(14))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WAType.cta(14))
+                    .foregroundStyle(WATheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity)
                     .frame(height: 46)
-                    .background(BWTheme.amber)
+                    .background(WATheme.amber)
                     .clipShape(Capsule())
-                    .shadow(color: BWTheme.amberDeep.opacity(0.28), radius: 12, x: 0, y: 6)
+                    .shadow(color: WATheme.amberDeep.opacity(0.28), radius: 12, x: 0, y: 6)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .disabled(isCollecting)
             .layoutPriority(1.45)
 
             Button(action: shareToCircle) {
                 Text(hasShared ? "已分享" : "分享")
-                    .font(BWType.cta(14))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(WAType.cta(14))
+                    .foregroundStyle(WATheme.ink2)
                     .lineLimit(1)
                     .frame(width: 96)
                     .frame(height: 46)
-                    .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                    .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .disabled(isCollecting || hasShared)
         }
     }
@@ -502,8 +502,8 @@ struct RevealView: View {
         VStack(spacing: 8) {
             Spacer(minLength: 0)
             ForEach(toasts) { toast in
-                BWToastView(toast: toast) {
-                    withAnimation(BWAnimation.quick) {
+                WAToastView(toast: toast) {
+                    withAnimation(WAAnimation.quick) {
                         toasts.removeAll { $0.id == toast.id }
                     }
                 }
@@ -511,15 +511,15 @@ struct RevealView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .padding(.horizontal, BWTheme.pagePadding)
+        .padding(.horizontal, WATheme.pagePadding)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .animation(BWAnimation.regular, value: toasts.map(\.id))
+        .animation(WAAnimation.regular, value: toasts.map(\.id))
         .allowsHitTesting(false)
     }
 
-    private func appendToast(_ toast: BWToast) {
-        withAnimation(BWAnimation.regular) {
+    private func appendToast(_ toast: WAToast) {
+        withAnimation(WAAnimation.regular) {
             toasts.append(toast)
         }
     }
@@ -534,11 +534,11 @@ struct RevealView: View {
     private func startOpening() {
         guard !didStart else { return }
         didStart = true
-        BWHaptics.success()
+        WAHaptics.success()
 
         if reduceMotion {
             store.beginReveal()
-            withAnimation(BWAnimation.regular) {
+            withAnimation(WAAnimation.regular) {
                 showCard = true
             }
             return
@@ -550,23 +550,23 @@ struct RevealView: View {
         }
 
         // 盒盖弹开 + 暖光 + 纸屑
-        bwAfter(0.7) {
+        waAfter(0.7) {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
                 lidUp = true
                 lightOn = true
                 particlesOut = true
             }
-            bwAfter(0.35) {
-                withAnimation(BWAnimation.slow) {
+            waAfter(0.35) {
+                withAnimation(WAAnimation.slow) {
                     particlesFade = true
                 }
             }
         }
 
         // 1.2s 后切到卡片
-        bwAfter(1.2) {
+        waAfter(1.2) {
             store.beginReveal()
-            withAnimation(BWAnimation.slow) {
+            withAnimation(WAAnimation.slow) {
                 showCard = true
             }
         }
@@ -583,30 +583,30 @@ struct RevealView: View {
         }
 
         guard let result = store.collect() else {
-            appendToast(BWToast(text: "这张卡已经在图鉴里了。", icon: "checkmark.seal"))
+            appendToast(WAToast(text: "这张卡已经在图鉴里了。", icon: "checkmark.seal"))
             return
         }
 
         hasCollected = true
-        BWHaptics.success()
+        WAHaptics.success()
 
         // 卡片缩小飞向 Tab 图鉴，飞完再落回原位（web 同款：卡片留在原地并显示「它现在是你的了」）
-        withAnimation(BWAnimation.openBox) {
+        withAnimation(WAAnimation.openBox) {
             isCollecting = true
         }
-        bwAfter(0.62) {
-            withAnimation(BWAnimation.slow) {
+        waAfter(0.62) {
+            withAnimation(WAAnimation.slow) {
                 isCollecting = false
             }
         }
 
-        appendToast(BWToast(text: "已收录 · 惊喜值 +\(result.xpGained)", icon: "sparkles"))
+        appendToast(WAToast(text: "已收录 · 惊喜值 +\(result.xpGained)", icon: "sparkles"))
 
         // 成就 toast 延后 600ms（web 640ms）
         if let achievement = result.newAchievements.first {
-            bwAfter(0.64) {
+            waAfter(0.64) {
                 appendToast(
-                    BWToast(
+                    WAToast(
                         text: "成就解锁 · \(achievement.name)",
                         icon: achievement.icon,
                         isAmber: true
@@ -649,8 +649,8 @@ struct RevealView: View {
         let caption = "今晚捡到一个地方：\(place.name)。"
         _ = store.share(caption: caption)
         hasShared = true
-        BWHaptics.light()
+        WAHaptics.light()
 
-        appendToast(BWToast(text: "已分享到圈子", icon: "paperplane.fill", tint: BWTheme.teal))
+        appendToast(WAToast(text: "已分享到圈子", icon: "paperplane.fill", tint: WATheme.teal))
     }
 }

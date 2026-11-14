@@ -1,4 +1,4 @@
-/* 步谜 · 兴趣点管理后台（零依赖）
+/* 步迷 · 兴趣点管理后台（零依赖）
  *
  * 三栏：左筛选 / 中列表 / 右编辑。
  * 契约：admin/docs/CONTRACT.md（API 与字段唯一来源，不臆造接口）。
@@ -8,8 +8,8 @@
 (function () {
   'use strict';
 
-  const UI = window.BWUI;
-  const API = window.BWAPI;
+  const UI = window.WAUI;
+  const API = window.WAAPI;
   const $ = function (selector, root) { return (root || document).querySelector(selector); };
   const $$ = function (selector, root) { return Array.prototype.slice.call((root || document).querySelectorAll(selector)); };
 
@@ -26,7 +26,7 @@
     dirty: false,
     booted: false,
     statsError: '',
-    mock: !!window.__BW_MOCK__,
+    mock: !!window.__WA_MOCK__,
     mapkeys: { loading: false, data: null, error: '', testResults: {} }
   };
 
@@ -108,7 +108,7 @@
   function renderTopActions() {
     const offline = state.llm.mode !== 'llm' || !state.llm.ready;
     const editReason = offline
-      ? '离线规则模式：需要配置 BW_LLM_API_KEY 才能用指令改写'
+      ? '离线规则模式：需要配置 WA_LLM_API_KEY 才能用指令改写'
       : '让大模型按指令改写当前兴趣点';
     const ruleHint = offline ? '离线规则模式：结果由规则生成，不是模型输出' : '调用大模型';
 
@@ -148,7 +148,7 @@
       els.llmBadge.querySelector('.llm-badge__text').textContent = '大模型已就绪 · ' + (llm.model || 'deepseek-chat');
     } else {
       els.llmBadge.classList.add('is-offline');
-      els.llmBadge.title = '没有配置 BW_LLM_API_KEY：AI 整理 / 分析走离线规则，AI 编辑不可用';
+      els.llmBadge.title = '没有配置 WA_LLM_API_KEY：AI 整理 / 分析走离线规则，AI 编辑不可用';
       els.llmBadge.querySelector('.llm-badge__text').textContent = '离线规则模式（未配置大模型）';
     }
   }
@@ -250,7 +250,7 @@
         '</div>' +
       '</div>' +
       '<div class="filter-foot">' +
-        '<code>admin/data/blindwalk.db</code><br>' +
+        '<code>admin/data/walkaholic.db</code><br>' +
         '上次刷新 ' + UI.formatTime(Date.now()) +
       '</div>';
 
@@ -1570,7 +1570,7 @@
   function openAiEditModal() {
     const offline = state.llm.mode !== 'llm' || !state.llm.ready;
     if (offline) {
-      UI.toast('AI 编辑不可用：没有配置 BW_LLM_API_KEY，当前为离线规则模式', 'error', 5200);
+      UI.toast('AI 编辑不可用：没有配置 WA_LLM_API_KEY，当前为离线规则模式', 'error', 5200);
       return;
     }
     if (!state.current) {
@@ -1680,7 +1680,7 @@
         handle.body.innerHTML =
           (usedOffline
             ? '<div class="modal__note" style="margin-top:0;margin-bottom:12px">' + UI.icon('info', 13) +
-              '<span>离线规则模式：以下是规则打分，不是模型输出。配置 BW_LLM_API_KEY 后可调用真实模型。</span></div>'
+              '<span>离线规则模式：以下是规则打分，不是模型输出。配置 WA_LLM_API_KEY 后可调用真实模型。</span></div>'
             : '') +
           analyzeResultsHTML(items);
         if (state.current) {
@@ -1785,7 +1785,7 @@
   /** 提前确认登录态：v2 服务端才有 /api/auth/status；老版本 404 时按已登录处理 */
   async function ensureAuthenticated() {
     try {
-      const status = await BWAPI.request('GET', '/api/auth/status');
+      const status = await WAAPI.request('GET', '/api/auth/status');
       if (status && status.authenticated === false) {
         const next = encodeURIComponent(location.pathname + location.search);
         location.replace('/admin/login?next=' + next);
@@ -1812,7 +1812,7 @@
 
     bindGlobalKeys();
     state.booted = true;
-    window.__BW_READY__ = true;
+    window.__WA_READY__ = true;
 
     if (isSmallScreen()) setEditorOpen(false);
     await applyDevParams();

@@ -4,7 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-DB="${BW_ADMIN_DB:-admin/data/blindwalk.db}"
+DB="${WA_ADMIN_DB:-admin/data/walkaholic.db}"
 OUT="apple/App/Resources/mapkeys.json"
 if [ ! -f "$DB" ]; then
   echo "⚠️  找不到后台数据库 $DB，iOS 将只跑 OSM/维基（或从远程 mapkeys.json 拉取）"

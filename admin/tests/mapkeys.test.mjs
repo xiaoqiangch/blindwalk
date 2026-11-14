@@ -14,7 +14,7 @@ const ALLOWED_GITHUB = 'https://xiaoqiangch.github.io';
 const ALLOWED_LOCAL = 'http://127.0.0.1:8799';
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-mapkeys-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-mapkeys-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -30,7 +30,7 @@ async function startServer(options = {}) {
     publicDir,
     exportPath: path.join(root, 'export', 'pois.json'),
     llmEnv: {},
-    authEnv: { BW_ADMIN_PASSWORD: TEST_PASSWORD },
+    authEnv: { WA_ADMIN_PASSWORD: TEST_PASSWORD },
     mapKeysEnv: options.mapKeysEnv || {},
     mapKeyFetch: options.mapKeyFetch,
     ingestCandidates: async () => ({ source: 'wikipedia', items: [] })
@@ -202,9 +202,9 @@ test('公开端点：白名单来源回显 Origin + 明文 + no-store；非白�
   }
 });
 
-test('公开端点：BW_MAPKEYS_ORIGINS 覆盖默认白名单', async () => {
+test('公开端点：WA_MAPKEYS_ORIGINS 覆盖默认白名单', async () => {
   const { server, base } = await startServer({
-    mapKeysEnv: { BW_MAPKEYS_ORIGINS: 'https://allowed.example,http://127.0.0.1:*' }
+    mapKeysEnv: { WA_MAPKEYS_ORIGINS: 'https://allowed.example,http://127.0.0.1:*' }
   });
   try {
     const allowed = await request(base, 'GET', '/api/public/mapkeys', undefined, {

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 抽盒设置 Sheet（design-system §5.2 + parity.md）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 抽盒设置 Sheet（design-system §5.2 + parity.md）
  *
  * 视觉基准：prototype/web/app.js sheetHTML + screenshots/showcase.png（SETUP 屏）
  *
@@ -28,25 +28,25 @@ import {
   toDataSourceStatus
 } from '../core/flow';
 import {
-  BwMicroLabel,
-  BwPill,
-  BwPrimaryButton
+  WaMicroLabel,
+  WaPill,
+  WaPrimaryButton
 } from '../components/Common';
-import { bwSleep, bwToast } from '../components/Async';
+import { waSleep, waToast } from '../components/Async';
 import { emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import { getCurrentLocationOnce, requestLocationPermission } from '../components/Location';
 import {
-  BwLocationBlockedPanel,
-  BwManualLocationSheet,
-  BwSearchFailedPanel
+  WaLocationBlockedPanel,
+  WaManualLocationSheet,
+  WaSearchFailedPanel
 } from '../components/SearchPanels';
 import { geocodeAddress } from '../core/geocode';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
-  BW_DUR_REGULAR,
-  BW_EASE
+  WAColor,
+  WAFont,
+  WASize,
+  WA_DUR_REGULAR,
+  WA_EASE
 } from '../theme/Theme';
 
 class DurationOption {
@@ -144,7 +144,7 @@ export struct SetupSheet {
 
   aboutToAppear(): void {
     this.load();
-    animateTo({ duration: BW_DUR_REGULAR, curve: BW_EASE }, () => {
+    animateTo({ duration: WA_DUR_REGULAR, curve: WA_EASE }, () => {
       this.sheetOffset = 0;
     });
   }
@@ -154,7 +154,7 @@ export struct SetupSheet {
   }
 
   private isShort(): boolean {
-    return this.winHeight < BWSize.shortHeightBreakpoint;
+    return this.winHeight < WASize.shortHeightBreakpoint;
   }
 
   private isDurationSelected(duration: WalkDuration): boolean {
@@ -291,7 +291,7 @@ export struct SetupSheet {
       }
     }
 
-    await bwSleep(400);
+    await waSleep(400);
     this.isShaking = false;
     this.shakeAngle = 0;
     this.busy = false;
@@ -329,9 +329,9 @@ export struct SetupSheet {
       return;
     }
     if (place.source === 'curated') {
-      bwToast('这是编辑精选的地点');
+      waToast('这是编辑精选的地点');
     } else if (result.poolSize > 0) {
-      bwToast('附近找到 ' + String(result.poolSize) + ' 个真实地点');
+      waToast('附近找到 ' + String(result.poolSize) + ' 个真实地点');
     }
     this.load();
     this.onChanged();
@@ -351,7 +351,7 @@ export struct SetupSheet {
       this.onChanged();
       return;
     }
-    bwToast('演示模式 · 内置地点');
+    waToast('演示模式 · 内置地点');
     this.load();
     this.onChanged();
     this.onStarted();
@@ -374,14 +374,14 @@ export struct SetupSheet {
     const hit = await geocodeAddress(deps.http, query);
     this.manualOpen = false;
     if (hit === undefined) {
-      bwToast('没查到这个地方，再试试');
+      waToast('没查到这个地方，再试试');
       return;
     }
     this.manualOrigin = hit.location;
     this.locationBlockedReason = '';
     this.searchFailedReason = '';
     getStore().setLastKnownOrigin(hit.location);
-    bwToast('位置已设为：' + hit.label);
+    waToast('位置已设为：' + hit.label);
     // 位置有了，直接重新摇一次
     this.shakeAndStart();
   }
@@ -393,20 +393,20 @@ export struct SetupSheet {
   @Builder
   durationSection() {
     Column({ space: 8 }) {
-      BwMicroLabel({ text: '时长' })
+      WaMicroLabel({ text: '时长' })
 
       Row({ space: 4 }) {
         ForEach(DURATIONS, (item: DurationOption) => {
           Button() {
             Column({ space: 1 }) {
               Text(item.main)
-                .fontSize(BWFont.caption)
+                .fontSize(WAFont.caption)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(this.isDurationSelected(item.value) ? BWColor.ink : BWColor.ink2)
+                .fontColor(this.isDurationSelected(item.value) ? WAColor.ink : WAColor.ink2)
                 .maxLines(1)
               Text(item.sub)
-                .fontSize(BWFont.microSm)
-                .fontColor(this.isDurationSelected(item.value) ? BWColor.amberDeep : BWColor.ink3)
+                .fontSize(WAFont.microSm)
+                .fontColor(this.isDurationSelected(item.value) ? WAColor.amberDeep : WAColor.ink3)
                 .maxLines(1)
             }
             .width('100%')
@@ -414,16 +414,16 @@ export struct SetupSheet {
           .type(ButtonType.Normal)
           .height(46)
           .layoutWeight(1)
-          .backgroundColor(this.isDurationSelected(item.value) ? BWColor.paper : Color.Transparent)
+          .backgroundColor(this.isDurationSelected(item.value) ? WAColor.paper : Color.Transparent)
           .borderRadius(12)
           .border({
             width: 1,
-            color: this.isDurationSelected(item.value) ? BWColor.amberBorder : Color.Transparent,
+            color: this.isDurationSelected(item.value) ? WAColor.amberBorder : Color.Transparent,
             radius: 12
           })
           .shadow({
             radius: this.isDurationSelected(item.value) ? 3 : 0,
-            color: this.isDurationSelected(item.value) ? BWColor.shadow : Color.Transparent,
+            color: this.isDurationSelected(item.value) ? WAColor.shadow : Color.Transparent,
             offsetX: 0,
             offsetY: 2
           })
@@ -434,9 +434,9 @@ export struct SetupSheet {
       }
       .width('100%')
       .padding(4)
-      .backgroundColor(BWColor.paper2)
-      .borderRadius(BWSize.cardRadiusSm)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+      .backgroundColor(WAColor.paper2)
+      .borderRadius(WASize.cardRadiusSm)
+      .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -445,30 +445,30 @@ export struct SetupSheet {
   @Builder
   moodSection() {
     Column({ space: 8 }) {
-      BwMicroLabel({ text: '心情' })
+      WaMicroLabel({ text: '心情' })
 
       Column({ space: 7 }) {
         ForEach(MOODS, (item: MoodOption) => {
           Row({ space: 12 }) {
             Stack({ alignContent: Alignment.Center }) {
               SymbolGlyph($r('sys.symbol.' + item.emoji))
-                .fontSize(BWSize.iconSizeSm)
-                .fontColor([this.isMoodSelected(item.mood) ? BWColor.amber : BWColor.ink2])
+                .fontSize(WASize.iconSizeSm)
+                .fontColor([this.isMoodSelected(item.mood) ? WAColor.amber : WAColor.ink2])
                 .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             }
             .width(34)
             .height(34)
-            .backgroundColor(this.isMoodSelected(item.mood) ? BWColor.amberSoft : BWColor.paper2)
+            .backgroundColor(this.isMoodSelected(item.mood) ? WAColor.amberSoft : WAColor.paper2)
             .borderRadius(17)
 
             Column({ space: 1 }) {
               Text(item.title)
-                .fontSize(BWFont.caption)
+                .fontSize(WAFont.caption)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(BWColor.ink)
+                .fontColor(WAColor.ink)
               Text(item.subtitle)
-                .fontSize(BWFont.micro)
-                .fontColor(BWColor.ink3)
+                .fontSize(WAFont.micro)
+                .fontColor(WAColor.ink3)
             }
             .alignItems(HorizontalAlign.Start)
 
@@ -476,12 +476,12 @@ export struct SetupSheet {
           }
           .width('100%')
           .padding({ left: 13, right: 13, top: 9, bottom: 9 })
-          .backgroundColor(this.isMoodSelected(item.mood) ? '#12E89B4C' : BWColor.paper)
-          .borderRadius(BWSize.cardRadiusSm)
+          .backgroundColor(this.isMoodSelected(item.mood) ? '#12E89B4C' : WAColor.paper)
+          .borderRadius(WASize.cardRadiusSm)
           .border({
             width: 1,
-            color: this.isMoodSelected(item.mood) ? '#B3E89B4C' : BWColor.line,
-            radius: BWSize.cardRadiusSm
+            color: this.isMoodSelected(item.mood) ? '#B3E89B4C' : WAColor.line,
+            radius: WASize.cardRadiusSm
           })
           .onClick(() => {
             this.selectMood(item.mood);
@@ -497,11 +497,11 @@ export struct SetupSheet {
   @Builder
   areaSection() {
     Column({ space: 8 }) {
-      BwMicroLabel({ text: '区域' })
+      WaMicroLabel({ text: '区域' })
 
       Row({ space: 8 }) {
         ForEach(AREAS, (item: AreaOption) => {
-          BwPill({
+          WaPill({
             text: item.label,
             selected: this.isAreaSelected(item.area),
             onTap: () => {
@@ -523,7 +523,7 @@ export struct SetupSheet {
     Column({ space: 8 }) {
       // ---------- 失败 / 受阻面板（优先展示，绝不静默降级） ----------
       if (this.locationBlockedReason.length > 0) {
-        BwLocationBlockedPanel({
+        WaLocationBlockedPanel({
           reason: this.locationBlockedReason,
           onRetryLocation: () => {
             this.locationBlockedReason = '';
@@ -539,7 +539,7 @@ export struct SetupSheet {
       }
 
       if (this.searchFailedReason.length > 0) {
-        BwSearchFailedPanel({
+        WaSearchFailedPanel({
           reason: this.searchFailedReason,
           reports: this.searchReports,
           tier: this.searchTier,
@@ -556,7 +556,7 @@ export struct SetupSheet {
       }
 
       if (this.manualOpen) {
-        BwManualLocationSheet({
+        WaManualLocationSheet({
           onCancel: () => {
             this.manualOpen = false;
           },
@@ -568,7 +568,7 @@ export struct SetupSheet {
 
       // ---------- 主按钮 ----------
       Row() {
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: this.busy ? '正在找真实地点…' : '摇一个盲盒',
           isActive: !this.busy,
           onTap: () => {
@@ -581,8 +581,8 @@ export struct SetupSheet {
 
       Button() {
         Text(this.busy ? '正在准备…' : '今天不想出门')
-          .fontSize(BWFont.bodySm)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink2)
       }
       .type(ButtonType.Normal)
       .height(42)
@@ -595,24 +595,24 @@ export struct SetupSheet {
 
       if (this.busy && this.statusText.length > 0) {
         Text(this.statusText)
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)
       }
 
       if (this.manualOrigin !== undefined) {
         Text('当前位置：手动设置（搜索半径内优先）')
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)
       }
 
       if (this.failed) {
         Text('这一次没抽到，再试一次。')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ember)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ember)
           .width('100%')
           .textAlign(TextAlign.Center)
       }
@@ -626,7 +626,7 @@ export struct SetupSheet {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.scrim)
+        .backgroundColor(WAColor.scrim)
         .onClick(() => {
           if (!this.busy) {
             this.onClose();
@@ -638,7 +638,7 @@ export struct SetupSheet {
         Row()
           .width(38)
           .height(5)
-          .backgroundColor(BWColor.line)
+          .backgroundColor(WAColor.line)
           .borderRadius(3)
           .margin({ top: 10 })
 
@@ -647,13 +647,13 @@ export struct SetupSheet {
             Text('这次的盲盒，你想要什么？')
               .fontSize(this.isShort() ? 19 : 22)
               .fontWeight(FontWeight.Bold)
-              .fontColor(BWColor.ink)
+              .fontColor(WAColor.ink)
               .width('100%')
               .maxLines(2)
 
             Text('选完就出发，目的地保密。')
-              .fontSize(BWFont.caption)
-              .fontColor(BWColor.ink3)
+              .fontSize(WAFont.caption)
+              .fontColor(WAColor.ink3)
               .width('100%')
               .margin({ top: 4, bottom: 18 })
 
@@ -676,8 +676,8 @@ export struct SetupSheet {
           }
           .width('100%')
           .padding({
-            left: BWSize.pagePadding,
-            right: BWSize.pagePadding,
+            left: WASize.pagePadding,
+            right: WASize.pagePadding,
             top: 10,
             bottom: 22
           })
@@ -687,16 +687,16 @@ export struct SetupSheet {
       }
       .width('100%')
       .height(this.isShort() ? '96%' : '88%')
-      .constraintSize({ maxWidth: BWSize.contentMaxWidth })
-      .backgroundColor(BWColor.paper)
+      .constraintSize({ maxWidth: WASize.contentMaxWidth })
+      .backgroundColor(WAColor.paper)
       .borderRadius({
-        topLeft: BWSize.panelRadius,
-        topRight: BWSize.panelRadius,
+        topLeft: WASize.panelRadius,
+        topRight: WASize.panelRadius,
         bottomLeft: 0,
         bottomRight: 0
       })
       .translate({ y: this.sheetOffset })
-      .shadow({ radius: 28, color: BWColor.shadowLift, offsetX: 0, offsetY: -8 })
+      .shadow({ radius: 28, color: WAColor.shadowLift, offsetX: 0, offsetY: -8 })
     }
     .width('100%')
     .height('100%')

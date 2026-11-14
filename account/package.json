@@ -1,9 +1,9 @@
 {
-  "name": "blindwalk-account",
+  "name": "walkaholic-account",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "盲走 BlindWalk · 个人账号服务（零依赖 Node.js：注册/登录/会话/资料同步/删号）",
+  "description": "步迷 Walkaholic · 个人账号服务（零依赖 Node.js：注册/登录/会话/资料同步/删号）",
   "engines": {
     "node": ">=22.5"
   },

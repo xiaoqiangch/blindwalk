@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 后台 — 地图 Key 统一管理
+ * 步迷 Walkaholic · 后台 — 地图 Key 统一管理
  *
  * 背景：地图 Key 不应由每个终端用户自己填。后台统一存（SQLite app_keys 表），
  * 管理界面只返回掩码；PWA 通过公开端点 `/api/public/mapkeys` 自动取。
@@ -69,7 +69,7 @@ export class MapKeysService {
     this.now = options.now || (() => Date.now());
     this.logger = options.logger || console;
     this.fetchImpl = options.fetchImpl || globalThis.fetch;
-    this.originPatterns = compileOriginPatterns(this.env.BW_MAPKEYS_ORIGINS);
+    this.originPatterns = compileOriginPatterns(this.env.WA_MAPKEYS_ORIGINS);
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS app_keys (' +
         'key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER' +

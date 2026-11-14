@@ -1,8 +1,8 @@
 # 项目进度看板（Super Agent 协作）
 
 > 维护：Lead。每次里程碑完成后更新。
-> 项目主目录：`/Users/chenxiaoqiang/Projects/BlindWalk`（外部卷 `/Volumes/XQProjects/projects/BlindWalk`）
-> 会话内相对路径：`Projects/BlindWalk`（软链，指向主目录）
+> 项目主目录：`/Users/chenxiaoqiang/Projects/Walkaholic`（外部卷 `/Volumes/XQProjects/projects/Walkaholic`）
+> 会话内相对路径：`Projects/Walkaholic`（软链，指向主目录）
 
 ## 0. 一图流
 
@@ -36,7 +36,7 @@
 | task-8 | Web PWA 埋惊喜/寻惊喜 | pwa-dev（失败）/ Lead 接手 | ✅ 完成 | dHash + 拍照压缩 + 三阶线索 + 对比结算，全流程实测 |
 | — | 共享内核 + 工程配置 | Lead | ✅ 完成 | Core typecheck 通过、project.yml 就绪 |
 | — | 校验/截图/展示图 | Lead | ✅ 完成 | check-swift + CDP 截图 + smoke test + showcase.png |
-| — | 迁移到 ~/Projects | Lead | ✅ 完成 | 主目录 = /Users/chenxiaoqiang/Projects/BlindWalk，工作区留软链 |
+| — | 迁移到 ~/Projects | Lead | ✅ 完成 | 主目录 = /Users/chenxiaoqiang/Projects/Walkaholic，工作区留软链 |
 
 ## 3. 里程碑
 
@@ -51,8 +51,8 @@
 | 2026-11-08 21:55 | 集成：WatchSessionSummary 移入 Shared/Core，WatchBridge 复用；XcodeGen 重新生成工程（含全部源码） |
 | 2026-11-08 21:57 | 校验：Shared typecheck OK、全量 parse OK、smoke test 14/14 通过 |
 | 2026-11-08 22:0x | 截图 9 张 + showcase 展示图；README / 状态看板定稿 |
-| 2026-11-08 22:0x | 同步到 ~/Projects/BlindWalk，交付用户 |
-| 2026-11-08 22:0x | 用户要求安装 Xcode + 迁移项目：项目主目录更新为 ~/Projects/BlindWalk（工作区软链） |
+| 2026-11-08 22:0x | 同步到 ~/Projects/Walkaholic，交付用户 |
+| 2026-11-08 22:0x | 用户要求安装 Xcode + 迁移项目：项目主目录更新为 ~/Projects/Walkaholic（工作区软链） |
 | 2026-11-08 22:1x | Xcode 27.2 从 App Store 安装完成（mas 需 root，改由用户 GUI 安装）；osascript 管理员授权完成 license accept / first launch |
 | 2026-11-08 22:2x | 原生构建：修复 `WKHapticType` 命名空间后，iOS + watchOS 两 target **BUILD SUCCEEDED** |
 | 2026-11-08 22:23 | iOS 模拟器 runtime 8.32GB 下载安装完成（iOS 27.2） |
@@ -63,7 +63,7 @@
 | 2026-11-09 06:3x | v0.2 集成完成：真实定位 + 手表双向同步 + 原生 UI 打磨三路合入；构建 SUCCEEDED |
 | 2026-11-09 06:3x | Lead 集成修复：冷启动手表首帧（start(store:)）、Reveal 关闭按钮、Journey 整页滚动+高度预算（线索被遮挡）、线索文案索引错位、本周惊喜值按自然日计算（不再随时间漂移 305→325） |
 | 2026-11-09 06:5x | v0.3 启动：新增 Shared/Core/Surprise.swift（BuriedSurprise / PhotoMatcher dHash / SurpriseRepository），Store 增加 burySurprise / completeSurpriseFind，3 个新成就 |
-| 2026-11-09 07:0x | 公网部署：GitHub Pages（xiaoqiangch/blindwalk），https://xiaoqiangch.github.io/blindwalk/ ；PWA 可装主屏 + Service Worker 离线 |
+| 2026-11-09 07:0x | 公网部署：GitHub Pages（xiaoqiangch/walkaholic），https://xiaoqiangch.github.io/walkaholic/ ；PWA 可装主屏 + Service Worker 离线 |
 | 2026-11-09 07:2x | surprise-dev 交付 iOS 4 文件（dHash 自检、先拍后看、重拍防刷分、底栏遮挡修复）；pwa-dev 中途失败，Lead 接手实现 Web 版 |
 | 2026-11-09 08:0x | Web 全流程实测：埋（照片压缩 + dHash）→ 列表（3 条）→ 三阶线索 → 先拍后看（无原图泄露）→ 81% 匹配 → +80 结算 → 旧 8 路由无回归 |
 | 2026-11-09 08:1x | 数据层加固：惊喜独立持久化（杀 App 不丢）；演示种子随真实定位重定位（异地也能看到 320m 外的惊喜） |
@@ -86,7 +86,7 @@
 | 常规 iPhone 回归 | ✅ 402×874 / 375×667 布局不变 |
 | iOS 宽屏布局 | ✅ 已实现（size class + 自适应图鉴），构建通过 |
 | iOS Duo 模拟器渲染 | ⚠️ headless 无法唤醒外屏（需 GUI 展开），待真机复核 |
-| 公网 | ✅ 已部署 blindwalk-v5-duo |
+| 公网 | ✅ 已部署 walkaholic-v5-duo |
 
 ### 2026-11-09 09:55 · v0.6 鸿蒙移植（HarmonyOS NEXT）
 
@@ -226,25 +226,25 @@
 | 部署 | ✅ 部署脚本从后台 DB 生成 `mapkeys.json` 注入 gh-pages 快照；**主仓无 Key** |
 | 商业 POI 过滤 | ✅ 排除快递柜/美容/中介/停车场等；百科/OSM/有图类别加权 |
 
-### 2026-11-09 16:50 · 改名「步谜」+ 字号整体放大
+### 2026-11-09 16:50 · 改名「步迷」+ 字号整体放大
 
 | 项 | 结果 |
 |---|---|
-| 应用名 | Web / PWA manifest / 手表页 / 鸿蒙资源 / iOS Info.plist / 后台标题 全部 → **步谜** |
+| 应用名 | Web / PWA manifest / 手表页 / 鸿蒙资源 / iOS Info.plist / 后台标题 全部 → **步迷** |
 | 字号 | 全文 180 处字号上调（8–17px 档整体 +2px 左右，18px+ 展示型数字不变） |
 | 适配 | 新增第 36 节：状态胶囊单行可横滚、卡片标题两行、设置项行高 |
 | 溢出检查 | 390×844 与 669×951 下 7 个页面均无横向溢出 |
 | 演示模式 | 旅程页不再显示空的路径卡（只有真实会话才渲染） |
 
-### 2026-11-09 17:40 · 正式定名「步谜 StepRiddle」
+### 2026-11-09 17:40 · 正式定名「步迷 Walkaholic」
 
 | 项 | 结果 |
 |---|---|
-| 名称含义 | 步（走路）+ 谜（不知道目的地），谐音「不明」；英文 StepRiddle，口号「用脚解谜」 |
+| 名称含义 | 步（走路）+ 谜（不知道目的地），谐音「不明」；英文 Walkaholic，口号「用脚解谜」 |
 | 全平台改名 | Web / PWA manifest / 手表页 / 鸿蒙资源 / iOS + watchOS 显示名与权限文案 / 后台标题 / 文档 |
-| 兼容 | 内部代号、bundle id、工程名、目录名仍为 BlindWalk（不改，避免破坏构建与已装应用） |
-| 验证 | iOS `BUILD SUCCEEDED` + 产物 `CFBundleDisplayName=步谜`；鸿蒙检查通过；冒烟测试通过 |
-| 公网 | `blindwalk-v28-bumi` |
+| 兼容 | 内部代号、bundle id、工程名、目录名仍为 Walkaholic（不改，避免破坏构建与已装应用） |
+| 验证 | iOS `BUILD SUCCEEDED` + 产物 `CFBundleDisplayName=步迷`；鸿蒙检查通过；冒烟测试通过 |
+| 公网 | `walkaholic-v28-bumi` |
 
 ### 2026-11-09 23:40 · 三端功能对齐（Web v33 / iOS / HarmonyOS）
 
@@ -257,7 +257,7 @@
 | 迷雾路径视图 | ✅ | ✅（Canvas） | ✅（Canvas） |
 | 账号登录/同步/恢复 | ✅ | ✅ | ✅ |
 | 字号对齐 | ✅ | ✅ | ✅ |
-| 名称「步谜」 | ✅ | ✅ | ✅ |
+| 名称「步迷」 | ✅ | ✅ | ✅ |
 
 **跨端联调发现的真实 Bug（三端都修了）**：
 1. 高德 `keywords=公园|博物馆|…` 整串传 → `status=1` 但 `count=0` 的**静默空结果**。改为逐词查询（限 2–3 个，间隔 120ms 控 QPS）
@@ -286,8 +286,8 @@
 | 服务器 | xqlounge.top（Ubuntu 24.04 / 1.6G 内存 / 9G 空闲） |
 | 运行时 | Node 22.23.4 + nginx 1.24 + certbot（Let's Encrypt，自动续期） |
 | Web | https://xqlounge.top/ 200，Service Worker 正常，mapkeys.json 已注入 |
-| 账号 | 同源 `/api/*`，注册/登录/同步实测通过；数据 `/var/lib/blindwalk/account/` |
-| 后台 | `/admin/`（nginx 剥前缀），登录/POI/地图 Key 实测通过；数据 `/var/lib/blindwalk/admin/` |
+| 账号 | 同源 `/api/*`，注册/登录/同步实测通过；数据 `/var/lib/walkaholic/account/` |
+| 后台 | `/admin/`（nginx 剥前缀），登录/POI/地图 Key 实测通过；数据 `/var/lib/walkaholic/admin/` |
 | 客户端 | 同源自动识别账号地址；iOS/鸿蒙默认账号地址改为 https://xqlounge.top |
 | 部署脚本 | `scripts/deploy-server.sh`（幂等，含权限修正、systemd、nginx、certbot、验证） |
 
@@ -321,6 +321,6 @@
 
 ## 6. 变更记录
 
-- 2026-11-08 21:29 立项，确定产品名「盲走 BlindWalk」、双形态交付。
+- 2026-11-08 21:29 立项，确定产品名「步迷 Walkaholic」、双形态交付。
 - 2026-11-08 21:35 统一演示数据口径（xp 4240 / Lv.6 黄昏猎人 / 18 张卡 / 周惊喜值 305 / 旅程 1260m 已走 780m）。
 - 2026-11-08 21:36 项目从「沙箱内 workspace」定位更新：批准策略调整为 danger-full-access，交付时复制到用户真实 `~/Projects`。

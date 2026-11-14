@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 
 // 纯解析 / 纯函数测试：不依赖网络、不需要浏览器。
-// providers.js 是 ES5 IIFE，挂 window.BW_PROVIDERS；这里用 vm 造一个最小浏览器沙箱。
+// providers.js 是 ES5 IIFE，挂 window.WA_PROVIDERS；这里用 vm 造一个最小浏览器沙箱。
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = readFileSync(path.join(HERE, '..', 'providers.js'), 'utf8');
@@ -52,8 +52,8 @@ function loadProviders(options = {}) {
 
   vm.createContext(sandbox);
   vm.runInContext(SOURCE, sandbox, { filename: 'providers.js' });
-  assert.ok(sandbox.BW_PROVIDERS, 'window.BW_PROVIDERS 未挂载');
-  return { api: sandbox.BW_PROVIDERS, storage, sandbox };
+  assert.ok(sandbox.WA_PROVIDERS, 'window.WA_PROVIDERS 未挂载');
+  return { api: sandbox.WA_PROVIDERS, storage, sandbox };
 }
 
 /** vm 沙箱里创建的对象/数组与测试环境不同 realm，deepStrictEqual 会比较原型；用 JSON 比较更稳 */
@@ -352,7 +352,7 @@ test('setKeys / getKeys：脱敏返回 + localStorage 持久化（明文只存�
   jsonEqual(returned, { amap: '***', baidu: '' });
   jsonEqual(first.api.getKeys(), { amap: '***', baidu: '' });
 
-  const raw = first.storage.get('bw.keys.v1');
+  const raw = first.storage.get('wa.keys.v1');
   assert.ok(raw, '应写入 localStorage');
   assert.ok(raw.indexOf('demo-amap-key') >= 0, 'Key 只保存在本地 localStorage');
 
@@ -362,7 +362,7 @@ test('setKeys / getKeys：脱敏返回 + localStorage 持久化（明文只存�
   assert.equal(amap.reason, '');
 
   // 模拟「刷新页面」：带旧 localStorage 重新加载
-  const second = loadProviders({ storage: { 'bw.keys.v1': raw } });
+  const second = loadProviders({ storage: { 'wa.keys.v1': raw } });
   jsonEqual(second.api.getKeys(), { amap: '***', baidu: '' });
 
   // 清空

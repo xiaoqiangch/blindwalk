@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 抽象街区地图
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 抽象街区地图
  *
  * design-system §5.3：奶油纸上的手绘街区（几条路、河、小方块建筑），
  * 一条虚线路线从底部「你」出发向前弯曲；路线上方一个呼吸光点 + 「?」，**没有终点名**。
@@ -8,7 +8,7 @@
  * ⚠️ 待 DevEco 验证：CanvasRenderingContext2D 的字体/lineDash 写法。
  */
 
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
 
 interface MapDot {
   x: number;
@@ -16,7 +16,7 @@ interface MapDot {
 }
 
 @Component
-export struct BwAbstractMap {
+export struct WaAbstractMap {
   @Prop @Watch('onProgressChanged') progress: number = 0;
   @Prop realMode: boolean = false;
   @State private mapWidth: number = 0;
@@ -82,7 +82,7 @@ export struct BwAbstractMap {
     ctx.clearRect(0, 0, w, h);
 
     // 纸底
-    ctx.fillStyle = BWColor.cream;
+    ctx.fillStyle = WAColor.cream;
     ctx.fillRect(0, 0, w, h);
 
     // 河（两条：宽水面 + 细虚线）
@@ -127,14 +127,14 @@ export struct BwAbstractMap {
       const spec: number[] = blocks[i];
       const x: number = w * spec[0];
       const y: number = h * spec[1];
-      const bw: number = w * spec[2];
+      const wa: number = w * spec[2];
       const bh: number = h * spec[3];
-      ctx.fillRect(x, y, bw, bh);
-      ctx.strokeRect(x, y, bw, bh);
+      ctx.fillRect(x, y, wa, bh);
+      ctx.strokeRect(x, y, wa, bh);
     }
 
     // 街道：先铺宽纸色路，再画虚线中线
-    ctx.strokeStyle = BWColor.paper;
+    ctx.strokeStyle = WAColor.paper;
     ctx.lineWidth = 12;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -216,14 +216,14 @@ export struct BwAbstractMap {
         Circle()
           .width(30)
           .height(30)
-          .fill(BWColor.paper)
-          .stroke(BWColor.amberDeep)
+          .fill(WAColor.paper)
+          .stroke(WAColor.amberDeep)
           .strokeWidth(1.5)
 
         Text('?')
-          .fontSize(BWFont.titleSm)
+          .fontSize(WAFont.titleSm)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.amberDeep)
+          .fontColor(WAColor.amberDeep)
       }
       .width(54)
       .height(54)
@@ -238,20 +238,20 @@ export struct BwAbstractMap {
           Circle()
             .width(26)
             .height(26)
-            .fill(BWColor.paper)
-            .stroke(BWColor.amberDeep)
+            .fill(WAColor.paper)
+            .stroke(WAColor.amberDeep)
             .strokeWidth(1.6)
 
           Text('你')
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
             .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.amberDeep)
+            .fontColor(WAColor.amberDeep)
         }
 
         Row()
           .width(18)
           .height(4)
-          .backgroundColor(BWColor.inkSoft)
+          .backgroundColor(WAColor.inkSoft)
           .borderRadius(2)
       }
       .width(40)
@@ -262,9 +262,9 @@ export struct BwAbstractMap {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BWColor.cream)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .backgroundColor(WAColor.cream)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
     .clip(true)
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.mapWidth = parseFloat(newValue.width.toString());

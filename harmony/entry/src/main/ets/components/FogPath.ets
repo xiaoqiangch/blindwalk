@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 迷雾路径视图（docs/parity.md §3）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 迷雾路径视图（docs/parity.md §3）
  *
  * 规格全部来自 core/fog.ts（纯 TS、可单测），本组件只负责把计算好的
  * segments / chevrons 画到 Canvas 上 —— 这样「参数对不对」有测试兜底，
@@ -26,10 +26,10 @@ import {
   fogGeometry
 } from '../core/fog';
 import { RoutePolyline } from '../core/contract';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
 
 @Component
-export struct BwFogPath {
+export struct WaFogPath {
   /** 步行路线（真实模式有值） */
   @Prop @Watch('onDataChanged') routePoints: number[][] = [];
   @Prop @Watch('onDataChanged') routeDistance: number = 0;
@@ -111,7 +111,7 @@ export struct BwFogPath {
     ctx.clearRect(0, 0, w, h);
 
     // 纸底（与卡片同色，不用纯白）
-    ctx.fillStyle = BWColor.cream;
+    ctx.fillStyle = WAColor.cream;
     ctx.fillRect(0, 0, w, h);
 
     const geometry: FogGeometry = this.geometry;
@@ -183,8 +183,8 @@ export struct BwFogPath {
     ctx.arc(x, y, 17, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = BWColor.paper;
-    ctx.strokeStyle = BWColor.amber;
+    ctx.fillStyle = WAColor.paper;
+    ctx.strokeStyle = WAColor.amber;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(x, y, 12, 0, Math.PI * 2);
@@ -192,7 +192,7 @@ export struct BwFogPath {
     ctx.stroke();
 
     // 深色三角箭头（朝上）
-    ctx.fillStyle = BWColor.ink;
+    ctx.fillStyle = WAColor.ink;
     ctx.beginPath();
     ctx.moveTo(x, y - 8);
     ctx.lineTo(x + 6, y + 5);
@@ -204,7 +204,7 @@ export struct BwFogPath {
 
   /** 指北针：北向指针按 -bearing 旋转（画布上方是行进方向） */
   private drawCompass(ctx: CanvasRenderingContext2D, x: number, y: number, rotation: number): void {
-    ctx.fillStyle = BWColor.paper;
+    ctx.fillStyle = WAColor.paper;
     ctx.strokeStyle = '#E4D9C6';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -265,12 +265,12 @@ export struct BwFogPath {
       if (this.geometry.hidden) {
         Column({ space: 4 }) {
           Text('就在附近')
-            .fontSize(BWFont.titleSm)
+            .fontSize(WAFont.titleSm)
             .fontWeight(FontWeight.Medium)
-            .fontColor(BWColor.ink)
+            .fontColor(WAColor.ink)
           Text('抬头看看周围')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink3)
         }
         .position({ x: 0, y: this.viewHeight * 0.62 })
         .width('100%')
@@ -279,9 +279,9 @@ export struct BwFogPath {
     }
     .width('100%')
     .height(this.viewHeight)
-    .backgroundColor(BWColor.cream)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .backgroundColor(WAColor.cream)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
     .clip(true)
     .onAreaChange((oldValue: Area, newValue: Area) => {
       const next: number = parseFloat(newValue.width.toString());

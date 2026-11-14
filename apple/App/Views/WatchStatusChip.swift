@@ -1,12 +1,12 @@
 //
 //  WatchStatusChip.swift
-//  BlindWalk（iOS 端）
+//  Walkaholic（iOS 端）
 //
 //  「手表连接」小角标：显示 手表已连接 / 同步中 / 未配对 / 不支持。
 //  纯展示组件，状态全部来自 `WatchSyncService`（Observation 自动跟踪变化），
 //  不持有 service、不发任何 WCSession 调用，可安全放在任何页面顶栏。
 //
-//  用法（Lead 在 BlindWalkApp.swift / HomeView 里接）：
+//  用法（Lead 在 WalkaholicApp.swift / HomeView 里接）：
 //      WatchStatusChip(service: watchSync)                       // 默认紧凑样式
 //      WatchStatusChip(service: watchSync, showsLastSync: true)  // 带「刚刚 / 3 分钟前」
 //
@@ -55,14 +55,14 @@ struct WatchStatusChip: View {
                 .opacity(isActive ? 1 : 0.45)
 
             Text(text)
-                .font(BWTheme.caption(11))
-                .foregroundStyle(isActive ? BWTheme.ink2 : BWTheme.ink3)
+                .font(WATheme.caption(11))
+                .foregroundStyle(isActive ? WATheme.ink2 : WATheme.ink3)
                 .lineLimit(1)
 
             if showsLastSync, let synced = service.lastSyncedAt, isActive {
-                Text("· \(BWFormat.relative(synced))")
-                    .font(BWTheme.caption(11))
-                    .foregroundStyle(BWTheme.ink3)
+                Text("· \(WAFormat.relative(synced))")
+                    .font(WATheme.caption(11))
+                    .foregroundStyle(WATheme.ink3)
                     .lineLimit(1)
             }
         }
@@ -91,22 +91,22 @@ struct WatchStatusChip: View {
     private var tint: Color {
         switch status {
         case .reachable:
-            return BWTheme.teal
+            return WATheme.teal
         case .activating, .unreachable:
-            return BWTheme.amberDeep
+            return WATheme.amberDeep
         case .notPaired, .appNotInstalled, .unsupported:
-            return BWTheme.ink3
+            return WATheme.ink3
         }
     }
 
     private var background: Color {
         switch status {
         case .reachable:
-            return BWTheme.teal.opacity(0.10)
+            return WATheme.teal.opacity(0.10)
         case .activating, .unreachable:
-            return BWTheme.amber.opacity(0.12)
+            return WATheme.amber.opacity(0.12)
         case .notPaired, .appNotInstalled, .unsupported:
-            return BWTheme.paper2
+            return WATheme.paper2
         }
     }
 
@@ -149,7 +149,7 @@ struct WatchStatusChip: View {
             parts.append(error)
         }
         if let synced = service.lastSyncedAt {
-            parts.append("最近同步 \(BWFormat.relative(synced))")
+            parts.append("最近同步 \(WAFormat.relative(synced))")
         }
         return parts.joined(separator: "，")
     }
@@ -164,5 +164,5 @@ struct WatchStatusChip: View {
         WatchStatusChip(service: service, showsLastSync: true)
     }
     .padding()
-    .background(BWTheme.paper)
+    .background(WATheme.paper)
 }

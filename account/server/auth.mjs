@@ -1,16 +1,16 @@
 /**
- * 盲走 BlindWalk · 账号服务 — 密码 / 会话 / 限流 / Cookie
+ * 步迷 Walkaholic · 账号服务 — 密码 / 会话 / 限流 / Cookie
  *
  * - 密码：crypto.scryptSync + 每用户独立 salt（hex），不存明文
  * - 会话：随机 32 字节 token（hex），SQLite sessions 表；Cookie 30 天
- * - Cookie：bw_uid=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
- *   本地 http 不加 Secure；部署 HTTPS 时把 BW_COOKIE_SECURE 设为 1（见 cookieHeader）。
+ * - Cookie：wa_uid=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
+ *   本地 http 不加 Secure；部署 HTTPS 时把 WA_COOKIE_SECURE 设为 1（见 cookieHeader）。
  * - 限流：同一 IP 10 分钟内失败 8 次 → 429
  */
 
 import crypto from 'node:crypto';
 
-export const SESSION_COOKIE = 'bw_uid';
+export const SESSION_COOKIE = 'wa_uid';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
 export const SESSION_MAX_AGE_SECONDS = Math.floor(SESSION_TTL_MS / 1000); // 2592000
 export const SCRYPT_KEYLEN = 64;
@@ -68,7 +68,7 @@ export function parseCookies(header) {
  * - 本地 http：`SameSite=Lax`，不加 Secure
  * - 公网 HTTPS 且前端在别的域（如 GitHub Pages）：必须 `SameSite=None; Secure`，
  *   否则浏览器不会在跨站请求里回传 Cookie，表现为"登录成功但立刻又变未登录"。
- *   通过 `options.crossSite`（= BW_COOKIE_CROSS_SITE=1）开启。
+ *   通过 `options.crossSite`（= WA_COOKIE_CROSS_SITE=1）开启。
  */
 function sameSiteAttr(options) {
   if (options.crossSite === true) return '; SameSite=None';
@@ -86,7 +86,7 @@ export function clearSessionCookie(options = {}) {
   return SESSION_COOKIE + '=; HttpOnly' + sameSiteAttr(options) + '; Path=/; Max-Age=0' + secure;
 }
 
-/** 请求来源 IP（默认取 socket；BW_TRUST_PROXY=1 时才信 X-Forwarded-For） */
+/** 请求来源 IP（默认取 socket；WA_TRUST_PROXY=1 时才信 X-Forwarded-For） */
 export function clientIP(req, trustProxy = false) {
   if (trustProxy && req.headers && typeof req.headers['x-forwarded-for'] === 'string') {
     const first = req.headers['x-forwarded-for'].split(',')[0].trim();

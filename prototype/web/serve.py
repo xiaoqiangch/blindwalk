@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""盲走 · 局域网服务（给 iPhone 打开 / 装到主屏用）。
+"""步迷 · 局域网服务（给 iPhone 打开 / 装到主屏用）。
 
 用法：
     python3 serve.py            # 默认 8799 端口
@@ -79,7 +79,7 @@ def main():
     ip = lan_ip()
     socketserver.TCPServer.allow_reuse_address = True
     print()
-    print("  盲走 BlindWalk · 局域网服务")
+    print("  步迷 Walkaholic · 局域网服务")
     print("  ─────────────────────────────────────────────")
     print(f"  📱 iPhone 打开：  http://{ip}:{PORT}/")
     print(f"  💻 本机电脑预览： http://127.0.0.1:{PORT}/")

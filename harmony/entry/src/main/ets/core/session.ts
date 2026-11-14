@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 旅程会话状态机
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 旅程会话状态机
  *
  * 移植自 apple/Shared/Core/QuestSession.swift：
  * - 起点即第 1 条线索（store 创建会话时 unlockedHintCount = 1）

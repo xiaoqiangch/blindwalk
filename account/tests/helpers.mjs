@@ -8,7 +8,7 @@ import { createServer } from '../server/index.mjs';
 export const TEST_ORIGIN = 'http://127.0.0.1:8799';
 
 export async function startTestServer(options = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-account-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-account-'));
   const dataDir = options.dataDir || path.join(root, 'data');
   const server = createServer({
     dataDir: dataDir,

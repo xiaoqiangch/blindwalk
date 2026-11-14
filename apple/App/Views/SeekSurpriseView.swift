@@ -14,7 +14,7 @@ import UIKit
 
 struct SeekSurpriseView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onClose: () -> Void = {}
     var onOpenBury: (() -> Void)? = nil
     var onOpenMine: (() -> Void)? = nil
@@ -44,7 +44,7 @@ struct SeekSurpriseView: View {
     @State private var isCameraPresented = false
     @State private var isSubmitting = false
 
-    @State private var toasts: [BWToast] = []
+    @State private var toasts: [WAToast] = []
     @State private var passedGlow = false
 
     /// 演示模式：用固定演示坐标算距离（真实定位离演示种子太远时）
@@ -81,7 +81,7 @@ struct SeekSurpriseView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             if let selected {
                 VStack(spacing: 0) {
@@ -95,12 +95,12 @@ struct SeekSurpriseView: View {
             }
 
             SurpriseToastLayer(toasts: toasts) { toast in
-                withAnimation(BWAnimation.quick) {
+                withAnimation(WAAnimation.quick) {
                     toasts.removeAll { $0.id == toast.id }
                 }
             }
         }
-        .bwTypeBounds()
+        .waTypeBounds()
         .fullScreenCover(isPresented: $isCameraPresented) {
             CameraPhotoPicker(
                 onPicked: { image in
@@ -123,7 +123,7 @@ struct SeekSurpriseView: View {
                 if let image = await PhotoLibraryService.loadImage(from: item) {
                     receive(finderImage: image)
                 } else {
-                    appendToast(BWToast(text: "这张照片读不出来，换一张试试。", icon: "photo.badge.exclamationmark"))
+                    appendToast(WAToast(text: "这张照片读不出来，换一张试试。", icon: "photo.badge.exclamationmark"))
                 }
                 pickerItem = nil
             }
@@ -142,26 +142,26 @@ struct SeekSurpriseView: View {
                     trailingLabel: onOpenMine == nil ? nil : "我的",
                     onTrailing: onOpenMine
                 )
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(nearbyList.isEmpty
                          ? "这附近还没有人埋下惊喜。"
                          : "\(nearbyList.count) 张照片在某个角落等你。")
-                        .font(BWType.body(13))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WAType.body(13))
+                        .foregroundStyle(WATheme.ink2)
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
                 .padding(.top, 6)
 
                 locationBanner
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 14)
 
                 if nearbyList.isEmpty {
                     emptyListCard
-                        .padding(.horizontal, BWTheme.pagePadding)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 22)
                 } else {
                     VStack(spacing: 10) {
@@ -169,13 +169,13 @@ struct SeekSurpriseView: View {
                             seekRow(surprise)
                         }
                     }
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 18)
                 }
 
                 Text("照片在你拍完之后才会出现。")
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 20)
                     .padding(.bottom, 26)
@@ -188,11 +188,11 @@ struct SeekSurpriseView: View {
         HStack(alignment: .center, spacing: 8) {
             Image(systemName: isDemoDistance ? "location.slash" : "location.fill")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isDemoDistance ? BWTheme.ember : BWTheme.teal)
+                .foregroundStyle(isDemoDistance ? WATheme.ember : WATheme.teal)
 
             Text(isDemoDistance ? "没有定位，距离按演示位置算。" : "距离按你此刻的位置算。")
-                .font(BWType.caption(10.5))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.caption(10.5))
+                .foregroundStyle(WATheme.ink3)
 
             Spacer(minLength: 0)
 
@@ -200,28 +200,28 @@ struct SeekSurpriseView: View {
                 SurpriseDemoTag()
             } else if probe.isSearching {
                 Text("定位中…")
-                    .font(BWType.caption(10))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10))
+                    .foregroundStyle(WATheme.ink3)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(BWTheme.paper.opacity(0.65))
+        .background(WATheme.paper.opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+                .stroke(WATheme.line, lineWidth: 1)
         )
     }
 
     private var emptyListCard: some View {
-        BWCard(padding: 0) {
-            BWEmptyState(
+        WACard(padding: 0) {
+            WAEmptyState(
                 title: "这附近还没有人埋下惊喜。",
                 subtitle: "要不要先埋一个？"
             )
             if let onOpenBury {
-                BWSecondaryButton(title: "埋下一个", icon: "plus.viewfinder") { onOpenBury() }
+                WASecondaryButton(title: "埋下一个", icon: "plus.viewfinder") { onOpenBury() }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 16)
             }
@@ -232,20 +232,20 @@ struct SeekSurpriseView: View {
         Button {
             openDetail(surprise)
         } label: {
-            BWCard(padding: 14) {
+            WACard(padding: 14) {
                 HStack(alignment: .center, spacing: 12) {
                     // 模糊态：一张「还没有内容」的纸片，绝不预览作者照片（ADR-007）
                     ZStack {
-                        BWKraft.thumbGradient
+                        WAKraft.thumbGradient
                         Text("?")
                             .font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(BWTheme.ink3.opacity(0.9))
+                            .foregroundStyle(WATheme.ink3.opacity(0.9))
                     }
                     .frame(width: 54, height: 68)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                            .stroke(WATheme.ink.opacity(0.08), lineWidth: 1)
                     )
                     .blur(radius: 0.4)
 
@@ -254,37 +254,37 @@ struct SeekSurpriseView: View {
                             Text(surprise.authorEmoji)
                                 .font(.system(size: 14))
                             Text("\(surprise.authorName) 埋下的")
-                                .font(BWType.rowTitle(13))
-                                .foregroundStyle(BWTheme.ink)
+                                .font(WAType.rowTitle(13))
+                                .foregroundStyle(WATheme.ink)
                                 .lineLimit(1)
                             Spacer(minLength: 0)
                         }
 
                         Text("一张照片，在某处等你。")
-                            .font(BWType.body(12.5))
-                            .foregroundStyle(BWTheme.ink2)
+                            .font(WAType.body(12.5))
+                            .foregroundStyle(WATheme.ink2)
 
                         HStack(spacing: 6) {
                             SurprisePill(
                                 text: distanceText(surprise),
                                 icon: "figure.walk",
-                                tint: isDemoDistance ? BWTheme.ember : BWTheme.ink2,
-                                background: isDemoDistance ? BWTheme.ember.opacity(0.09) : BWTheme.paper2
+                                tint: isDemoDistance ? WATheme.ember : WATheme.ink2,
+                                background: isDemoDistance ? WATheme.ember.opacity(0.09) : WATheme.paper2
                             )
                             Text(surprise.areaLabel)
-                                .font(BWType.caption(10.5))
-                                .foregroundStyle(BWTheme.ink3)
+                                .font(WAType.caption(10.5))
+                                .foregroundStyle(WATheme.ink3)
                                 .lineLimit(1)
                         }
                     }
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
             }
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel("\(surprise.authorName) 埋在\(surprise.areaLabel)的惊喜，\(distanceText(surprise))")
     }
 
@@ -299,8 +299,8 @@ struct SeekSurpriseView: View {
             // 延迟一帧：onChange 时新内容还没完成布局，立刻 scrollTo 会滚到一个旧高度。
             .onChange(of: phase) { _, newPhase in
                 guard newPhase == .compare else { return }
-                bwAfter(0.2) {
-                    withAnimation(BWAnimation.slow) {
+                waAfter(0.2) {
+                    withAnimation(WAAnimation.slow) {
                         proxy.scrollTo("compare", anchor: .top)
                     }
                 }
@@ -317,19 +317,19 @@ struct SeekSurpriseView: View {
                     trailingLabel: nil,
                     onTrailing: nil
                 )
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
 
                 authorCard(surprise)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 10)
 
                 clueTimeline(surprise)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 22)
 
                 phaseContent(surprise)
                     .id("compare")
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 22)
                     // 对比阶段底部会叠两条 toast，多留一点空间，避免压住结算按钮
                     .padding(.bottom, phase == .compare ? 110 : 34)
@@ -338,23 +338,23 @@ struct SeekSurpriseView: View {
     }
 
     private func authorCard(_ surprise: BuriedSurprise) -> some View {
-        BWCard(padding: 14) {
+        WACard(padding: 14) {
             HStack(alignment: .center, spacing: 11) {
                 Text(surprise.authorEmoji)
                     .font(.system(size: 20))
                     .frame(width: 44, height: 44)
-                    .background(BWTheme.paper2)
+                    .background(WATheme.paper2)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(BWTheme.line, lineWidth: 1))
+                    .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("\(surprise.authorName) 埋在 · \(surprise.areaLabel)")
-                        .font(BWType.rowTitle(13))
-                        .foregroundStyle(BWTheme.ink)
+                        .font(WAType.rowTitle(13))
+                        .foregroundStyle(WATheme.ink)
                         .lineLimit(1)
-                    Text(BWFormat.relative(surprise.createdAt))
-                        .font(BWType.caption(10.5))
-                        .foregroundStyle(BWTheme.ink3)
+                    Text(WAFormat.relative(surprise.createdAt))
+                        .font(WAType.caption(10.5))
+                        .foregroundStyle(WATheme.ink3)
                 }
 
                 Spacer(minLength: 0)
@@ -363,11 +363,11 @@ struct SeekSurpriseView: View {
                     Text(distanceText(surprise))
                         .font(.system(size: 15, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(phase == .approach ? BWTheme.amberDeep : BWTheme.teal)
+                        .foregroundStyle(phase == .approach ? WATheme.amberDeep : WATheme.teal)
                     if isDemoDistance {
                         Text("演示距离")
                             .font(.system(size: 11))
-                            .foregroundStyle(BWTheme.ember)
+                            .foregroundStyle(WATheme.ember)
                     }
                 }
             }
@@ -380,17 +380,17 @@ struct SeekSurpriseView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("线索")
-                    .font(BWTheme.title(17))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WATheme.title(17))
+                    .foregroundStyle(WATheme.ink)
                 Text("\(unlockedClueCount(for: surprise))/3")
-                    .font(BWTheme.caption(12))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WATheme.caption(12))
+                    .foregroundStyle(WATheme.ink3)
                 Spacer(minLength: 0)
             }
 
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(BWTheme.line)
+                    .fill(WATheme.line)
                     .frame(width: 1)
                     .padding(.leading, 12)
                     .padding(.vertical, 20)
@@ -411,17 +411,17 @@ struct SeekSurpriseView: View {
         return HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(unlocked ? BWTheme.teal.opacity(0.16) : BWTheme.paper2)
+                    .fill(unlocked ? WATheme.teal.opacity(0.16) : WATheme.paper2)
                 Circle()
-                    .stroke(unlocked ? BWTheme.teal.opacity(0.4) : BWTheme.line, lineWidth: 1)
+                    .stroke(unlocked ? WATheme.teal.opacity(0.4) : WATheme.line, lineWidth: 1)
                 if unlocked {
                     Image(systemName: "checkmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(BWTheme.teal)
+                        .foregroundStyle(WATheme.teal)
                 } else {
                     Text("\(index + 1)")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
             }
             .frame(width: 26, height: 26)
@@ -430,38 +430,38 @@ struct SeekSurpriseView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Text("✅").font(.system(size: 14))
                     Text(clue)
-                        .font(BWTheme.body(14))
-                        .foregroundStyle(BWTheme.ink)
+                        .font(WATheme.body(14))
+                        .foregroundStyle(WATheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BWTheme.paper)
+                .background(WATheme.paper)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
+                        .stroke(WATheme.line, lineWidth: 1)
                 )
-                .shadow(color: BWTheme.ink.opacity(0.06), radius: 10, x: 0, y: 6)
+                .shadow(color: WATheme.ink.opacity(0.06), radius: 10, x: 0, y: 6)
             } else {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                     Text(lockedClueCopy(surprise, index: index))
-                        .font(BWTheme.caption(13))
-                        .foregroundStyle(BWTheme.ink3)
+                        .font(WATheme.caption(13))
+                        .foregroundStyle(WATheme.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BWTheme.paper2.opacity(0.55))
+                .background(WATheme.paper2.opacity(0.55))
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1.2, dash: [5, 5]))
+                        .strokeBorder(WATheme.line, style: StrokeStyle(lineWidth: 1.2, dash: [5, 5]))
                 )
             }
         }
@@ -484,16 +484,16 @@ struct SeekSurpriseView: View {
     /// 还没进半径：只讲距离，没有任何照片
     private func approachCard(_ surprise: BuriedSurprise) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            BWMicroLabel("还差一点")
+            WAMicroLabel("还差一点")
             Text("走近一点。到了，才给你拍的角度。")
-                .font(BWTheme.body(13))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WATheme.body(13))
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let hint = approachHint(surprise) {
                 Text(hint)
-                    .font(BWType.caption(11))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(11))
+                    .foregroundStyle(WATheme.ink3)
             }
 
             // 演示兜底：明天真机用户不在演示坐标附近时，也要能走通
@@ -505,14 +505,14 @@ struct SeekSurpriseView: View {
                     } label: {
                         Text("演示：当作到了")
                             .font(.system(size: 12.5, weight: .semibold))
-                            .foregroundStyle(BWTheme.ink2)
+                            .foregroundStyle(WATheme.ink2)
                             .padding(.horizontal, 10)
                             .frame(height: 26)
-                            .background(BWTheme.paper)
+                            .background(WATheme.paper)
                             .clipShape(Capsule())
-                            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                            .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                     }
-                    .buttonStyle(BWPressEffectStyle())
+                    .buttonStyle(WAPressEffectStyle())
                     Spacer(minLength: 0)
                 }
                 .padding(.top, 4)
@@ -520,11 +520,11 @@ struct SeekSurpriseView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+                .stroke(WATheme.line, lineWidth: 1)
         )
     }
 
@@ -534,22 +534,22 @@ struct SeekSurpriseView: View {
             HStack(spacing: 6) {
                 Image(systemName: "camera.viewfinder")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BWTheme.amberDeep)
+                    .foregroundStyle(WATheme.amberDeep)
                 Text("你已经在范围里了")
-                    .font(BWType.rowTitle(13))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WAType.rowTitle(13))
+                    .foregroundStyle(WATheme.ink)
                 Spacer(minLength: 0)
-                SurprisePill(text: "≤ \(Int(surprise.radiusMeters)) m", icon: "scope", tint: BWTheme.teal)
+                SurprisePill(text: "≤ \(Int(surprise.radiusMeters)) m", icon: "scope", tint: WATheme.teal)
             }
 
             Text("抬手机，拍一张你眼前的画面。")
-                .font(BWTheme.body(13))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WATheme.body(13))
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("先别急着看，找到你的角度。")
-                .font(BWType.caption(11))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.caption(11))
+                .foregroundStyle(WATheme.ink3)
 
             SurprisePhotoPickRow(
                 pickerItem: $pickerItem,
@@ -563,29 +563,29 @@ struct SeekSurpriseView: View {
         }
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(BWTheme.amber.opacity(0.35), lineWidth: 1)
+                .stroke(WATheme.amber.opacity(0.35), lineWidth: 1)
         )
-        .shadow(color: BWTheme.amberDeep.opacity(0.12), radius: 14, x: 0, y: 8)
+        .shadow(color: WATheme.amberDeep.opacity(0.12), radius: 14, x: 0, y: 8)
     }
 
     /// 拍完之后：才并排给出作者原图 + 我的照片 + 相似度 + 评价
     private func compareStage(_ surprise: BuriedSurprise) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 8) {
-                BWMicroLabel("对照")
+                WAMicroLabel("对照")
                 Spacer(minLength: 0)
                 if let outcome {
                     Text(outcome.isDemo ? "演示匹配 · \(outcome.percentText) 像" : "\(outcome.percentText) 像")
                         .font(.system(size: 13, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(outcome.passed ? BWTheme.teal : BWTheme.amberDeep)
+                        .foregroundStyle(outcome.passed ? WATheme.teal : WATheme.amberDeep)
                         .padding(.horizontal, 10)
                         .frame(height: 26)
-                        .background((outcome.passed ? BWTheme.teal : BWTheme.amberDeep).opacity(0.12))
+                        .background((outcome.passed ? WATheme.teal : WATheme.amberDeep).opacity(0.12))
                         .clipShape(Capsule())
                 }
             }
@@ -605,19 +605,19 @@ struct SeekSurpriseView: View {
 
             if let outcome {
                 Text(outcome.verdict)
-                    .font(BWTheme.body(13))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(WATheme.body(13))
+                    .foregroundStyle(WATheme.ink2)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if outcome.isDemo {
                     Text("作者的原图不在这台手机上，这次的相似度是演示值。")
-                        .font(BWType.caption(10.5))
-                        .foregroundStyle(BWTheme.ember.opacity(0.9))
+                        .font(WAType.caption(10.5))
+                        .foregroundStyle(WATheme.ember.opacity(0.9))
                 }
             }
 
-            BWHairline()
+            WAHairline()
 
             if let result = findResult, let outcome, outcome.passed {
                 settlementBlock(result)
@@ -627,13 +627,13 @@ struct SeekSurpriseView: View {
         }
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(outcome?.passed == true ? BWTheme.teal.opacity(0.4) : BWTheme.amber.opacity(0.32), lineWidth: 1)
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .stroke(outcome?.passed == true ? WATheme.teal.opacity(0.4) : WATheme.amber.opacity(0.32), lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.07), radius: 14, x: 0, y: 9)
+        .shadow(color: WATheme.ink.opacity(0.07), radius: 14, x: 0, y: 9)
     }
 
     private func photoTile(title: String, image: UIImage?, isDemo: Bool) -> some View {
@@ -645,10 +645,10 @@ struct SeekSurpriseView: View {
                         .scaledToFill()
                 } else {
                     ZStack {
-                        BWKraft.thumbGradient
+                        WAKraft.thumbGradient
                         Text("?")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(BWTheme.ink3)
+                            .foregroundStyle(WATheme.ink3)
                     }
                 }
             }
@@ -657,17 +657,17 @@ struct SeekSurpriseView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                    .stroke(WATheme.ink.opacity(0.08), lineWidth: 1)
             )
 
             HStack(spacing: 4) {
                 Text(title)
-                    .font(BWType.caption(10))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10))
+                    .foregroundStyle(WATheme.ink3)
                 if isDemo {
                     Text("演示照片")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(BWTheme.ember)
+                        .foregroundStyle(WATheme.ember)
                 }
             }
         }
@@ -680,54 +680,54 @@ struct SeekSurpriseView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("找到")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                 Text("探索值 +\(result.seekerPoints)")
                     .font(.system(size: 15, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(BWTheme.teal)
+                    .foregroundStyle(WATheme.teal)
                 Spacer(minLength: 0)
                 Text("作者 +\(result.authorPoints)")
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
             }
 
             Text("你把 TA 的那一眼，重新看了一遍。")
-                .font(BWTheme.body(12.5))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WATheme.body(12.5))
+                .foregroundStyle(WATheme.ink2)
 
             if let achievement = result.newAchievements.first {
                 HStack(spacing: 6) {
                     Text(achievement.icon).font(.system(size: 14))
                     Text("成就解锁 · \(achievement.name)")
-                        .font(BWType.caption(11))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WAType.caption(11))
+                        .foregroundStyle(WATheme.ink2)
                 }
                 .padding(.horizontal, 10)
                 .frame(height: 28)
-                .background(BWTheme.amber.opacity(0.16))
+                .background(WATheme.amber.opacity(0.16))
                 .clipShape(Capsule())
             }
 
             HStack(spacing: 8) {
                 if let onOpenMine {
-                    BWSecondaryButton(title: "我的惊喜", icon: "tray.full") { onOpenMine() }
+                    WASecondaryButton(title: "我的惊喜", icon: "tray.full") { onOpenMine() }
                 }
-                BWPrimaryButton(title: "再找一个", icon: "sparkle.magnifyingglass") {
+                WAPrimaryButton(title: "再找一个", icon: "sparkle.magnifyingglass") {
                     closeDetail()
                 }
             }
             .padding(.top, 2)
         }
         .padding(14)
-        .background(BWTheme.teal.opacity(0.06))
+        .background(WATheme.teal.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(BWTheme.teal.opacity(0.22), lineWidth: 1)
+                .stroke(WATheme.teal.opacity(0.22), lineWidth: 1)
         )
         .overlay(alignment: .topTrailing) {
             Circle()
-                .fill(BWTheme.teal.opacity(passedGlow ? 0.16 : 0.0))
+                .fill(WATheme.teal.opacity(passedGlow ? 0.16 : 0.0))
                 .frame(width: 120, height: 120)
                 .blur(radius: 24)
                 .offset(x: 26, y: -34)
@@ -738,13 +738,13 @@ struct SeekSurpriseView: View {
     private var retryBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("再往那边挪两步。")
-                .font(BWType.rowTitle(14))
-                .foregroundStyle(BWTheme.ink)
+                .font(WAType.rowTitle(14))
+                .foregroundStyle(WATheme.ink)
             Text(comfortPointAwarded
                  ? "不着急，重拍一张就好。这次的 10 点是辛苦分。"
                  : "不着急，重拍一张就好。")
-                .font(BWType.body(12))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WAType.body(12))
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -767,7 +767,7 @@ struct SeekSurpriseView: View {
     private var detailBottomBar: some View {
         if let surprise = selected, phase == .approach {
             VStack(spacing: 6) {
-                BWPrimaryButton(
+                WAPrimaryButton(
                     title: "再走近 \(remainingMetersText(surprise))",
                     icon: "figure.walk",
                     action: {}
@@ -776,16 +776,16 @@ struct SeekSurpriseView: View {
                 .opacity(0.5)
 
                 Text("到了，就给你拍的角度。")
-                    .font(BWType.caption(10))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10))
+                    .foregroundStyle(WATheme.ink3)
             }
-            .padding(.horizontal, BWTheme.pagePadding)
+            .padding(.horizontal, WATheme.pagePadding)
             .padding(.top, 12)
             .padding(.bottom, 16)
             .background(alignment: .top) {
                 ZStack(alignment: .top) {
-                    BWTheme.cream
-                    BWHairline()
+                    WATheme.cream
+                    WAHairline()
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -815,10 +815,10 @@ struct SeekSurpriseView: View {
             guard !Task.isCancelled else { return }
             guard let surprise = selected, phase == .approach else { continue }
             if GeoMath.distance(from: origin, to: surprise.location) <= surprise.radiusMeters {
-                withAnimation(BWAnimation.regular) {
+                withAnimation(WAAnimation.regular) {
                     phase = .shoot
                 }
-                BWHaptics.medium()
+                WAHaptics.medium()
             }
             let demo = isDemoDistance
             if demo != usesDemoDistance {
@@ -842,13 +842,13 @@ struct SeekSurpriseView: View {
         if distance(for: surprise) <= surprise.radiusMeters {
             phase = .shoot
             // 走进范围内给一次中等触感（design-system §3：解锁 = medium）
-            BWHaptics.medium()
+            WAHaptics.medium()
         }
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     private func closeDetail() {
-        withAnimation(BWAnimation.regular) {
+        withAnimation(WAAnimation.regular) {
             selected = nil
         }
         phase = .approach
@@ -858,10 +858,10 @@ struct SeekSurpriseView: View {
     /// 一旦放行，三条线索都视为已解锁（等于你人已经站在那个位置了）。
     private func simulateArrival() {
         simulatedInRange = true
-        withAnimation(BWAnimation.regular) {
+        withAnimation(WAAnimation.regular) {
             phase = .shoot
         }
-        BWHaptics.medium()
+        WAHaptics.medium()
     }
 
     /// 收到寻者照片：算相似度 → 揭晓对比 → 达标则提交结算
@@ -889,14 +889,14 @@ struct SeekSurpriseView: View {
             )
             findResult = find
             if let find {
-                toasts.append(BWToast(
+                toasts.append(WAToast(
                     text: "找到 · 探索值 +\(find.seekerPoints)",
                     icon: "sparkles"
                 ))
                 if let achievement = find.newAchievements.first {
-                    bwAfter(0.6) {
+                    waAfter(0.6) {
                         appendToast(
-                            BWToast(
+                            WAToast(
                                 text: "成就解锁 · \(achievement.name)",
                                 icon: achievement.icon,
                                 isAmber: true
@@ -905,7 +905,7 @@ struct SeekSurpriseView: View {
                     }
                 }
             }
-            BWHaptics.success()
+            WAHaptics.success()
             passedGlow = true
         } else {
             // 不达标：同一条惊喜只在第一次给 +10 辛苦分（反复重拍不该刷分），
@@ -922,10 +922,10 @@ struct SeekSurpriseView: View {
                 comfortPointAwarded = false
             }
             findResult = nil
-            BWHaptics.light()
+            WAHaptics.light()
         }
 
-        withAnimation(BWAnimation.slow) {
+        withAnimation(WAAnimation.slow) {
             phase = .compare
         }
         isSubmitting = false
@@ -954,7 +954,7 @@ struct SeekSurpriseView: View {
         if meters < 1000 {
             return "\(meters) m"
         }
-        return BWFormat.distanceKilometers(meters)
+        return WAFormat.distanceKilometers(meters)
     }
 
     private func remainingMetersText(_ surprise: BuriedSurprise) -> String {
@@ -985,7 +985,7 @@ struct SeekSurpriseView: View {
         guard index < thresholds.count else { return "到了你就知道" }
         let gap = Int(max(0, distance(for: surprise) - thresholds[index]).rounded())
         if gap <= 0 { return "到了你就知道" }
-        return "再走近 \(gap) m，解锁第\(BWFormat.chineseIndex(index))条线索"
+        return "再走近 \(gap) m，解锁第\(WAFormat.chineseIndex(index))条线索"
     }
 
     private func approachHint(_ surprise: BuriedSurprise) -> String? {
@@ -1008,8 +1008,8 @@ struct SeekSurpriseView: View {
 
     // MARK: 杂项
 
-    private func appendToast(_ toast: BWToast) {
-        withAnimation(BWAnimation.regular) {
+    private func appendToast(_ toast: WAToast) {
+        withAnimation(WAAnimation.regular) {
             toasts.append(toast)
         }
     }
@@ -1029,10 +1029,10 @@ struct SeekSurpriseView: View {
     }
     #endif
 
-    /// 截图 / 走查专用：`SIMCTL_CHILD_BW_PREVIEW=seek|seek-detail|seek-compare`
+    /// 截图 / 走查专用：`SIMCTL_CHILD_WA_PREVIEW=seek|seek-detail|seek-compare`
     private func applyPreviewRoute() {
         #if DEBUG
-        let mode = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        let mode = ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? ""
         guard ["seek-detail", "seek-shoot", "seek-compare", "seek-miss", "seek-compare-real", "seek-compare-same"].contains(mode) else { return }
         guard let first = nearbyList.first else { return }
 
@@ -1045,13 +1045,13 @@ struct SeekSurpriseView: View {
             seedAuthorPhoto(for: first, image: PhotoLibraryService.debugPlaceholderImage(size: CGSize(width: 600, height: 800)))
         }
 
-        bwAfter(0.35) {
+        waAfter(0.35) {
             openDetail(first)
             guard mode != "seek-detail" else { return }
-            bwAfter(0.6) {
+            waAfter(0.6) {
                 simulateArrival()
                 guard mode != "seek-shoot" else { return }
-                bwAfter(0.5) {
+                waAfter(0.5) {
                     switch mode {
                     case "seek-miss":
                         // 用一张「完全不同的画面」强制走不达标分支，用于设计走查

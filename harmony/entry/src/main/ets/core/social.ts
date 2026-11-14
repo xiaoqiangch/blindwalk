@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 圈子 / 排行榜
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 圈子 / 排行榜
  *
  * 移植自 apple/Shared/Core/SocialFeed.swift（MVP 无后端，全部本地 mock）。
  * 反应键使用契约里的 eyes / heart / next（对应羡慕 / 一起 / 下次带我）。

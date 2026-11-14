@@ -16,8 +16,8 @@ public final class UserDefaultsProfileStore: ProfilePersisting, @unchecked Senda
 
     public init(
         defaults: UserDefaults = .standard,
-        key: String = "blindwalk.profile.v1",
-        surprisesKey: String = "blindwalk.surprises.v1"
+        key: String = "walkaholic.profile.v1",
+        surprisesKey: String = "walkaholic.surprises.v1"
     ) {
         self.defaults = defaults
         self.key = key
@@ -55,7 +55,7 @@ public final class UserDefaultsSurpriseStore: SurprisePersisting, @unchecked Sen
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    public init(defaults: UserDefaults = .standard, key: String = "blindwalk.surprises.v1") {
+    public init(defaults: UserDefaults = .standard, key: String = "walkaholic.surprises.v1") {
         self.defaults = defaults
         self.key = key
     }

@@ -6,7 +6,7 @@ import UIKit
 // 对齐 docs/design-system.md §3：主缓动 cubic-bezier(.22,1,.36,1)，
 // 快 180ms / 常规 320ms / 慢 520ms / 摇盒 600ms / 开盒 900ms / 呼吸光点 2.4s。
 
-enum BWAnimation {
+enum WAAnimation {
     static let quick = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.18)
     static let regular = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.32)
     static let slow = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.52)
@@ -26,7 +26,7 @@ enum BWAnimation {
 // MARK: - 延迟执行
 /// 统一封装「等一会儿再做」（用于动画时序）。回调保证在主线程执行。
 @MainActor
-func bwAfter(_ seconds: Double, _ action: @escaping @MainActor () -> Void) {
+func waAfter(_ seconds: Double, _ action: @escaping @MainActor () -> Void) {
     Task { @MainActor in
         let clamped = max(0, seconds)
         try? await Task.sleep(nanoseconds: UInt64(clamped * 1_000_000_000))
@@ -40,10 +40,10 @@ func bwAfter(_ seconds: Double, _ action: @escaping @MainActor () -> Void) {
 
 extension Color {
     /// 在 a / b 两个既有 token 之间按 t（0…1）插值。
-    static func bwMix(_ a: Color, _ b: Color, _ t: CGFloat) -> Color {
+    static func waMix(_ a: Color, _ b: Color, _ t: CGFloat) -> Color {
         let clamped = min(1, max(0, t))
-        let ca = UIColor(a).bwRGBA
-        let cb = UIColor(b).bwRGBA
+        let ca = UIColor(a).waRGBA
+        let cb = UIColor(b).waRGBA
         return Color(
             red: ca.0 + (cb.0 - ca.0) * clamped,
             green: ca.1 + (cb.1 - ca.1) * clamped,
@@ -53,7 +53,7 @@ extension Color {
 }
 
 private extension UIColor {
-    var bwRGBA: (CGFloat, CGFloat, CGFloat, CGFloat) {
+    var waRGBA: (CGFloat, CGFloat, CGFloat, CGFloat) {
         var red: CGFloat = 0
         var green: CGFloat = 0
         var blue: CGFloat = 0
@@ -75,7 +75,7 @@ private extension UIColor {
 /// 变成淡紫，一屏里出现三张就变成「满屏紫」——这是界面发虚的主因。
 /// 现在只保留一条中性面材梯，渐变仅作为同一中性内部的极轻微tone shift，
 /// 层次靠「面材 + 发丝描边」拉开，不靠色相。
-enum BWKraft {
+enum WAKraft {
     /// 面材三档（中性冷灰，自上而下略深）
     static let light = Color(hex: 0xFFFFFF)
     static let mid = Color(hex: 0xFAFAFB)
@@ -106,7 +106,7 @@ enum BWKraft {
     /// 缩略图面材
     static var thumbGradient: LinearGradient {
         LinearGradient(
-            colors: [BWTheme.paper2, BWTheme.paper],
+            colors: [WATheme.paper2, WATheme.paper],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -117,7 +117,7 @@ enum BWKraft {
 // 与 docs/design-system.md §3 的 Display / Title / Body / Caption / 微标 对应，
 // 具体字号按 Web 原型（390pt 稿）实测取值。
 
-enum BWType {
+enum WAType {
     /// 页面标题：一屏只有一个（回忆册 / 圈子 / 我的）
     static func pageTitle() -> Font { .system(size: 28, weight: .semibold) }
 
@@ -147,7 +147,7 @@ enum BWType {
 extension View {
     /// 版式按 390pt 固定稿还原（与 Web 一致）。这里把 Dynamic Type 收敛到
     /// xxL：系统控件仍然可读地缩放，但极端字号不会把纸卡与筛选条撑破。
-    func bwTypeBounds() -> some View {
+    func waTypeBounds() -> some View {
         dynamicTypeSize(.xSmall ... .xxLarge)
     }
 }
@@ -160,17 +160,17 @@ extension View {
 // web 原型的底栏是平底纸栏，这样处理后与之一致。
 
 @MainActor
-enum BWTabBarChrome {
+enum WATabBarChrome {
     static func install() {
         guard let window = keyWindow() else { return }
-        window.backgroundColor = UIColor(BWTheme.cream)
+        window.backgroundColor = UIColor(WATheme.cream)
 
         guard let tabBar = tabBar(in: window.rootViewController) else { return }
-        tabBar.tintColor = UIColor(BWTheme.amberDeep)
-        tabBar.unselectedItemTintColor = UIColor(BWTheme.ink3)
+        tabBar.tintColor = UIColor(WATheme.amberDeep)
+        tabBar.unselectedItemTintColor = UIColor(WATheme.ink3)
 
         // 底栏背后的系统底色（iOS 26/27 是 systemBackground 白），换成奶油纸。
-        window.rootViewController?.view.backgroundColor = UIColor(BWTheme.cream)
+        window.rootViewController?.view.backgroundColor = UIColor(WATheme.cream)
         addPaperStrip(around: tabBar)
     }
 
@@ -201,10 +201,10 @@ enum BWTabBarChrome {
 
         let barFrame = tabBar.convert(tabBar.bounds, to: container)
         strip.frame = CGRect(x: 0, y: barFrame.minY, width: container.bounds.width, height: container.bounds.height - barFrame.minY)
-        strip.backgroundColor = UIColor(BWTheme.paper)
+        strip.backgroundColor = UIColor(WATheme.paper)
         let hairlineHeight = 1 / UIScreen.main.scale
         hairline.frame = CGRect(x: 0, y: 0, width: strip.bounds.width, height: hairlineHeight)
-        hairline.backgroundColor = UIColor(BWTheme.line)
+        hairline.backgroundColor = UIColor(WATheme.line)
         container.bringSubviewToFront(plate)
     }
 
@@ -216,7 +216,7 @@ enum BWTabBarChrome {
             if name.contains("_UITabSelectionView") {
                 // 选中态用中性面，而不是带主色的淡底：
                 // 底栏一天要被看几百次，它是 chrome，不该是整屏第二个彩色元素
-                sub.backgroundColor = UIColor(BWTheme.paper2)
+                sub.backgroundColor = UIColor(WATheme.paper2)
                 sub.alpha = 1
             }
             if name.contains("_UITabBarItemPlatterView") {
@@ -245,27 +245,27 @@ enum BWTabBarChrome {
     }
 }
 
-private struct BWTabBarChromeModifier: ViewModifier {
+private struct WATabBarChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear {
-                BWTabBarChrome.install()
+                WATabBarChrome.install()
                 // 系统底栏在首次布局后才稳定，补一次（幂等）
-                bwAfter(0.6) { BWTabBarChrome.install() }
+                waAfter(0.6) { WATabBarChrome.install() }
             }
     }
 }
 
 extension View {
     /// 给系统底栏套上纸面外观（每个 tab 根视图各挂一次，幂等）。
-    func bwTabBarChrome() -> some View {
-        modifier(BWTabBarChromeModifier())
+    func waTabBarChrome() -> some View {
+        modifier(WATabBarChromeModifier())
     }
 }
 
 // MARK: - 文案 / 数字格式化
 
-enum BWFormat {
+enum WAFormat {
 
     /// 顶栏问候：早上好 / 下午好 / 晚上好（按系统时间，design-system §5.1）
     static func greeting(name: String, date: Date = Date(), calendar: Calendar = .current) -> String {
@@ -388,7 +388,7 @@ enum BWFormat {
 // MARK: - 触感
 // design-system §3：轻触 = light，解锁线索 = medium，揭晓 = success/pattern。
 
-enum BWHaptics {
+enum WAHaptics {
     /// 设置页「触感」开关会同步这里
     static var isEnabled = true
 

@@ -4,9 +4,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/apple"
 xcodebuild \
-  -project BlindWalk.xcodeproj \
-  -scheme BlindWalk \
+  -project Walkaholic.xcodeproj \
+  -scheme Walkaholic \
   -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath "${1:-/tmp/blindwalk-dd}" \
+  -derivedDataPath "${1:-/tmp/walkaholic-dd}" \
   CODE_SIGNING_ALLOWED=NO \
-  build | tee /tmp/blindwalk-build.log | grep -E "error:|warning:|BUILD SUCCEEDED|BUILD FAILED"
+  build | tee /tmp/walkaholic-build.log | grep -E "error:|warning:|BUILD SUCCEEDED|BUILD FAILED"

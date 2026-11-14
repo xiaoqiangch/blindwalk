@@ -1,4 +1,4 @@
-# 步谜 · 账号服务（Cloudflare Workers + D1）
+# 步迷 · 账号服务（Cloudflare Workers + D1）
 
 为什么需要这个：**GitHub Pages 只能托管静态文件**（HTML/CSS/JS），不能执行后端代码、不能连数据库、不能存会话。
 账号功能一定需要一个"能跑代码 + 能写数据库"的地方。Cloudflare Workers 免费额度足够个人用，
@@ -12,20 +12,20 @@ npm install                      # 只装 wrangler（不参与构建产物）
 npx wrangler login               # 浏览器授权
 
 # 1) 建数据库
-npx wrangler d1 create bumia_account
+npx wrangler d1 create walkaholic_account
 #   → 输出里有 database_id，复制到 wrangler.toml 的 database_id
 
 # 2) 建表
-npx wrangler d1 execute bumia_account --remote --file=./schema.sql
+npx wrangler d1 execute walkaholic_account --remote --file=./schema.sql
 
 # 3) 部署
 npx wrangler deploy
-#   → https://bumia-account.<你的子域>.workers.dev
+#   → https://walkaholic-account.<你的子域>.workers.dev
 ```
 
 部署后：
 - `GET /api/health` 应该返回 `{"ok":true,...}`
-- 把 `https://bumia-account.xxx.workers.dev` 填进 App：**我的 → 账号 → 账号服务地址**
+- 把 `https://walkaholic-account.xxx.workers.dev` 填进 App：**我的 → 账号 → 账号服务地址**
 
 ## 配置来源白名单
 

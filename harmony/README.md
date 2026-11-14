@@ -1,4 +1,4 @@
-# 盲走 BlindWalk · HarmonyOS
+# 步迷 Walkaholic · HarmonyOS
 
 HarmonyOS NEXT（API 12）移植版，ArkTS + ArkUI 声明式。
 
@@ -6,7 +6,7 @@ HarmonyOS NEXT（API 12）移植版，ArkTS + ArkUI 声明式。
 - **架构与移植对照**：[docs/HARMONY.md](docs/HARMONY.md) §1
 - **三端对齐规格**：[../docs/parity.md](../docs/parity.md)（唯一规格，改动需三端同步）
 - **本机可跑的校验**：`bash ../scripts/check-harmony.sh`
-- **立即可测路径**：鸿蒙浏览器打开 https://xiaoqiangch.github.io/blindwalk/ → 添加到桌面
+- **立即可测路径**：鸿蒙浏览器打开 https://xiaoqiangch.github.io/walkaholic/ → 添加到桌面
 
 ```
 entry/src/main/ets/

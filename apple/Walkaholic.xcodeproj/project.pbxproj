@@ -48,8 +48,8 @@
 		9766D34028990C6D56B5C839 /* MapKeysService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */; };
 		98C9CEC460107F273DAC5346 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A05814C4F86D14A5BC867AA3 /* RevealView.swift */; };
 		9D9494B1FC5D0668FC151D47 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA5D682DDD8E3C01A93D097 /* ProfileView.swift */; };
-		A364FEF531DD18BADBD88691 /* BlindWalkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */; };
-		A5D06F9803F46DAA4B9ADAA6 /* BlindWalkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25F82415EE382C5092A1911 /* BlindWalkApp.swift */; };
+		A364FEF531DD18BADBD88691 /* WalkaholicStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* WalkaholicStore.swift */; };
+		A5D06F9803F46DAA4B9ADAA6 /* WalkaholicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25F82415EE382C5092A1911 /* WalkaholicApp.swift */; };
 		A65B0685B66BF54C2E16AFF1 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
 		A8157CE0DA8127F38126584C /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */; };
 		A91EA277D8E111D51C0951A5 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA40E0C2A43409A4E481D14E /* Persistence.swift */; };
@@ -66,21 +66,21 @@
 		CF76A66805DDA62C81ADBC75 /* SurprisesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */; };
 		CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */; };
 		D14E5970216DCFC601D88D3F /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
-		D482C8E10719BC15E7C2CC6A /* BWUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */; };
-		D5025E8173D9743FC3854DE7 /* BlindWalkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 62D026A54430D6071C532D3F /* BlindWalkWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D482C8E10719BC15E7C2CC6A /* WAUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E25DA6A9848FBE5AAD32636 /* WAUtilities.swift */; };
+		D5025E8173D9743FC3854DE7 /* WalkaholicWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 62D026A54430D6071C532D3F /* WalkaholicWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F8F91F82CD07252A192319D /* AdminPOIService.swift */; };
 		DB1FC20885913E7BB8C84A58 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		DBFE1E97CABB256C5136AE0B /* POISelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20DAF4F2CE482E03210F638 /* POISelection.swift */; };
-		E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DCE5FA997B304D62130D27 /* BWComponents.swift */; };
+		E2BE8C6EEFA237CA85938D82 /* WAComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DCE5FA997B304D62130D27 /* WAComponents.swift */; };
 		E62F41125B037109CAFEE1AF /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */; };
-		E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */; };
+		E8856F84AF96E3C260887929 /* WalkaholicWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EDB1DDED9F49FEFDAD8774 /* WalkaholicWatchApp.swift */; };
 		EA702E0F6AFAD1F755B6B146 /* FogPathView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C79429687D9D63E48268048 /* FogPathView.swift */; };
 		EAA1B03724EB6CC685C561E6 /* RealPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339A1BD3379BB1EC20CEBB2 /* RealPlace.swift */; };
 		EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546E206FAC40B7771C273A42 /* DemoData.swift */; };
 		FDC76706B1C99259BE783CA7 /* JourneyMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */; };
 		FF6E51B46C4D7F475BFAF112 /* Geo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BC584FA7E099332F73FFF6 /* Geo.swift */; };
-		FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */; };
+		FFC38BE650857E914E0A6E61 /* WalkaholicStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E92A5D2533912EDA3834F6 /* WalkaholicStore.swift */; };
 		FFDBCADFB25177EB4E85FBD9 /* RealMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90861B528F81DAE111BF4C7B /* RealMapView.swift */; };
 /* End PBXBuildFile section */
 
@@ -90,7 +90,7 @@
 			containerPortal = 4E0C0A7C644E7DD277F62007 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 543B500624CD735D4A3A3797;
-			remoteInfo = BlindWalkWatch;
+			remoteInfo = WalkaholicWatch;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -101,7 +101,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				D5025E8173D9743FC3854DE7 /* BlindWalkWatch.app in Embed Watch Content */,
+				D5025E8173D9743FC3854DE7 /* WalkaholicWatch.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -113,12 +113,12 @@
 		0662FD5FDCAD4F9ADD24B9FE /* WatchRevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRevealView.swift; sourceTree = "<group>"; };
 		07421175E805830B544FE273 /* WatchStatusChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStatusChip.swift; sourceTree = "<group>"; };
 		07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChinaCoordinate.swift; sourceTree = "<group>"; };
-		07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkWatchApp.swift; sourceTree = "<group>"; };
+		07EDB1DDED9F49FEFDAD8774 /* WalkaholicWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkaholicWatchApp.swift; sourceTree = "<group>"; };
 		0F8F91F82CD07252A192319D /* AdminPOIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminPOIService.swift; sourceTree = "<group>"; };
 		0FCB50D61010535D18FEBE86 /* mapkeys.example.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mapkeys.example.json; sourceTree = "<group>"; };
 		105B2762BAAFA74BCBD69EE2 /* WatchStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStyle.swift; sourceTree = "<group>"; };
 		1848811E5667A8E2B18E2E38 /* SeekSurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeekSurpriseView.swift; sourceTree = "<group>"; };
-		19DCE5FA997B304D62130D27 /* BWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWComponents.swift; sourceTree = "<group>"; };
+		19DCE5FA997B304D62130D27 /* WAComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WAComponents.swift; sourceTree = "<group>"; };
 		1C6FCF040D56B3704DB457A1 /* mapkeys.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mapkeys.json; sourceTree = "<group>"; };
 		2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurySurpriseView.swift; sourceTree = "<group>"; };
 		303A58E5C96F79C7E61E5762 /* WatchMineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMineView.swift; sourceTree = "<group>"; };
@@ -133,14 +133,14 @@
 		5435640DEB8D3FB2559D13DD /* PlaceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceCatalog.swift; sourceTree = "<group>"; };
 		546E206FAC40B7771C273A42 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
 		5C79429687D9D63E48268048 /* FogPathView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogPathView.swift; sourceTree = "<group>"; };
-		5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BWUtilities.swift; sourceTree = "<group>"; };
-		62D026A54430D6071C532D3F /* BlindWalkWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlindWalkWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E25DA6A9848FBE5AAD32636 /* WAUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WAUtilities.swift; sourceTree = "<group>"; };
+		62D026A54430D6071C532D3F /* WalkaholicWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WalkaholicWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		63BDC78AD6AD4E42C0F90677 /* OneShotLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneShotLocationService.swift; sourceTree = "<group>"; };
 		6668C2462E07BA61D74666E1 /* MapKitPlaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKitPlaceService.swift; sourceTree = "<group>"; };
 		689294560BE4BF6181B1453D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6C32CED7AF462F55729EC986 /* FogRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogRoute.swift; sourceTree = "<group>"; };
 		79E14316DB285700ADB0BCE9 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
-		85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkStore.swift; sourceTree = "<group>"; };
+		85E92A5D2533912EDA3834F6 /* WalkaholicStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkaholicStore.swift; sourceTree = "<group>"; };
 		90861B528F81DAE111BF4C7B /* RealMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealMapView.swift; sourceTree = "<group>"; };
 		9253D71503B5F918050C51F4 /* Surprise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Surprise.swift; sourceTree = "<group>"; };
 		95EE26037F7D4800632E9ED9 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
@@ -151,7 +151,7 @@
 		B20DAF4F2CE482E03210F638 /* POISelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = POISelection.swift; sourceTree = "<group>"; };
 		B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionSummary.swift; sourceTree = "<group>"; };
 		BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoxFailureView.swift; sourceTree = "<group>"; };
-		BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlindWalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDCD9BBD41FFA1DDB52CA634 /* Walkaholic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Walkaholic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKeysService.swift; sourceTree = "<group>"; };
 		C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurprisesView.swift; sourceTree = "<group>"; };
 		C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
@@ -161,7 +161,7 @@
 		D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialFeed.swift; sourceTree = "<group>"; };
 		D4BC584FA7E099332F73FFF6 /* Geo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geo.swift; sourceTree = "<group>"; };
 		D8B5340A7CFC80269A2CE14B /* SocialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialView.swift; sourceTree = "<group>"; };
-		E25F82415EE382C5092A1911 /* BlindWalkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlindWalkApp.swift; sourceTree = "<group>"; };
+		E25F82415EE382C5092A1911 /* WalkaholicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkaholicApp.swift; sourceTree = "<group>"; };
 		E3CB49D79ED0B31541C25942 /* WatchSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncService.swift; sourceTree = "<group>"; };
 		E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyMapView.swift; sourceTree = "<group>"; };
 		EA40E0C2A43409A4E481D14E /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
@@ -174,7 +174,7 @@
 		08DC897ADA54174CD41EEFE0 /* WatchApp */ = {
 			isa = PBXGroup;
 			children = (
-				07EDB1DDED9F49FEFDAD8774 /* BlindWalkWatchApp.swift */,
+				07EDB1DDED9F49FEFDAD8774 /* WalkaholicWatchApp.swift */,
 				CB8EF4087D54404A6C023159 /* Haptics.swift */,
 				C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */,
 				43778105E95EAC72B52BB8DA /* WatchHintsView.swift */,
@@ -200,7 +200,7 @@
 			children = (
 				41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */,
 				4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */,
-				85E92A5D2533912EDA3834F6 /* BlindWalkStore.swift */,
+				85E92A5D2533912EDA3834F6 /* WalkaholicStore.swift */,
 				07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */,
 				546E206FAC40B7771C273A42 /* DemoData.swift */,
 				6C32CED7AF462F55729EC986 /* FogRoute.swift */,
@@ -231,8 +231,8 @@
 		6E9417953E12FFCEA0F3A1C8 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
-				19DCE5FA997B304D62130D27 /* BWComponents.swift */,
-				5E25DA6A9848FBE5AAD32636 /* BWUtilities.swift */,
+				19DCE5FA997B304D62130D27 /* WAComponents.swift */,
+				5E25DA6A9848FBE5AAD32636 /* WAUtilities.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -240,7 +240,7 @@
 		93BAE65227D81ABC2B9740AE /* App */ = {
 			isa = PBXGroup;
 			children = (
-				E25F82415EE382C5092A1911 /* BlindWalkApp.swift */,
+				E25F82415EE382C5092A1911 /* WalkaholicApp.swift */,
 				AA6391E58C1E19D02073FA90 /* Resources */,
 				D25973A7F3834D557DAB410C /* Services */,
 				6E9417953E12FFCEA0F3A1C8 /* Theme */,
@@ -310,8 +310,8 @@
 		E487775B73C692AF1FBDC432 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */,
-				62D026A54430D6071C532D3F /* BlindWalkWatch.app */,
+				BDCD9BBD41FFA1DDB52CA634 /* Walkaholic.app */,
+				62D026A54430D6071C532D3F /* WalkaholicWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -319,9 +319,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		543B500624CD735D4A3A3797 /* BlindWalkWatch */ = {
+		543B500624CD735D4A3A3797 /* WalkaholicWatch */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 27CA4E07D75D58040DF10CE9 /* Build configuration list for PBXNativeTarget "BlindWalkWatch" */;
+			buildConfigurationList = 27CA4E07D75D58040DF10CE9 /* Build configuration list for PBXNativeTarget "WalkaholicWatch" */;
 			buildPhases = (
 				46C0E304302A70F15F65E4B7 /* Sources */,
 			);
@@ -329,16 +329,16 @@
 			);
 			dependencies = (
 			);
-			name = BlindWalkWatch;
+			name = WalkaholicWatch;
 			packageProductDependencies = (
 			);
-			productName = BlindWalkWatch;
-			productReference = 62D026A54430D6071C532D3F /* BlindWalkWatch.app */;
+			productName = WalkaholicWatch;
+			productReference = 62D026A54430D6071C532D3F /* WalkaholicWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
-		92DE9F8F71668B236DCF03AA /* BlindWalk */ = {
+		92DE9F8F71668B236DCF03AA /* Walkaholic */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = DFC5E93504232AFEBF01D5BF /* Build configuration list for PBXNativeTarget "BlindWalk" */;
+			buildConfigurationList = DFC5E93504232AFEBF01D5BF /* Build configuration list for PBXNativeTarget "Walkaholic" */;
 			buildPhases = (
 				CFE9534CFBA0C855919001A3 /* Sources */,
 				D7293E2154AA5AAD541C4E55 /* Resources */,
@@ -349,11 +349,11 @@
 			dependencies = (
 				780D2B66268D9DF8CA0AF19A /* PBXTargetDependency */,
 			);
-			name = BlindWalk;
+			name = Walkaholic;
 			packageProductDependencies = (
 			);
-			productName = BlindWalk;
-			productReference = BDCD9BBD41FFA1DDB52CA634 /* BlindWalk.app */;
+			productName = Walkaholic;
+			productReference = BDCD9BBD41FFA1DDB52CA634 /* Walkaholic.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -373,7 +373,7 @@
 					};
 				};
 			};
-			buildConfigurationList = D647ACFC33CC94E8B2BCFC0F /* Build configuration list for PBXProject "BlindWalk" */;
+			buildConfigurationList = D647ACFC33CC94E8B2BCFC0F /* Build configuration list for PBXProject "Walkaholic" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -386,8 +386,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				92DE9F8F71668B236DCF03AA /* BlindWalk */,
-				543B500624CD735D4A3A3797 /* BlindWalkWatch */,
+				92DE9F8F71668B236DCF03AA /* Walkaholic */,
+				543B500624CD735D4A3A3797 /* WalkaholicWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -411,8 +411,8 @@
 			files = (
 				A8157CE0DA8127F38126584C /* AchievementEngine.swift in Sources */,
 				18D59FC48CF85765B1F7100D /* BlindBoxEngine.swift in Sources */,
-				FFC38BE650857E914E0A6E61 /* BlindWalkStore.swift in Sources */,
-				E8856F84AF96E3C260887929 /* BlindWalkWatchApp.swift in Sources */,
+				FFC38BE650857E914E0A6E61 /* WalkaholicStore.swift in Sources */,
+				E8856F84AF96E3C260887929 /* WalkaholicWatchApp.swift in Sources */,
 				ACBFDE5A97FD925A0D679FCA /* ChinaCoordinate.swift in Sources */,
 				ECB21CD014E3BC4DC83763B9 /* DemoData.swift in Sources */,
 				1DA75462546518416619AB9F /* FogRoute.swift in Sources */,
@@ -446,11 +446,11 @@
 				CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */,
 				BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */,
 				D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */,
-				E2BE8C6EEFA237CA85938D82 /* BWComponents.swift in Sources */,
-				D482C8E10719BC15E7C2CC6A /* BWUtilities.swift in Sources */,
+				E2BE8C6EEFA237CA85938D82 /* WAComponents.swift in Sources */,
+				D482C8E10719BC15E7C2CC6A /* WAUtilities.swift in Sources */,
 				11AE94C165B91A4DDC56FC4E /* BlindBoxEngine.swift in Sources */,
-				A5D06F9803F46DAA4B9ADAA6 /* BlindWalkApp.swift in Sources */,
-				A364FEF531DD18BADBD88691 /* BlindWalkStore.swift in Sources */,
+				A5D06F9803F46DAA4B9ADAA6 /* WalkaholicApp.swift in Sources */,
+				A364FEF531DD18BADBD88691 /* WalkaholicStore.swift in Sources */,
 				8D915D93074C5687288275A6 /* BoxFailureView.swift in Sources */,
 				0473991C7CDF22D88AEB9A4C /* BoxSetupSheet.swift in Sources */,
 				741668A3ADB106DE7432C281 /* BurySurpriseView.swift in Sources */,
@@ -496,7 +496,7 @@
 /* Begin PBXTargetDependency section */
 		780D2B66268D9DF8CA0AF19A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 543B500624CD735D4A3A3797 /* BlindWalkWatch */;
+			target = 543B500624CD735D4A3A3797 /* WalkaholicWatch */;
 			targetProxy = 2D98C6A92E173E9389A4FED5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -575,9 +575,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = WQ82UGJ72W;
-				INFOPLIST_FILE = "Info/BlindWalk-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步谜需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";
+				INFOPLIST_FILE = "Info/Walkaholic-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步迷需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -585,7 +585,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blindwalk.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkaholic.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -595,12 +595,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				INFOPLIST_FILE = "Info/BlindWalkWatch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
+				INFOPLIST_FILE = "Info/WalkaholicWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
 				INFOPLIST_KEY_WKApplication = YES;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.blindwalk.app;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.walkaholic.app;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.blindwalk.app.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkaholic.app.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -611,12 +611,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				INFOPLIST_FILE = "Info/BlindWalkWatch-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
+				INFOPLIST_FILE = "Info/WalkaholicWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
 				INFOPLIST_KEY_WKApplication = YES;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.blindwalk.app;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.walkaholic.app;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.blindwalk.app.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkaholic.app.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -689,9 +689,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = WQ82UGJ72W;
-				INFOPLIST_FILE = "Info/BlindWalk-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "步谜";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步谜需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";
+				INFOPLIST_FILE = "Info/Walkaholic-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "步迷需要你的位置，才能判断你是否快到目的地。目的地在你到达前不会显示。";
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -699,7 +699,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.blindwalk.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkaholic.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -708,7 +708,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		27CA4E07D75D58040DF10CE9 /* Build configuration list for PBXNativeTarget "BlindWalkWatch" */ = {
+		27CA4E07D75D58040DF10CE9 /* Build configuration list for PBXNativeTarget "WalkaholicWatch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5791EFD397EF8E1671BBABDA /* Debug */,
@@ -717,7 +717,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		D647ACFC33CC94E8B2BCFC0F /* Build configuration list for PBXProject "BlindWalk" */ = {
+		D647ACFC33CC94E8B2BCFC0F /* Build configuration list for PBXProject "Walkaholic" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2D89472680D27A3F42538015 /* Debug */,
@@ -726,7 +726,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		DFC5E93504232AFEBF01D5BF /* Build configuration list for PBXNativeTarget "BlindWalk" */ = {
+		DFC5E93504232AFEBF01D5BF /* Build configuration list for PBXNativeTarget "Walkaholic" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8F074D2636DD69E4819208C2 /* Debug */,

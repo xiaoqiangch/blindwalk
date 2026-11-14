@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 照片选择与感知哈希
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 照片选择与感知哈希
  *
  * 负责三件事：
  *   1. PhotoViewPicker 拉起系统相册选图（无需申请相册权限）；

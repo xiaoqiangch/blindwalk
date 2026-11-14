@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — 静态文件服务
+ * 步迷 Walkaholic · 兴趣点管理后台 — 静态文件服务
  *
  * 把 admin/public 挂在 /admin 下。零依赖（node:fs / node:path），防目录穿越。
  */
@@ -147,7 +147,7 @@ export function renderLoginPage() {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>登录 · 盲走兴趣点管理后台</title>
+<title>登录 · 步迷兴趣点管理后台</title>
 <style>
   :root {
     --ink: #171410;
@@ -209,16 +209,16 @@ export function renderLoginPage() {
 <body>
 <div class="noise"></div>
 <main class="card">
-  <div class="brand">BlindWalk · Admin</div>
-  <h1>盲走 · 兴趣点管理后台</h1>
-  <p class="sub">后台默认需要登录。密码来自 BW_ADMIN_PASSWORD，或首次启动时生成在 admin/data/admin.secret.json。</p>
+  <div class="brand">Walkaholic · Admin</div>
+  <h1>步迷 · 兴趣点管理后台</h1>
+  <p class="sub">后台默认需要登录。密码来自 WA_ADMIN_PASSWORD，或首次启动时生成在 admin/data/admin.secret.json。</p>
   <form id="form" autocomplete="current-password">
     <label for="password">管理密码</label>
     <input id="password" name="password" type="password" placeholder="输入管理密码" autofocus>
     <button id="submit" type="submit">登录</button>
     <p class="error" id="error" role="alert"></p>
   </form>
-  <p class="foot">盲走 BlindWalk · 原型后台 · 会话 12 小时</p>
+  <p class="foot">步迷 Walkaholic · 原型后台 · 会话 12 小时</p>
 </main>
 <script>
   (function () {

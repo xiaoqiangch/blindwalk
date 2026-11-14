@@ -7,7 +7,7 @@
 
 ## ADR-002 项目放在工作区 Projects/ 而非 ~/Projects
 - 背景：`~/Projects` 是指向外部卷 `/Volumes/XQProjects/projects` 的软链，当前会话沙箱不允许写入；用户原有项目在外部卷。
-- 决策：在 `/Users/chenxiaoqiang/.dsh/profiles/desktop/Projects/BlindWalk/` 创建项目；提供 `scripts/export-to-xqprojects.sh` 供用户批准后复制到外部卷。
+- 决策：在 `/Users/chenxiaoqiang/.dsh/profiles/desktop/Projects/Walkaholic/` 创建项目；提供 `scripts/export-to-xqprojects.sh` 供用户批准后复制到外部卷。
 - 影响：项目可立即读写、版本可控；迁移只需一次复制。
 
 ## ADR-003 目的地保密 = 不接真实地图

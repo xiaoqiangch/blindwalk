@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * BlindWalk Web 原型端到端冒烟测试：
+ * Walkaholic Web 原型端到端冒烟测试：
  * 抽盒 → 模拟步行 → 到达揭晓 → 收进图鉴 → 图鉴/圈子/成就/我的 路由检查。
  * 用法：node scripts/smoke-test.mjs
  */
@@ -14,7 +14,7 @@ const WEB = path.join(ROOT, "prototype", "web");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const RUN_ID = `${process.pid}-${Date.now()}`;
 const PORT = 9900 + (process.pid % 90);
-const UDD = `/tmp/blindwalk-smoke-${RUN_ID}`;
+const UDD = `/tmp/walkaholic-smoke-${RUN_ID}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class CDP {

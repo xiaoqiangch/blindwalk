@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — Node 单元测试
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — Node 单元测试
  *
  * 运行：npm test（先 tsc 编译到 .test-build，再 node .test-build/tests/run.test.js）
  *
@@ -33,7 +33,7 @@ import {
   Rarity,
   WalkDuration
 } from '../entry/src/main/ets/core/types';
-import { BlindWalkStoreApi, BuryParams, DrawResult } from '../entry/src/main/ets/core/contract';
+import { WalkaholicStoreApi, BuryParams, DrawResult } from '../entry/src/main/ets/core/contract';
 import {
   PLACES,
   leaksPlaceName,
@@ -247,7 +247,7 @@ function geoPoint(latitude: number, longitude: number): GeoPoint {
   return point;
 }
 
-async function freshStore(): Promise<BlindWalkStoreApi> {
+async function freshStore(): Promise<WalkaholicStoreApi> {
   const kv: MemoryKV = new MemoryKV();
   await initStore(kv);
   return getStore();
@@ -648,7 +648,7 @@ test('Store：getStore() 未初始化时抛错', (): void => {
 });
 
 test('Store：演示态口径 4240 xp / 18 卡 / 12 天 / 305 惊喜值 / 480m', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snap = store.snapshot();
   assert.ok(!(snap instanceof Promise), 'snapshot() 必须同步返回');
   assert.equal(typeof snap, 'object');
@@ -694,7 +694,7 @@ test('Store：演示态口径 4240 xp / 18 卡 / 12 天 / 305 惊喜值 / 480m',
 });
 
 test('Store：周榜本人 305 第 4 名', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snap = store.snapshot();
   let meIndex: number = -1;
   for (let i = 0; i < snap.leaderboard.length; i += 1) {
@@ -708,7 +708,7 @@ test('Store：周榜本人 305 第 4 名', async (): Promise<void> => {
 });
 
 test('Store：places 包含全部 24 个内置地点 + 注册的真实地点', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snap = store.snapshot();
   assert.ok(snap.places.length >= 24);
   for (let i = 0; i < PLACES.length; i += 1) {
@@ -766,7 +766,7 @@ test('Store：places 包含全部 24 个内置地点 + 注册的真实地点', a
 });
 
 test('Store：保密 —— 未收录目的地到达前不出现；已收录地点名保留给图鉴', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
 
   // 演示态目的地 river-steps 已经在图鉴里：名称可以出现在 places（图鉴）里，
   // 但 currentPlace 必须继续遮住（旅程页不剧透）。
@@ -826,7 +826,7 @@ test('Store：保密 —— 未收录目的地到达前不出现；已收录地�
 });
 
 test('Store：selectedArea 参与抽盒过滤；revealSerial / currentCard 契约', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   store.setArea(Area.River);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const result: DrawResult | undefined = store.startQuest(DEMO_ORIGIN);
@@ -869,7 +869,7 @@ test('Store：selectedArea 参与抽盒过滤；revealSerial / currentCard 契�
 });
 
 test('Store：真实定位 —— startQuest(origin) 生成目标，靠近后自动到达', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const origin: GeoPoint = geoPoint(31.2304, 121.4737);
   const result: DrawResult | undefined = store.startQuest(origin);
   assert.ok(result !== undefined);
@@ -908,7 +908,7 @@ test('Store：真实定位 —— startQuest(origin) 生成目标，靠近后自
 });
 
 test('Store：reactToPost 第一次 +1、第二次取消', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snap = store.snapshot();
   assert.ok(snap.feed.length >= 5);
   const post: FeedPost = snap.feed[0];
@@ -963,7 +963,7 @@ function buryParams(): BuryParams {
 }
 
 test('埋惊喜：mySurprises +1、xp +30、解锁 bury_1', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const before = store.snapshot();
   const xpBefore: number = before.profile.xp;
   assert.equal(before.mySurprises.length, 0);
@@ -992,7 +992,7 @@ test('埋惊喜：mySurprises +1、xp +30、解锁 bury_1', async (): Promise<vo
 });
 
 test('寻惊喜：comparе/complete 双人奖励、只能结算一次、不能找自己', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const exploration = store.snapshot().explorableSurprises;
   assert.equal(exploration.length, 3, '演示预置 3 颗等待中的惊喜');
   const target: BuriedSurprise = exploration[0];
@@ -1040,7 +1040,7 @@ test('寻惊喜：comparе/complete 双人奖励、只能结算一次、不能�
 });
 
 test('寻惊喜：未达标只发一次 +10 安慰奖，惊喜继续等待', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const target: BuriedSurprise = store.snapshot().explorableSurprises[0];
   const xpBefore: number = store.snapshot().profile.xp;
   const failed = store.completeSurpriseFind(target.id, 0.1);
@@ -1116,7 +1116,7 @@ test('成就：定义 13 个；进度与解锁语义', (): void => {
 test('持久化：MemoryKV 存读 profile + surprises，重启后数据仍在', async (): Promise<void> => {
   const kv: MemoryKV = new MemoryKV();
   await initStore(kv);
-  const store: BlindWalkStoreApi = getStore();
+  const store: WalkaholicStoreApi = getStore();
   assert.equal(kv.has(PROFILE_KEY), true, '初始化应写入 profile');
   assert.equal(kv.has(SURPRISES_KEY), true, '初始化应写入 surprises');
 
@@ -1127,7 +1127,7 @@ test('持久化：MemoryKV 存读 profile + surprises，重启后数据仍在', 
   assert.equal(xpAfterBury, before.profile.xp + 30);
 
   await initStore(kv); // 模拟 App 重启
-  const reloaded: BlindWalkStoreApi = getStore();
+  const reloaded: WalkaholicStoreApi = getStore();
   const after = reloaded.snapshot();
   assert.equal(after.profile.xp, xpAfterBury);
   assert.equal(after.profile.cards.length, 18);
@@ -1148,7 +1148,7 @@ test('持久化：坏 JSON 容错，不抛异常', async (): Promise<void> => {
   assert.ok(buried !== undefined);
   kv.putString(PROFILE_KEY, '{这不是合法 JSON');
   await initStore(kv);
-  const store: BlindWalkStoreApi = getStore();
+  const store: WalkaholicStoreApi = getStore();
   const snap = store.snapshot();
   assert.equal(typeof snap, 'object');
   assert.equal(snap.profile.cards.length, 18, '坏档案应回退到演示态');
@@ -1196,7 +1196,7 @@ test('保密：到达前 why / task / hints / address 都不能暴露地点特�
 });
 
 test('快照：返回对象是浅拷贝，改快照不影响内部状态', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snap = store.snapshot();
   const originalEyes: number = snap.feed[0].reactions['eyes'];
   const originalHintCount: number = snap.places[0].hints.length;
@@ -1892,12 +1892,12 @@ test('MapKeys：环境返回的 Key 不写死、不进代码（fetchAdminKeys �
 // 16. 账号（Cookie 手动管理）
 // ============================================================
 
-test('账号：从 set-cookie 抠出 bw_uid（大小写/多 Cookie 容错）', (): void => {
+test('账号：从 set-cookie 抠出 wa_uid（大小写/多 Cookie 容错）', (): void => {
   assert.equal(
-    extractCookie({ 'set-cookie': 'bw_uid=abc123; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000' }),
-    'bw_uid=abc123'
+    extractCookie({ 'set-cookie': 'wa_uid=abc123; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000' }),
+    'wa_uid=abc123'
   );
-  assert.equal(extractCookie({ 'Set-Cookie': 'foo=1; Path=/, bw_uid=xyz; HttpOnly' }), 'bw_uid=xyz');
+  assert.equal(extractCookie({ 'Set-Cookie': 'foo=1; Path=/, wa_uid=xyz; HttpOnly' }), 'wa_uid=xyz');
   assert.equal(extractCookie({ 'set-cookie': 'other=1' }), '');
   assert.equal(extractCookie(undefined), '');
 });
@@ -1907,14 +1907,14 @@ test('账号：注册成功写 Cookie 与用户名；失败给人类可读原因
   const client = new FakeHttp((): HttpResponse => ({
     status: 200,
     body: JSON.stringify({ ok: true, user: { id: 'u1', username: '阿澈', createdAt: 1 } }),
-    headers: { 'set-cookie': 'bw_uid=tok1; HttpOnly; Path=/' }
+    headers: { 'set-cookie': 'wa_uid=tok1; HttpOnly; Path=/' }
   }));
   const result = await register(client, kv, ACCOUNT_BASE_DEFAULT, '阿澈澈', 'secret123');
   assert.equal(result.ok, true);
   if (result.value !== undefined) assert.equal(result.value.username, '阿澈');
   const config = readAccountConfig(kv);
   assert.equal(config.user !== undefined, true);
-  assert.equal(config.cookie, 'bw_uid=tok1');
+  assert.equal(config.cookie, 'wa_uid=tok1');
   assert.equal(config.baseUrl, 'https://xqlounge.top');
 
   const bad = new FakeHttp((): HttpResponse => ({
@@ -1942,16 +1942,16 @@ test('账号：同步带 Cookie、超 240KB 拒绝；退出清本地', async ():
   const config: AccountConfig = {
     baseUrl: 'http://127.0.0.1:8803',
     user: { id: 'u1', username: '阿澈', createdAt: 1 },
-    cookie: 'bw_uid=tok1'
+    cookie: 'wa_uid=tok1'
   };
   writeAccountConfig(kv, config);
 
   const client = new FakeHttp((): HttpResponse => jsonResponse({ ok: true, savedAt: 123, bytes: 10 }));
-  const pushed = await pushProfile(client, config, { app: 'blindwalk', profile: { xp: 1 } });
+  const pushed = await pushProfile(client, config, { app: 'walkaholic', profile: { xp: 1 } });
   assert.equal(pushed.ok, true);
   assert.equal(client.requests[0].headers !== undefined, true);
   if (client.requests[0].headers !== undefined) {
-    assert.equal(client.requests[0].headers['Cookie'], 'bw_uid=tok1');
+    assert.equal(client.requests[0].headers['Cookie'], 'wa_uid=tok1');
   }
 
   const huge: Record<string, unknown> = { blob: 'x'.repeat(250 * 1024) };
@@ -1969,7 +1969,7 @@ test('账号：/me 返回 401 时自动清掉过期会话', async (): Promise<vo
   const config: AccountConfig = {
     baseUrl: 'http://127.0.0.1:8803',
     user: { id: 'u1', username: '阿澈', createdAt: 1 },
-    cookie: 'bw_uid=expired'
+    cookie: 'wa_uid=expired'
   };
   writeAccountConfig(kv, config);
   const client = new FakeHttp((): HttpResponse => ({
@@ -1988,11 +1988,11 @@ test('账号：/me 恢复整包数据（profile + surprises）', async (): Promi
   const config: AccountConfig = {
     baseUrl: 'http://127.0.0.1:8803',
     user: { id: 'u1', username: '阿澈', createdAt: 1 },
-    cookie: 'bw_uid=tok1'
+    cookie: 'wa_uid=tok1'
   };
   const client = new FakeHttp((): HttpResponse => jsonResponse({
     user: { id: 'u1', username: '阿澈', createdAt: 1 },
-    profile: { app: 'blindwalk', savedAt: 99, profile: { xp: 4240 }, surprises: [{ id: 's1' }] }
+    profile: { app: 'walkaholic', savedAt: 99, profile: { xp: 4240 }, surprises: [{ id: 's1' }] }
   }));
   const result = await me(client, kv, config);
   assert.equal(result.ok, true);
@@ -2168,7 +2168,7 @@ test('迷雾：指北针旋转 = -bearing（东向路线 → -90°）', (): void
 // ============================================================
 
 test('Store：startQuestWithPlace 只接受真实来源 + 真实坐标', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const origin: GeoPoint = geoPoint(31.2304, 121.4737);
 
   const catalogPlace: Place = placeByID('river-steps')!;
@@ -2194,7 +2194,7 @@ test('Store：startQuestWithPlace 只接受真实来源 + 真实坐标', async (
 });
 
 test('Store：路线存取 + 数据源状态快照（浅拷贝）', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   assert.equal(store.currentRoute(), undefined);
 
   store.setRoute({
@@ -2263,7 +2263,7 @@ test('抽盒编排：Key 下发 + 策展优先 + 真实地点（成功路径）'
     }]
   };
   const client = new FakeHttp((request: HttpRequest): HttpResponse => {
-    if (request.url.indexOf('xiaoqiangch.github.io/blindwalk/pois.json') >= 0) return jsonResponse(pois);
+    if (request.url.indexOf('xiaoqiangch.github.io/walkaholic/pois.json') >= 0) return jsonResponse(pois);
     if (request.url.indexOf('mapkeys.json') >= 0) {
       return jsonResponse({ keys: { amap: 'test-key-1234', baidu: '' } });
     }
@@ -2389,7 +2389,7 @@ test('保密：照片/署名/简介也必须在到达前抹掉（到了才给看
 });
 
 test('账号恢复：profileFromJson / surprisesFromJson 能解回本地存档结构', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   // 先做点改动，让数据不是初始演示态
   store.setDuration(WalkDuration.M60);
   store.startQuest();
@@ -2449,7 +2449,7 @@ test('账号恢复：profileFromJson / surprisesFromJson 能解回本地存档�
 test('账号恢复：applyRemotePayload 覆盖本机（缺字段保留原值）', async (): Promise<void> => {
   // 需要直接拿 instance 的接口
   await initStore(new MemoryKV());
-  const store: BlindWalkStoreApi = getStore();
+  const store: WalkaholicStoreApi = getStore();
   const instance = getStoreInstance();
   const before = store.snapshot();
 
@@ -2927,7 +2927,7 @@ test('提示列表：计数文案与空状态 CTA（三端逐字一致）', (): 
 });
 
 test('提示列表：Store 快照里就是可用的输入（三颗演示惊喜）', async (): Promise<void> => {
-  const store: BlindWalkStoreApi = await freshStore();
+  const store: WalkaholicStoreApi = await freshStore();
   const snapshot = store.snapshot();
   assert.equal(snapshot.explorableSurprises.length, 3, '演示预置 3 颗待寻');
   const hints: NearHint[] = nearbyHints(

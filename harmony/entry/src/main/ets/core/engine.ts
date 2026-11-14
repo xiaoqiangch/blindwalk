@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 抽盒引擎
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 抽盒引擎
  *
  * 移植自 apple/Shared/Core/BlindBoxEngine.swift：
  * - SplitMix64 种子随机（用 hi/lo 两个 32 位整数模拟 UInt64，避免 ArkTS 不支持 BigInt）

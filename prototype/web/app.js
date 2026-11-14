@@ -1,12 +1,12 @@
-/* 盲走 BlindWalk · Web 高保真原型（零依赖，file:// 可直接运行）
+/* 步迷 Walkaholic · Web 高保真原型（零依赖，file:// 可直接运行）
  * 单页 hash 路由 + localStorage 持久化 + 演示/新用户两种状态。
  * 视觉与文案依据：docs/design-system.md；数据：data.js（镜像 apple/Shared/Core）。
  */
 (function () {
   'use strict';
 
-  var D = window.BW_DATA;
-  var STORE_KEY = 'blindwalk:v1';
+  var D = window.WA_DATA;
+  var STORE_KEY = 'walkaholic:v1';
   var APP_VERSION = 'v48';
   var APP_BUILT_AT = '2026-11-09 14:10';
 
@@ -14,7 +14,7 @@
     '/achievements', '/watch', '/bury', '/seek', '/seek-detail', '/surprises', '/account', '/datasource'];
   var TAB_ROUTES = ['/home', '/cards', '/social', '/profile'];
   var LEVEL_NAMES = ['出门新手', '街角观察员', '城市漫游者', '惊喜收藏家', '迷雾探险家',
-    '黄昏猎人', '夜路诗人', '盲走大师', '城市传说', '盲盒之神'];
+    '黄昏猎人', '夜路诗人', '步迷大师', '城市传说', '盲盒之神'];
 
   var dom = {};
   var state = null;
@@ -433,7 +433,7 @@
      抽盒引擎（本地规则，镜像 BlindBoxEngine 的意图）
      ============================================================ */
   /** 程序化触发一次摇盒（复用 autoShake 流程） */
-  function bwShakeNow() {
+  function waShakeNow() {
     ui.autoShake = true;
     render();
   }
@@ -585,14 +585,14 @@
 
   /** 为当前真实会话准备步行路线（失败就退回方向引导） */
   function ensureRoute(session) {
-    if (!session || !session.coordinate || !window.BW_GEO || !window.BW_GEO.fetchRoute) return;
+    if (!session || !session.coordinate || !window.WA_GEO || !window.WA_GEO.fetchRoute) return;
     if (state.routePlaceID === session.placeID && state.route) return;
     var origin = ui.lastFix || ui.myLocation;
     if (!origin) return;
     state.routePlaceID = session.placeID;
     state.routeManeuversStart = { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) };
     state.routeState = 'loading';
-    window.BW_GEO.fetchRoute(
+    window.WA_GEO.fetchRoute(
       { lat: origin.lat, lon: (origin.lon !== undefined ? origin.lon : origin.lng) },
       session.coordinate
     ).then(function (route) {
@@ -606,8 +606,8 @@
 
   /** 把当前位置投影到路线上，得到沿线已走距离与偏离距离 */
   function updateRouteProgress(session, here) {
-    if (!state.route || !window.BW_GEO.routeProgress) return;
-    var progress = window.BW_GEO.routeProgress(state.route, here);
+    if (!state.route || !window.WA_GEO.routeProgress) return;
+    var progress = window.WA_GEO.routeProgress(state.route, here);
     if (!progress) return;
     state.routeWalkedMeters = Math.max(0, Math.min(state.route.distanceMeters, progress.walked));
     state.routeOffRoute = progress.offRoute;
@@ -636,8 +636,8 @@
     ui.geoErrorCount = 0;
     // 用连续两个定位点推算行进方向（没有罗盘时地图靠它跟着你转）
     if (ui.prevFix && ui.prevFix.lat !== undefined) {
-      var moved = window.BW_GEO && window.BW_GEO.distanceOf
-        ? window.BW_GEO.distanceOf(ui.prevFix, here) : null;
+      var moved = window.WA_GEO && window.WA_GEO.distanceOf
+        ? window.WA_GEO.distanceOf(ui.prevFix, here) : null;
       if (moved !== null && moved !== undefined && moved >= 2.5) {
         applyMoveHeading(bearingBetween(ui.prevFix, here));
       }
@@ -645,8 +645,8 @@
     ui.prevFix = here;
     startGeoRecheck();
     var target = session.coordinate;
-    var d = window.BW_GEO && window.BW_GEO.distanceOf
-      ? window.BW_GEO.distanceOf(here, target)
+    var d = window.WA_GEO && window.WA_GEO.distanceOf
+      ? window.WA_GEO.distanceOf(here, target)
       : null;
     if (d === null || d === undefined) return;
     var heading = pos.coords.heading;
@@ -790,7 +790,7 @@
     window.__bwStat.starts += 1;
     window.__bwStat.src = state.session ? state.session.source : 'no-session';
     window.__bwStat.hasTarget = !!(state.session && state.session.coordinate);
-    if (!window.BW_GEO || !state.session || !isRealSession(state.session)) { window.__bwStat.early = 'gate'; return; }
+    if (!window.WA_GEO || !state.session || !isRealSession(state.session)) { window.__bwStat.early = 'gate'; return; }
     var target = state.session.coordinate;
     if (!target) { window.__bwStat.early = 'no-target'; return; }
     if (!navigator.geolocation) { window.__bwStat.early = 'no-geo'; return; }
@@ -866,8 +866,8 @@
         }, function () {
           // 取不到新读数就退回到上次定位做一次计算（至少让界面别完全冻住）
           var fix = ui.lastFix;
-          if (!fix || !window.BW_GEO || !window.BW_GEO.distanceOf) return;
-          var d = window.BW_GEO.distanceOf(fix, session.coordinate);
+          if (!fix || !window.WA_GEO || !window.WA_GEO.distanceOf) return;
+          var d = window.WA_GEO.distanceOf(fix, session.coordinate);
           if (d === null || d === undefined) return;
           var events = applyRealDistance(d, fix.accuracy);
           patchNav(session);
@@ -1414,15 +1414,15 @@
        2. 后台 API /api/public/mapkeys（本地开发 / 局域网）
      都没有：只用免费源（OSM + 维基）
      ============================================================ */
-  var MAPKEYS_META = 'bw.mapkeys.meta.v1';
+  var MAPKEYS_META = 'wa.mapkeys.meta.v1';
 
   function mapKeysEndpoint() {
-    try { return localStorage.getItem('bw.mapkeys.endpoint') || ''; } catch (e) { return ''; }
+    try { return localStorage.getItem('wa.mapkeys.endpoint') || ''; } catch (e) { return ''; }
   }
 
   function applyMapKeys(keys, source) {
-    if (!window.BW_PROVIDERS || !window.BW_PROVIDERS.setKeys) return;
-    window.BW_PROVIDERS.setKeys({
+    if (!window.WA_PROVIDERS || !window.WA_PROVIDERS.setKeys) return;
+    window.WA_PROVIDERS.setKeys({
       amap: (keys && keys.amap) || '',
       baidu: (keys && keys.baidu) || ''
     });
@@ -1489,8 +1489,8 @@
      - 未登录：完全本地，离线可用
      - 登录：把 profile / surprises / settings 整包同步到账号服务
      ============================================================ */
-  var ACCOUNT_STORE = 'bw.account.v1';
-  var DATA_SOURCE_STORE = 'bw.datasource.v1';
+  var ACCOUNT_STORE = 'wa.account.v1';
+  var DATA_SOURCE_STORE = 'wa.datasource.v1';
 
   function accountConfig() {
     try {
@@ -1560,7 +1560,7 @@
 
   function syncPayload() {
     return {
-      app: 'blindwalk',
+      app: 'walkaholic',
       version: 1,
       savedAt: Date.now(),
       profile: state.profile,
@@ -1645,8 +1645,8 @@
 
   /** 数据源页：Key 由后台统一配置，这里只做状态展示（用户无需/无法自己填 Key） */
   function datasourceHTML() {
-    var st = (window.BW_PROVIDERS && window.BW_PROVIDERS.status)
-      ? window.BW_PROVIDERS.status()
+    var st = (window.WA_PROVIDERS && window.WA_PROVIDERS.status)
+      ? window.WA_PROVIDERS.status()
       : { sources: [], keys: {} };
     var meta = state.mapKeysMeta || {};
     var sourceLabel = meta.source === 'pages' ? '随 App 发布下发'
@@ -1661,7 +1661,7 @@
       '<div class="dbg__row"><span class="dbg__k">中文维基百科</span><span class="dbg__v">免费 · 带实景照片</span></div>' +
       '<div class="dbg__row"><span class="dbg__k">Key 来源</span><span class="dbg__v">' + esc(sourceLabel) + '</span></div>';
 
-    var last = (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport) ? window.BW_PROVIDERS.lastReport() : null;
+    var last = (window.WA_PROVIDERS && window.WA_PROVIDERS.lastReport) ? window.WA_PROVIDERS.lastReport() : null;
     var report = '';
     if (last && last.sources && last.sources.length) {
       report = '<div class="dbg__row"><span class="dbg__k">上次抓取</span><span class="dbg__v">' +
@@ -1881,7 +1881,7 @@
       return result;
     }
 
-    var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
+    var progress = window.WA_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
     var walked = progress ? progress.walked : (state.routeWalkedMeters || 0);
     var routeRemaining = Math.max(0, Math.round(state.route.distanceMeters - walked));
     result.hasRoute = true;
@@ -1914,7 +1914,7 @@
 
     var straight = (direction === 'straight' || direction === 'slight-left' || direction === 'slight-right');
     if (straight) {
-      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.arrow = window.WA_GEO.directionArrow(direction);
       result.main = turnIn > 120 ? '继续直行' : '继续直行 ' + turnIn + ' 米';
       result.sub = '保持在同一条路上';
       return result;
@@ -1924,20 +1924,20 @@
     // 滞回：一旦喊过「现在左拐」，直到真的走过这个转向点才换回
     var lock = state.navTurnLock;
     if (lock && lock.index === current + 1 && walked < next.cumulative + 8) {
-      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.arrow = window.WA_GEO.directionArrow(direction);
       result.main = '现在' + label;
       result.sub = '拐过去继续走';
       return result;
     }
     if (turnIn <= 12) {
       state.navTurnLock = { index: current + 1 };
-      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.arrow = window.WA_GEO.directionArrow(direction);
       result.main = '现在' + label;
       result.sub = '拐过去继续走';
       return result;
     }
     if (turnIn <= 45) {
-      result.arrow = window.BW_GEO.directionArrow(direction);
+      result.arrow = window.WA_GEO.directionArrow(direction);
       result.main = turnIn + ' 米后' + label;
       result.sub = '注意路口';
       return result;
@@ -1985,8 +1985,8 @@
     var pts = route.points || [];
     var cum = [0];
     for (var i = 0; i < pts.length - 1; i += 1) {
-      var d = window.BW_GEO.distanceOf
-        ? window.BW_GEO.distanceOf({ lat: pts[i][1], lon: pts[i][0] }, { lat: pts[i + 1][1], lon: pts[i + 1][0] })
+      var d = window.WA_GEO.distanceOf
+        ? window.WA_GEO.distanceOf({ lat: pts[i][1], lon: pts[i][0] }, { lat: pts[i + 1][1], lon: pts[i + 1][0] })
         : 0;
       cum.push(cum[cum.length - 1] + d);
     }
@@ -2050,7 +2050,7 @@
     host.classList.remove('pathview--empty');
 
     var here = ui.lastFix || ui.myLocation;
-    var progress = window.BW_GEO.routeProgress(state.route, here);
+    var progress = window.WA_GEO.routeProgress(state.route, here);
     if (!progress) return;
 
     var routeRemaining = Math.max(0, state.route.distanceMeters - progress.walked);
@@ -2341,8 +2341,8 @@
 
   /** 「接下来」的数据（渲染与局部刷新共用，保证两处数字同源） */
   function computeUpcoming(session) {
-    if (!isRealSession(session) || !state.route || !window.BW_GEO.routeProgress) return [];
-    var progress = window.BW_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
+    if (!isRealSession(session) || !state.route || !window.WA_GEO.routeProgress) return [];
+    var progress = window.WA_GEO.routeProgress(state.route, ui.lastFix || ui.myLocation);
     if (!progress) return [];
     var ms = state.route.maneuvers || [];
     var walked = progress.walked;
@@ -2356,7 +2356,7 @@
       if (at < 3) continue;
       if (list.length >= 3) break;
       list.push({
-        arrow: window.BW_GEO.directionArrow(m.direction),
+        arrow: window.WA_GEO.directionArrow(m.direction),
         label: m.label,
         distance: at
       });
@@ -3058,7 +3058,7 @@
       '<div class="strip">' + strip + '</div>' +
       '<div class="section-head"><h2>设置</h2></div>' +
       settings +
-      '<p class="version">步谜 StepRiddle ' + APP_VERSION + '</p>' +
+      '<p class="version">步迷 Walkaholic ' + APP_VERSION + '</p>' +
       '</div>';
   }
 
@@ -3158,14 +3158,14 @@
   function openAboutModal() {
     var inner = '<div class="modal__top"><span class="micro">关于</span>' +
       '<button type="button" class="modal__close" data-action="close-modal" aria-label="关闭">' + ICON.close + '</button></div>' +
-      '<h3>步谜 StepRiddle</h3>' +
+      '<h3>步迷 Walkaholic</h3>' +
       '<div class="modal__body" style="margin-top:8px">' +
       '<p>不看见终点，才看得见路。</p>' +
       '<p>打开一个散步盲盒，它只带你走，不告诉你去哪；到了，才揭晓这个地方藏着的小惊喜。</p>' +
       '<p style="color:var(--ink-3);font-size:11px">原型 0.1 · 所有地点为虚构演示数据 · 数据只存在本机</p>' +
       '</div>' +
       '<div class="modal__actions"><button type="button" class="btn btn--primary" data-action="close-modal">好</button></div>';
-    dom.overlayRoot.innerHTML = modalShell(inner, '关于步谜');
+    dom.overlayRoot.innerHTML = modalShell(inner, '关于步迷');
   }
 
   function openPrivacyModal() {
@@ -4018,8 +4018,8 @@
       } else if (place.source === 'osm') {
         showToast('附近找到 ' + (meta && meta.poolSize ? meta.poolSize : 0) + ' 个真实地点', '📍', { duration: 1800 });
         // 后台补真实街道名
-        if (window.BW_GEO) {
-          window.BW_GEO.enrichWithAddress(place).then(function (enriched) {
+        if (window.WA_GEO) {
+          window.WA_GEO.enrichWithAddress(place).then(function (enriched) {
             if (enriched && enriched.address) {
               state.realPlaces[enriched.id] = enriched;
               save();
@@ -4034,8 +4034,8 @@
       ui.searchFailed = {
         reason: reason || 'no-real-place',
         at: Date.now(),
-        report: report || (window.BW_PROVIDERS && window.BW_PROVIDERS.lastReport
-          ? window.BW_PROVIDERS.lastReport() : null)
+        report: report || (window.WA_PROVIDERS && window.WA_PROVIDERS.lastReport
+          ? window.WA_PROVIDERS.lastReport() : null)
       };
       ui.searchScale = 1;
       render();
@@ -4062,8 +4062,8 @@
     /* 判断这个真实地点"够不够格"：小区/驿站/包子铺这类属于最后兜底可用，不该优先抽中 */
     var isDullPlace = function (place) {
       try {
-        var worth = window.BW_GEO.__debug && window.BW_GEO.__debug.scoreWalkworthy
-          ? window.BW_GEO.__debug.scoreWalkworthy({ name: place.name })
+        var worth = window.WA_GEO.__debug && window.WA_GEO.__debug.scoreWalkworthy
+          ? window.WA_GEO.__debug.scoreWalkworthy({ name: place.name })
           : { ok: true, penalty: 1 };
         return worth.penalty < 0.5;
       } catch (e) { return false; }
@@ -4071,7 +4071,7 @@
 
     var searchAttempt = function (patch, tier, dullFallback) {
       var conf = SEARCH_TIERS[tier] || SEARCH_TIERS[SEARCH_TIERS.length - 1];
-      return window.BW_GEO.findRealPlace(
+      return window.WA_GEO.findRealPlace(
         patch,
         ui.mood,
         duration.startMeters,
@@ -4110,7 +4110,7 @@
     var go = function (loc) {
       // 拿不到真实定位：不再静默退回虚构地点，而是明确告诉用户并提供出口
       //（重试 / 手动输入位置 / 明确选择演示）
-      if (!loc || loc.demo || !window.BW_GEO) {
+      if (!loc || loc.demo || !window.WA_GEO) {
         ui.shaking = false;
         ui.locationBlocked = true;
         ui.locationReason = (loc && loc.reason) || 'no-fix';
@@ -4397,7 +4397,7 @@
             ui.myLocation = loc;
             ui.geoErrorShown = false;
             render();
-            bwShakeNow();
+            waShakeNow();
           } else {
             ui.locationBlocked = true;
             ui.locationReason = (loc && loc.reason) || 'no-fix';
@@ -4410,14 +4410,14 @@
         ui.searchFailed = null;
         ui.searchExtraWide = true;   // 手动点过"扩大范围" → 直接从最宽档开搜
         render();
-        bwShakeNow();
+        waShakeNow();
         break;
       }
       case 'manual-location': {
         var input = window.prompt('输入地址或坐标（例：南京市鼓楼区金银街 / 32.0597,118.7713）');
         if (!input) break;
         showToast('正在查这个位置…', '🔎', { duration: 2000 });
-        window.BW_GEO.geocodeAddress(input).then(function (hit) {
+        window.WA_GEO.geocodeAddress(input).then(function (hit) {
           if (!hit) {
             showToast('没找到这个位置，换个写法试试', '😕', { duration: 2600 });
             return;
@@ -4429,7 +4429,7 @@
           ui.searchScale = 1;
           render();
           showToast('已用：' + hit.label, '📍', { duration: 2400 });
-          bwShakeNow();
+          waShakeNow();
         }).catch(function () {
           showToast('位置查询失败，检查网络', '📴', { duration: 2400 });
         });
@@ -4541,8 +4541,8 @@
         var here = ui.myLocation || ui.lastFix;
         if (!here) { showToast('先给一次定位，或用「手动输入位置」', '📍'); break; }
         showToast('正在测试抓取…', '🔎', { duration: 2000 });
-        if (!window.BW_PROVIDERS) { showToast('数据源模块没加载', '⚠️'); break; }
-        window.BW_PROVIDERS.nearby({ lat: here.lat, lon: (here.lon !== undefined ? here.lon : here.lng), radius: 1200, limit: 20 })
+        if (!window.WA_PROVIDERS) { showToast('数据源模块没加载', '⚠️'); break; }
+        window.WA_PROVIDERS.nearby({ lat: here.lat, lon: (here.lon !== undefined ? here.lon : here.lng), radius: 1200, limit: 20 })
           .then(function (list) {
             var withPhoto = list.filter(function (x) { return x.photoUrl; }).length;
             showToast('抓到 ' + list.length + ' 个 · 带图 ' + withPhoto + ' 个', '✅', { duration: 2600 });

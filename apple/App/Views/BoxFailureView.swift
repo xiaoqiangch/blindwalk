@@ -32,11 +32,11 @@ struct BoxFailureView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("没找到真实地点，这次不抽了")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
 
             Text("\(reasonText)。不会用虚构地点糊弄你。\n试试：换「60 分钟」把范围放大，或改个区域（河边/老城区）。")
                 .font(.system(size: 14))
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !reports.isEmpty {
@@ -44,19 +44,19 @@ struct BoxFailureView: View {
                     ForEach(reports) { report in
                         HStack(alignment: .top, spacing: 6) {
                             Circle()
-                                .fill(report.ok ? BWTheme.teal : BWTheme.ember)
+                                .fill(report.ok ? WATheme.teal : WATheme.ember)
                                 .frame(width: 6, height: 6)
                                 .padding(.top, 5)
                             Text(report.ok ? "\(report.label)：找到 \(report.count) 个" : "\(report.label)：\(report.error.isEmpty ? "失败" : report.error)")
                                 .font(.system(size: 13))
-                                .foregroundStyle(report.ok ? BWTheme.ink2 : BWTheme.ember)
+                                .foregroundStyle(report.ok ? WATheme.ink2 : WATheme.ember)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BWTheme.paper2)
+                .background(WATheme.paper2)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
@@ -64,42 +64,42 @@ struct BoxFailureView: View {
                 Button(action: onExpand) {
                     Text("扩大范围再找")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(BWTheme.paper)
+                        .foregroundStyle(WATheme.paper)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
-                        .background(BWTheme.amberDeep)
+                        .background(WATheme.amberDeep)
                         .clipShape(Capsule())
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
 
                 Button(action: onRelocate) {
                     Text("换个位置")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink)
+                        .foregroundStyle(WATheme.ink)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
-                        .background(BWTheme.paper)
+                        .background(WATheme.paper)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             }
 
             Button(action: onDemo) {
                 Text("改成演示模式（虚构地点）")
                     .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
         }
         .padding(16)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(BWTheme.ember.opacity(0.25), lineWidth: 1)
+                .stroke(WATheme.ember.opacity(0.25), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
     }
@@ -120,7 +120,7 @@ struct LocationInputSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("输入一个地址，或直接填「纬度,经度」")
                     .font(.system(size: 14))
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
 
                 TextField("例如：上海人民广场 或 31.2304,121.4737", text: $text)
                     .textFieldStyle(.roundedBorder)
@@ -130,7 +130,7 @@ struct LocationInputSheet: View {
                 if let error {
                     Text(error)
                         .font(.system(size: 13))
-                        .foregroundStyle(BWTheme.ember)
+                        .foregroundStyle(WATheme.ember)
                 }
 
                 Button {
@@ -140,20 +140,20 @@ struct LocationInputSheet: View {
                         if isResolving { ProgressView().controlSize(.small) }
                         Text(isResolving ? "正在定位…" : "用这个位置再找")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(BWTheme.paper)
+                            .foregroundStyle(WATheme.paper)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(BWTheme.amberDeep)
+                    .background(WATheme.amberDeep)
                     .clipShape(Capsule())
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
                 .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || isResolving)
 
                 Spacer(minLength: 0)
             }
             .padding(20)
-            .background(BWTheme.paper)
+            .background(WATheme.paper)
             .navigationTitle("换个位置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

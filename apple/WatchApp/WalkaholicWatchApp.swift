@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 盲走 · watchOS 10 独立 App
+/// 步迷 · watchOS 10 独立 App
 ///
 /// 抬腕就能看旅程进度、线索与揭晓。表盘 198×242 逻辑像素（45mm），黑底 + 系统 SF 字体，
 /// 版式与文案依据 docs/design-system.md §5.9 / §8。
@@ -9,17 +9,17 @@ import SwiftUI
 /// 1. iPhone 通过 WatchConnectivity 的 `applicationContext` 推送 `WatchSessionSummary`
 ///    （见 WatchBridge.swift；到达前不下发地点名，避免提前泄露目的地）；
 /// 2. 无连接（模拟器 / 未配对 / 纯演示）时回退 Shared/Core 的本地演示数据：
-///    `BlindWalkStore.demo()` + `DemoData.demoWatchSession()`。
+///    `WalkaholicStore.demo()` + `DemoData.demoWatchSession()`。
 ///
 /// 4 个页面（`TabView` 竖滑翻页）：进度 → 线索 → 揭晓 → 我的。
 @main
 @MainActor
-struct BlindWalkWatchApp: App {
+struct WalkaholicWatchApp: App {
 
-    /// `BlindWalkStore` 是 Shared/Core 里的 `@Observable @MainActor` 类，
+    /// `WalkaholicStore` 是 Shared/Core 里的 `@Observable @MainActor` 类，
     /// 而 SwiftUI 总在主线程创建 App；整个 App 标 `@MainActor` 让这层隔离保持一致，
     /// 不依赖各版本 watchOS SDK 对 `App.init` 是否标注主 actor。
-    @State private var store: BlindWalkStore = BlindWalkStore.demo()
+    @State private var store: WalkaholicStore = WalkaholicStore.demo()
 
     /// WCSession 摘要；未连接时内部回退 `DemoData.demoWatchSession()`。
     @State private var bridge = WatchBridge()
@@ -35,7 +35,7 @@ struct BlindWalkWatchApp: App {
 enum WatchPage: Int, Hashable, CaseIterable {
     case progress, hints, reveal, mine
 
-    /// 截图/演示用：SIMCTL_CHILD_BW_WATCH_PAGE=progress|hints|reveal|mine
+    /// 截图/演示用：SIMCTL_CHILD_WA_WATCH_PAGE=progress|hints|reveal|mine
     static func preview(_ name: String) -> WatchPage? {
         switch name {
         case "progress": return .progress
@@ -53,7 +53,7 @@ enum WatchPage: Int, Hashable, CaseIterable {
 /// - iPhone 已连接时，把 WCSession 摘要同步进共享 Store，界面仍然只读 Store。
 struct WatchRootView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     let bridge: WatchBridge
 
     @State private var page: WatchPage = .progress
@@ -80,7 +80,7 @@ struct WatchRootView: View {
         .onAppear {
             bridge.activateIfNeeded()
             syncFromPhoneIfNeeded()
-            if let name = ProcessInfo.processInfo.environment["BW_WATCH_PAGE"],
+            if let name = ProcessInfo.processInfo.environment["WA_WATCH_PAGE"],
                let preview = WatchPage.preview(name) {
                 page = preview
             }
@@ -103,7 +103,7 @@ struct WatchRootView: View {
     }
 
     /// 有 iPhone 连接时，用摘要里的会话覆盖本地演示会话（无连接时保持 DemoData）。
-    /// `BlindWalkStore` 是 `@MainActor`，这里显式标注（调用点都在 body / onChange 里）。
+    /// `WalkaholicStore` 是 `@MainActor`，这里显式标注（调用点都在 body / onChange 里）。
     @MainActor
     private func syncFromPhoneIfNeeded() {
         guard bridge.source == .phone else { return }

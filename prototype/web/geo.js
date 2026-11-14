@@ -1,4 +1,4 @@
-/* 盲走 BlindWalk · 真实地理数据（Real Geo）
+/* 步迷 Walkaholic · 真实地理数据（Real Geo）
  *
  * 数据源（均为免 key、支持 CORS）：
  *   - POI 搜索：Overpass API（OpenStreetMap）—— 半径查询，返回真实地点
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var CACHE_KEY = 'blindwalk:geocache:v1';
+  var CACHE_KEY = 'walkaholic:geocache:v1';
   var CACHE_TTL = 24 * 3600 * 1000;      // 24 小时
   var GRID = 0.01;                        // 约 1.1km 网格
   /* Overpass 有多个端点，主站偶尔限流；按顺序尝试 */
@@ -262,7 +262,7 @@
     };
   }
 
-  /** 真实 POI → 盲走 Place（名称到达后才展示；线索不含名称） */
+  /** 真实 POI → 步迷 Place（名称到达后才展示；线索不含名称） */
   function makePlace(poi, origin, mood, startMeters) {
     var meta = CATEGORY_META[poi.category] || CATEGORY_META.cafe;
     var geo = mapPointFor(origin, poi, startMeters);
@@ -349,7 +349,7 @@
     var loc = norm(location);
     if (!loc) return Promise.resolve([]);
     var lat = loc.lat, lon = loc.lon;
-    var key = 'bw:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
+    var key = 'wa:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
     try {
       var cachedRaw = sessionStorage.getItem(key);
       if (cachedRaw) {
@@ -726,7 +726,7 @@
   /** 没有可用的策展点时：先走多数据源（高德/百度/OSM/维基），再退回旧链路 */
   function autoPickPlace(origin, mood, startMeters, radius, minDistance, maxDistance, seed, relax) {
     relax = relax || 0;
-    var providers = window.BW_PROVIDERS;
+    var providers = window.WA_PROVIDERS;
     if (!providers || typeof providers.nearby !== 'function') {
       return autoPickLegacy(origin, mood, startMeters, radius, minDistance, maxDistance, seed);
     }
@@ -766,8 +766,8 @@
     });
   }
 
-  /** 商业 POI 黑名单：这些地方不值得"盲走"，哪怕地图上有 */
-  /** 第一级：绝对不适合盲走的地方（去了也尴尬）→ 直接排除 */
+  /** 商业 POI 黑名单：这些地方不值得"步迷"，哪怕地图上有 */
+  /** 第一级：绝对不适合步迷的地方（去了也尴尬）→ 直接排除 */
   var POI_NEVER_WORDS = /公厕|厕所|垃圾|污水|变电|加油站|停车场|停车库|ATM|自助取款|售楼|工业园|物流|工厂|仓库|暂停开放|已关闭|停止营业|暂停营业|装修中|施工中/;
 
   /** 第二级：没什么"地点感"的商业 POI → 不排除，只大幅降权（附近实在没别的时仍然可用） */
@@ -1062,7 +1062,7 @@
     };
   }
 
-  /** 真实 POI → 盲走 Place（名称到达后才展示；线索不含名称） */
+  /** 真实 POI → 步迷 Place（名称到达后才展示；线索不含名称） */
   function makePlace(poi, origin, mood, startMeters) {
     var meta = CATEGORY_META[poi.category] || CATEGORY_META.cafe;
     var geo = mapPointFor(origin, poi, startMeters);
@@ -1147,7 +1147,7 @@
     var loc = norm(location);
     if (!loc) return Promise.resolve([]);
     var lat = loc.lat, lon = loc.lon;
-    var key = 'bw:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
+    var key = 'wa:wiki:' + lat.toFixed(3) + ',' + lon.toFixed(3) + ':' + radiusMeters;
     try {
       var cachedRaw = sessionStorage.getItem(key);
       if (cachedRaw) {
@@ -1631,7 +1631,7 @@
   }
 
 
-  window.BW_GEO = {
+  window.WA_GEO = {
     findRealPlace: findRealPlace,
     searchPOIs: searchPOIs,
     wikipediaPOIs: wikipediaPOIs,

@@ -5,7 +5,7 @@ import Foundation
 
 struct BoxSetupSheet: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onStart: () -> Void
     var onCancel: () -> Void
 
@@ -22,19 +22,19 @@ struct BoxSetupSheet: View {
 
     var body: some View {
         ZStack {
-            BWTheme.paper.ignoresSafeArea()
+            WATheme.paper.ignoresSafeArea()
 
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                     Text("这次的盲盒")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(BWTheme.ink)
+                        .foregroundStyle(WATheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text("选完就出发，目的地保密。")
                         .font(.system(size: 13.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                         .padding(.top, 4)
                         .padding(.bottom, 20)
 
@@ -55,13 +55,13 @@ struct BoxSetupSheet: View {
                         .id("failurePanel")
                     }
                     }
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 10)
                     .padding(.bottom, 22)
                 }
                 .onChange(of: failureReason) { _, reason in
                     guard reason != nil else { return }
-                    withAnimation(BWAnimation.regular) {
+                    withAnimation(WAAnimation.regular) {
                         proxy.scrollTo("failurePanel", anchor: .bottom)
                     }
                 }
@@ -69,9 +69,9 @@ struct BoxSetupSheet: View {
         }
         .presentationDetents([.fraction(0.92)])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(BWTheme.panelRadius)
-        .presentationBackground(BWTheme.paper)
-        .bwTypeBounds()
+        .presentationCornerRadius(WATheme.panelRadius)
+        .presentationBackground(WATheme.paper)
+        .waTypeBounds()
         .onAppear(perform: handleAppear)
         .sheet(isPresented: $showLocationPicker) {
             LocationInputSheet { point in
@@ -86,7 +86,7 @@ struct BoxSetupSheet: View {
 
     private var durationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            BWMicroLabel("时长")
+            WAMicroLabel("时长")
 
             HStack(spacing: 4) {
                 ForEach(WalkDuration.allCases) { duration in
@@ -94,7 +94,7 @@ struct BoxSetupSheet: View {
                 }
             }
             .padding(4)
-            .background(BWTheme.paper2)
+            .background(WATheme.paper2)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
@@ -107,12 +107,12 @@ struct BoxSetupSheet: View {
             VStack(spacing: 2) {
                 Text("\(duration.rawValue) 分钟")
                     .font(.system(size: 14, weight: selected ? .medium : .regular))
-                    .foregroundStyle(selected ? BWTheme.ink : BWTheme.ink2)
+                    .foregroundStyle(selected ? WATheme.ink : WATheme.ink2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(durationCaption(duration))
                     .font(.system(size: 11.5))
-                    .foregroundStyle(selected ? BWTheme.amberDeep : BWTheme.ink3)
+                    .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink3)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
@@ -120,15 +120,15 @@ struct BoxSetupSheet: View {
             .background {
                 if selected {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(BWTheme.paper)
+                        .fill(WATheme.paper)
                         .overlay(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(BWTheme.amber.opacity(0.35), lineWidth: 1)
+                                .stroke(WATheme.amber.opacity(0.35), lineWidth: 1)
                         )
                 }
             }
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel(duration.title)
     }
 
@@ -144,7 +144,7 @@ struct BoxSetupSheet: View {
 
     private var moodSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            BWMicroLabel("心情")
+            WAMicroLabel("心情")
 
             VStack(spacing: 7) {
                 ForEach(Mood.allCases) { mood in
@@ -162,18 +162,18 @@ struct BoxSetupSheet: View {
             HStack(spacing: 12) {
                 Image(systemName: mood.symbol)
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(selected ? BWTheme.amberDeep : BWTheme.ink2)
+                    .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink2)
                     .frame(width: 34, height: 34)
-                    .background(selected ? BWTheme.amberSoft : BWTheme.paper2)
+                    .background(selected ? WATheme.amberSoft : WATheme.paper2)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mood.title)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(BWTheme.ink)
+                        .foregroundStyle(WATheme.ink)
                     Text(mood.subtitle)
                         .font(.system(size: 12.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                 }
@@ -183,20 +183,20 @@ struct BoxSetupSheet: View {
                 if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(BWTheme.amberDeep)
+                        .foregroundStyle(WATheme.amberDeep)
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous)
-                    .stroke(selected ? BWTheme.amber.opacity(0.45) : BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous)
+                    .stroke(selected ? WATheme.amber.opacity(0.45) : WATheme.line, lineWidth: 1)
             )
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel("\(mood.title)：\(mood.subtitle)")
     }
 
@@ -204,7 +204,7 @@ struct BoxSetupSheet: View {
 
     private var areaSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            BWMicroLabel("区域")
+            WAMicroLabel("区域")
 
             HStack(spacing: 8) {
                 areaChip(title: "附近", isSelected: store.selectedArea == nil) {
@@ -221,14 +221,14 @@ struct BoxSetupSheet: View {
     }
 
     private func areaChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        BWPill(title: title, selected: isSelected, action: action)
+        WAPill(title: title, selected: isSelected, action: action)
     }
 
     // MARK: 按钮
 
     private var actionSection: some View {
         VStack(spacing: 4) {
-            BWPrimaryButton(
+            WAPrimaryButton(
                 title: "摇一个盲盒",
                 action: shakeAndStart
             )
@@ -239,7 +239,7 @@ struct BoxSetupSheet: View {
             Button(action: onCancel) {
                 Text("今天不想出门")
                     .font(.system(size: 14.5, weight: .medium))
-                    .foregroundStyle(BWTheme.ink2)
+                    .foregroundStyle(WATheme.ink2)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
                     .contentShape(Rectangle())
@@ -252,7 +252,7 @@ struct BoxSetupSheet: View {
                         .controlSize(.mini)
                     Text(searchHint ?? "正在找附近真实存在的地点…")
                         .font(.system(size: 12.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -260,7 +260,7 @@ struct BoxSetupSheet: View {
             if startFailed {
                 Text("这一次没抽到，再试一次。")
                     .font(.system(size: 13))
-                    .foregroundStyle(BWTheme.ember)
+                    .foregroundStyle(WATheme.ember)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -271,13 +271,13 @@ struct BoxSetupSheet: View {
     private func selectDuration(_ duration: WalkDuration) {
         guard store.selectedDuration != duration else { return }
         store.selectedDuration = duration
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     private func selectMood(_ mood: Mood) {
         guard store.selectedMood != mood else { return }
         store.selectedMood = mood
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     /// 摇盒 600ms（±6° 三次）→ 抽盒 → 关闭 sheet 进入旅程
@@ -291,14 +291,14 @@ struct BoxSetupSheet: View {
         }
 
         isShaking = true
-        BWHaptics.light()
+        WAHaptics.light()
 
         withAnimation(.easeInOut(duration: 0.1).repeatCount(6, autoreverses: true)) {
             shakeAngle = 6
         }
 
-        bwAfter(0.7) {
-            withAnimation(BWAnimation.quick) {
+        waAfter(0.7) {
+            withAnimation(WAAnimation.quick) {
                 shakeAngle = 0
             }
             isShaking = false
@@ -324,7 +324,7 @@ struct BoxSetupSheet: View {
         }
 
         let env = ProcessInfo.processInfo.environment
-        if env["BW_FORCE_SEARCH_FAIL"] == "1" {
+        if env["WA_FORCE_SEARCH_FAIL"] == "1" {
             fail(reason: "network", reports: [
                 POISourceReport(id: "amap", label: "高德地图", ok: false, count: 0, error: "网络超时"),
                 POISourceReport(id: "baidu", label: "百度地图", ok: false, count: 0, error: "未配置 Key"),
@@ -343,8 +343,8 @@ struct BoxSetupSheet: View {
             // Key 由后台下发（bundle → Pages → 后台端点，缓存 12h）
             _ = await MapKeysService.shared.load()
 
-            // ① 后台策展 POI 优先（人工审核过的点最可靠；调试可用 BW_SKIP_CURATED=1 强制走多数据源）
-            let skipCurated = ProcessInfo.processInfo.environment["BW_SKIP_CURATED"] == "1"
+            // ① 后台策展 POI 优先（人工审核过的点最可靠；调试可用 WA_SKIP_CURATED=1 强制走多数据源）
+            let skipCurated = ProcessInfo.processInfo.environment["WA_SKIP_CURATED"] == "1"
             await AdminPOIService.shared.prepare()
             if !skipCurated, let curated = AdminPOIService.shared.pickCuratedPlace(
                 origin: origin, mood: mood, startMeters: startMeters, seed: seed
@@ -438,7 +438,7 @@ struct BoxSetupSheet: View {
         }
         adopt(place: place, origin: origin)
         isLookingUp = false
-        BWHaptics.medium()
+        WAHaptics.medium()
         onStart()
         return true
     }
@@ -451,7 +451,7 @@ struct BoxSetupSheet: View {
         }
         debugLog("demo mode chosen by user")
         isLookingUp = false
-        BWHaptics.medium()
+        WAHaptics.medium()
         onStart()
     }
 
@@ -460,7 +460,7 @@ struct BoxSetupSheet: View {
         searchHint = nil
         failureReason = reason
         failureReports = reports
-        BWHaptics.medium()
+        WAHaptics.medium()
     }
 
     /// 把真实地点覆盖进 store：
@@ -493,14 +493,14 @@ struct BoxSetupSheet: View {
 
     // MARK: 截图 / 自检辅助
 
-    /// 截图自检：`BW_PREVIEW=setup` + `BW_AUTO_START=1` 时自动用模拟器坐标摇一次盲盒。
+    /// 截图自检：`WA_PREVIEW=setup` + `WA_AUTO_START=1` 时自动用模拟器坐标摇一次盲盒。
     private func handleAppear() {
         Task { await MapKeysService.shared.load() }
         Task { await AdminPOIService.shared.prepare() }
 
         let env = ProcessInfo.processInfo.environment
         // 真实模式下用户可能第一次打开 App：先拿一次定位，别让「没有起点」把抽盒卡死
-        if env["BW_PREVIEW"] == nil, store.lastKnownOrigin == nil {
+        if env["WA_PREVIEW"] == nil, store.lastKnownOrigin == nil {
             let service = OneShotLocationService()
             oneShotLocation = service
             Task { @MainActor in
@@ -510,13 +510,13 @@ struct BoxSetupSheet: View {
                 }
             }
         }
-        guard env["BW_AUTO_START"] == "1" else { return }
-        if let raw = env["BW_PREVIEW_ORIGIN"], let parsed = Self.parseOrigin(raw) {
+        guard env["WA_AUTO_START"] == "1" else { return }
+        if let raw = env["WA_PREVIEW_ORIGIN"], let parsed = Self.parseOrigin(raw) {
             store.lastKnownOrigin = parsed
         } else if store.lastKnownOrigin == nil {
             store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
         }
-        bwAfter(0.9) { startQuest() }
+        waAfter(0.9) { startQuest() }
     }
 
     private static func parseOrigin(_ raw: String) -> GeoPoint? {
@@ -527,7 +527,7 @@ struct BoxSetupSheet: View {
     }
 
     private func debugLog(_ message: String) {
-        guard ProcessInfo.processInfo.environment["BW_DEBUG_POI"] == "1" else { return }
-        print("[BlindWalk][poi] \(message)")
+        guard ProcessInfo.processInfo.environment["WA_DEBUG_POI"] == "1" else { return }
+        print("[Walkaholic][poi] \(message)")
     }
 }

@@ -14,7 +14,7 @@ import UIKit
 
 struct BurySurpriseView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onClose: () -> Void = {}
     var onOpenSeek: (() -> Void)? = nil
     var onOpenMine: (() -> Void)? = nil
@@ -34,7 +34,7 @@ struct BurySurpriseView: View {
     @State private var hint = ""
     @State private var isCameraPresented = false
 
-    @State private var toasts: [BWToast] = []
+    @State private var toasts: [WAToast] = []
     @State private var buryError: String?
     @State private var buried: BuriedSurprise?
     @State private var newAchievements: [Achievement] = []
@@ -87,7 +87,7 @@ struct BurySurpriseView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             switch stage {
             case .compose:
@@ -102,12 +102,12 @@ struct BurySurpriseView: View {
             }
 
             SurpriseToastLayer(toasts: toasts) { toast in
-                withAnimation(BWAnimation.quick) {
+                withAnimation(WAAnimation.quick) {
                     toasts.removeAll { $0.id == toast.id }
                 }
             }
         }
-        .bwTypeBounds()
+        .waTypeBounds()
         .fullScreenCover(isPresented: $isCameraPresented) {
             CameraPhotoPicker(
                 onPicked: { image in
@@ -129,7 +129,7 @@ struct BurySurpriseView: View {
                 if let image = await PhotoLibraryService.loadImage(from: item) {
                     adopt(image: image, source: .album)
                 } else {
-                    appendToast(BWToast(text: "这张照片读不出来，换一张试试。", icon: "photo.badge.exclamationmark"))
+                    appendToast(WAToast(text: "这张照片读不出来，换一张试试。", icon: "photo.badge.exclamationmark"))
                 }
                 pickerItem = nil
             }
@@ -148,33 +148,33 @@ struct BurySurpriseView: View {
                     trailingLabel: buried == nil ? nil : "我的",
                     onTrailing: onOpenMine
                 )
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
 
                 Text("它留在这里，等一个人来找到。")
-                    .font(BWType.body(13))
-                    .foregroundStyle(BWTheme.ink2)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .font(WAType.body(13))
+                    .foregroundStyle(WATheme.ink2)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 6)
 
                 photoSection
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 18)
 
                 messageSection
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 22)
 
                 hintSection
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 18)
 
                 locationSection
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 22)
 
                 Text("照片只留在你自己的手机里，不上传。")
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 18)
                     .padding(.bottom, 16)
@@ -196,12 +196,12 @@ struct BurySurpriseView: View {
 
     private var emptyPhotoCard: some View {
         VStack(spacing: 10) {
-            BWEmptyArt()
+            WAEmptyArt()
                 .padding(.bottom, 2)
 
             Text("先拍一张。你觉得好的那一张。")
-                .font(BWType.body(13))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WAType.body(13))
+                .foregroundStyle(WATheme.ink2)
                 .multilineTextAlignment(.center)
 
             SurprisePhotoPickRow(
@@ -215,18 +215,18 @@ struct BurySurpriseView: View {
 
             if !CameraPhotoPicker.isCameraAvailable {
                 Text("这台设备没有相机，用相册也能埋。")
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 22)
         .padding(.horizontal, 16)
-        .background(BWTheme.paper.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.paper.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .strokeBorder(BWTheme.line, style: StrokeStyle(lineWidth: 1.2, dash: [6, 5]))
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .strokeBorder(WATheme.line, style: StrokeStyle(lineWidth: 1.2, dash: [6, 5]))
         )
     }
 
@@ -240,15 +240,15 @@ struct BurySurpriseView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(BWTheme.ink.opacity(0.08), lineWidth: 1)
+                        .stroke(WATheme.ink.opacity(0.08), lineWidth: 1)
                 )
 
             HStack(spacing: 8) {
                 SurprisePill(
                     text: photoSource == .camera ? "刚拍的" : "相册里的",
                     icon: photoSource == .camera ? "camera.fill" : "photo.on.rectangle",
-                    tint: BWTheme.ink2,
-                    background: BWTheme.paper2
+                    tint: WATheme.ink2,
+                    background: WATheme.paper2
                 )
 
                 Spacer(minLength: 0)
@@ -264,13 +264,13 @@ struct BurySurpriseView: View {
             }
         }
         .padding(12)
-        .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .stroke(WATheme.line, lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.06), radius: 12, x: 0, y: 7)
+        .shadow(color: WATheme.ink.opacity(0.06), radius: 12, x: 0, y: 7)
     }
 
     // MARK: 一句话
@@ -278,12 +278,12 @@ struct BurySurpriseView: View {
     private var messageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                BWMicroLabel("写一句话：为什么埋在这里")
+                WAMicroLabel("写一句话：为什么埋在这里")
                 Spacer(minLength: 0)
                 Text(messageCount)
-                    .font(BWType.caption(10))
+                    .font(WAType.caption(10))
                     .monospacedDigit()
-                    .foregroundStyle(message.count >= messageLimit ? BWTheme.ember : BWTheme.ink3)
+                    .foregroundStyle(message.count >= messageLimit ? WATheme.ember : WATheme.ink3)
             }
 
             TextField(
@@ -292,16 +292,16 @@ struct BurySurpriseView: View {
                 axis: .vertical
             )
             .lineLimit(3...5)
-            .font(BWType.body(13.5))
-            .foregroundStyle(BWTheme.ink)
-            .tint(BWTheme.amberDeep)
+            .font(WAType.body(13.5))
+            .foregroundStyle(WATheme.ink)
+            .tint(WATheme.amberDeep)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(BWTheme.paper2)
+            .background(WATheme.paper2)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
             .onChange(of: message) { _, newValue in
                 if newValue.count > messageLimit {
@@ -310,8 +310,8 @@ struct BurySurpriseView: View {
             }
 
             Text("别写地方名。让 TA 自己找。")
-                .font(BWType.caption(10.5))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.caption(10.5))
+                .foregroundStyle(WATheme.ink3)
         }
     }
 
@@ -320,12 +320,12 @@ struct BurySurpriseView: View {
     private var hintSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                BWMicroLabel("（可选）给找它的人一句提示")
+                WAMicroLabel("（可选）给找它的人一句提示")
                 Spacer(minLength: 0)
                 Text(hintCount)
-                    .font(BWType.caption(10))
+                    .font(WAType.caption(10))
                     .monospacedDigit()
-                    .foregroundStyle(hint.count >= hintLimit ? BWTheme.ember : BWTheme.ink3)
+                    .foregroundStyle(hint.count >= hintLimit ? WATheme.ember : WATheme.ink3)
             }
 
             TextField(
@@ -334,16 +334,16 @@ struct BurySurpriseView: View {
                 axis: .vertical
             )
             .lineLimit(2...3)
-            .font(BWType.body(13.5))
-            .foregroundStyle(BWTheme.ink)
-            .tint(BWTheme.amberDeep)
+            .font(WAType.body(13.5))
+            .foregroundStyle(WATheme.ink)
+            .tint(WATheme.amberDeep)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(BWTheme.paper2)
+            .background(WATheme.paper2)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
             .onChange(of: hint) { _, newValue in
                 if newValue.count > hintLimit {
@@ -359,36 +359,36 @@ struct BurySurpriseView: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .center, spacing: 6) {
                 Text("埋在这里")
-                    .font(BWType.micro())
+                    .font(WAType.micro())
                     .tracking(1.1)
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
 
                 Spacer(minLength: 0)
 
                 if isDemoLocation {
                     SurpriseDemoTag()
                 } else if probe.origin == nil {
-                    SurprisePill(text: "上次位置", icon: "clock.arrow.circlepath", tint: BWTheme.ink2)
+                    SurprisePill(text: "上次位置", icon: "clock.arrow.circlepath", tint: WATheme.ink2)
                 } else {
-                    SurprisePill(text: "实时定位", icon: "location.fill", tint: BWTheme.teal)
+                    SurprisePill(text: "实时定位", icon: "location.fill", tint: WATheme.teal)
                 }
             }
 
             HStack(alignment: .center, spacing: 10) {
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(isDemoLocation ? BWTheme.ember : BWTheme.amberDeep)
+                    .foregroundStyle(isDemoLocation ? WATheme.ember : WATheme.amberDeep)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(areaLabel)
-                        .font(BWType.rowTitle(14))
-                        .foregroundStyle(BWTheme.ink)
+                        .font(WAType.rowTitle(14))
+                        .foregroundStyle(WATheme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Text(SurpriseLocation.coordinateText(resolvedPoint))
                         .font(.system(size: 12.5, weight: .regular))
                         .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
 
                 Spacer(minLength: 0)
@@ -398,37 +398,37 @@ struct BurySurpriseView: View {
                         retryLocating()
                     } label: {
                         Text("重试定位")
-                            .font(BWType.caption(10.5))
-                            .foregroundStyle(BWTheme.ink2)
+                            .font(WAType.caption(10.5))
+                            .foregroundStyle(WATheme.ink2)
                             .padding(.horizontal, 10)
                             .frame(height: 26)
-                            .background(BWTheme.paper2)
+                            .background(WATheme.paper2)
                             .clipShape(Capsule())
-                            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                            .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                     }
-                    .buttonStyle(BWPressEffectStyle())
+                    .buttonStyle(WAPressEffectStyle())
                 }
             }
 
             if let locationStatusCopy {
                 Text(locationStatusCopy)
-                    .font(BWType.caption(10.5))
-                    .foregroundStyle(isDemoLocation ? BWTheme.ember.opacity(0.9) : BWTheme.ink3)
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(isDemoLocation ? WATheme.ember.opacity(0.9) : WATheme.ink3)
             }
 
             if let buryError {
                 Text(buryError)
-                    .font(BWType.caption(11))
-                    .foregroundStyle(BWTheme.ember)
+                    .font(WAType.caption(11))
+                    .foregroundStyle(WATheme.ember)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(isDemoLocation ? BWTheme.ember.opacity(0.24) : BWTheme.line, lineWidth: 1)
+                .stroke(isDemoLocation ? WATheme.ember.opacity(0.24) : WATheme.line, lineWidth: 1)
         )
     }
 
@@ -436,7 +436,7 @@ struct BurySurpriseView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 6) {
-            BWPrimaryButton(
+            WAPrimaryButton(
                 title: canBury ? "埋在这里" : "还差一张照片",
                 icon: canBury ? "arrow.down.to.line" : "camera",
                 caption: canBury ? "+30" : nil,
@@ -446,17 +446,17 @@ struct BurySurpriseView: View {
             .opacity(canBury ? 1 : 0.5)
 
             Text("埋下后，它会一直留在这个位置，等一个人来。")
-                .font(BWType.caption(10))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WAType.caption(10))
+                .foregroundStyle(WATheme.ink3)
         }
-        .padding(.horizontal, BWTheme.pagePadding)
+        .padding(.horizontal, WATheme.pagePadding)
         .padding(.top, 12)
         .padding(.bottom, 16)
         // 底栏必须是实底：半透明渐变会让滚动内容从 CTA 下面透出来，看着像两层叠在一起。
         .background(alignment: .top) {
             ZStack(alignment: .top) {
-                BWTheme.cream
-                BWHairline()
+                WATheme.cream
+                WAHairline()
             }
             .ignoresSafeArea(edges: .bottom)
         }
@@ -468,10 +468,10 @@ struct BurySurpriseView: View {
         VStack(spacing: 0) {
             HStack {
                 Spacer(minLength: 0)
-                BWIconButton(systemName: "xmark", size: 32, action: onClose)
+                WAIconButton(systemName: "xmark", size: 32, action: onClose)
                     .accessibilityLabel("关闭")
             }
-            .padding(.horizontal, BWTheme.pagePadding)
+            .padding(.horizontal, WATheme.pagePadding)
             .padding(.top, 6)
 
             Spacer(minLength: 0)
@@ -479,7 +479,7 @@ struct BurySurpriseView: View {
             ZStack {
                 // 埋在土里的一小圈暖光
                 Circle()
-                    .fill(BWTheme.amber.opacity(doneGlow ? 0.18 : 0.0))
+                    .fill(WATheme.amber.opacity(doneGlow ? 0.18 : 0.0))
                     .frame(width: 250, height: 250)
                     .blur(radius: 30)
                     .scaleEffect(doneGlow ? 1 : 0.7)
@@ -492,7 +492,7 @@ struct BurySurpriseView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(BWTheme.cream.opacity(0.5), lineWidth: 1)
+                                .stroke(WATheme.cream.opacity(0.5), lineWidth: 1)
                         )
                         .rotationEffect(.degrees(photoSinks ? -3 : 0))
                         .scaleEffect(photoSinks ? 0.42 : 1)
@@ -505,28 +505,28 @@ struct BurySurpriseView: View {
                 if photoSinks {
                     VStack(spacing: 6) {
                         ZStack {
-                            BWKraft.thumbGradient
+                            WAKraft.thumbGradient
                             Text("?")
                                 .font(.system(size: 30, weight: .bold))
-                                .foregroundStyle(BWTheme.ink3.opacity(0.9))
+                                .foregroundStyle(WATheme.ink3.opacity(0.9))
                         }
                         .frame(width: 96, height: 118)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(BWTheme.ink3.opacity(0.5), style: StrokeStyle(lineWidth: 1.4, dash: [5, 4]))
+                                .strokeBorder(WATheme.ink3.opacity(0.5), style: StrokeStyle(lineWidth: 1.4, dash: [5, 4]))
                         )
 
                         Text("别人先看到这个")
-                            .font(BWType.caption(10))
-                            .foregroundStyle(BWTheme.ink3)
+                            .font(WAType.caption(10))
+                            .foregroundStyle(WATheme.ink3)
                     }
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
 
                 // 埋点：琥珀环
                 Circle()
-                    .stroke(BWTheme.amber, lineWidth: 2)
+                    .stroke(WATheme.amber, lineWidth: 2)
                     .frame(width: glowOut ? 190 : 26, height: glowOut ? 190 : 26)
                     .opacity(glowOut ? 0 : 0.9)
                     .offset(y: photoSinks ? 44 : 0)
@@ -536,17 +536,17 @@ struct BurySurpriseView: View {
             VStack(spacing: 8) {
                 Text(stage == .done ? "已埋下。" : "正在埋下")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
 
                 if let buried {
                     Text("\(buried.areaLabel) · 等一个人来找到。")
-                        .font(BWType.body(13))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WAType.body(13))
+                        .foregroundStyle(WATheme.ink2)
                         .multilineTextAlignment(.center)
 
                     Text(buried.message)
-                        .font(BWType.body(12.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .font(WAType.body(12.5))
+                        .foregroundStyle(WATheme.ink3)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -560,16 +560,16 @@ struct BurySurpriseView: View {
 
             VStack(spacing: 8) {
                 if let onOpenSeek {
-                    BWPrimaryButton(title: "去寻宝看看", icon: "sparkle.magnifyingglass", action: onOpenSeek)
+                    WAPrimaryButton(title: "去寻宝看看", icon: "sparkle.magnifyingglass", action: onOpenSeek)
                 }
                 HStack(spacing: 8) {
                     if let onOpenMine {
-                        BWSecondaryButton(title: "我的惊喜", icon: "tray.full") { onOpenMine() }
+                        WASecondaryButton(title: "我的惊喜", icon: "tray.full") { onOpenMine() }
                     }
-                    BWSecondaryButton(title: "再埋一个", icon: "plus.viewfinder") { resetForAnother() }
+                    WASecondaryButton(title: "再埋一个", icon: "plus.viewfinder") { resetForAnother() }
                 }
             }
-            .padding(.horizontal, BWTheme.pagePadding)
+            .padding(.horizontal, WATheme.pagePadding)
             // 让出底部 toast 的高度（两条叠加约 130pt），别让「成就解锁」压住按钮
             .padding(.bottom, 150)
         }
@@ -589,14 +589,14 @@ struct BurySurpriseView: View {
         let fresh = SurpriseLocationProbe()
         probe = fresh
         fresh.startIfNeeded(storeOrigin: nil)
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     private func adopt(image: UIImage, source: PhotoSource) {
         photo = image
         photoSource = source
         buryError = nil
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     private func bury() {
@@ -620,25 +620,25 @@ struct BurySurpriseView: View {
             $0.unlockedAt != nil && !before.contains($0.id)
         }
 
-        BWHaptics.success()
+        WAHaptics.success()
         buryError = nil
 
-        withAnimation(BWAnimation.openBox) {
+        withAnimation(WAAnimation.openBox) {
             stage = .burying
             photoSinks = true
             glowOut = true
         }
 
-        bwAfter(0.55) {
-            withAnimation(BWAnimation.slow) {
+        waAfter(0.55) {
+            withAnimation(WAAnimation.slow) {
                 stage = .done
                 doneGlow = true
             }
-            appendToast(BWToast(text: "已埋下 · 神秘值 +30", icon: "sparkles"))
+            appendToast(WAToast(text: "已埋下 · 神秘值 +30", icon: "sparkles"))
             if let achievement = newAchievements.first {
-                bwAfter(0.6) {
+                waAfter(0.6) {
                     appendToast(
-                        BWToast(
+                        WAToast(
                             text: "成就解锁 · \(achievement.name)",
                             icon: achievement.icon,
                             isAmber: true
@@ -662,16 +662,16 @@ struct BurySurpriseView: View {
         stage = .compose
     }
 
-    private func appendToast(_ toast: BWToast) {
-        withAnimation(BWAnimation.regular) {
+    private func appendToast(_ toast: WAToast) {
+        withAnimation(WAAnimation.regular) {
             toasts.append(toast)
         }
     }
 
-    /// 截图 / 走查专用：`SIMCTL_CHILD_BW_PREVIEW=bury|bury-filled`
+    /// 截图 / 走查专用：`SIMCTL_CHILD_WA_PREVIEW=bury|bury-filled`
     private func applyPreviewRoute() {
         #if DEBUG
-        switch ProcessInfo.processInfo.environment["BW_PREVIEW"] {
+        switch ProcessInfo.processInfo.environment["WA_PREVIEW"] {
         case "bury-filled":
             photo = PhotoLibraryService.debugPlaceholderImage()
             photoSource = .camera
@@ -682,7 +682,7 @@ struct BurySurpriseView: View {
             photoSource = .camera
             message = "这张是我在等一杯咖啡时拍的。柜台后面那盏灯，晚上会有很软的一圈光。"
             hint = "往灯最暖的那扇窗走。"
-            bwAfter(0.5) { bury() }
+            waAfter(0.5) { bury() }
         default:
             break
         }

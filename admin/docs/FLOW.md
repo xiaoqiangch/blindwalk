@@ -6,7 +6,7 @@
 
 ### 方式 A：按地址（推荐，不用查坐标）
 ```bash
-BW_ADMIN_PASSWORD=你的密码 bash scripts/ingest-address.sh "南京市鼓楼区金银街16号" 1500
+WA_ADMIN_PASSWORD=你的密码 bash scripts/ingest-address.sh "南京市鼓楼区金银街16号" 1500
 ```
 脚本会：地址 → 坐标（查不到门牌号时自动退化成「街道」再查）→ 调后台抓取 → 打印新增的候选。
 

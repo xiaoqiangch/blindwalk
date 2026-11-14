@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 地点库与枚举展示属性
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 地点库与枚举展示属性
  *
  * 数据来源（逐字镜像）：
  * - 24 个内置地点：apple/Shared/Core/PlaceCatalog.swift

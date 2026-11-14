@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEB="$ROOT/prototype/web"
 OUT="$ROOT/screenshots"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-UDD="/tmp/blindwalk-chrome-profile"
+UDD="/tmp/walkaholic-chrome-profile"
 mkdir -p "$OUT" "$UDD"
 
 if [[ ! -f "$WEB/index.html" ]]; then

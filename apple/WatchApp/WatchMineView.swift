@@ -4,11 +4,11 @@ import SwiftUI
 /// 「我的」表盘（第 4 页，配合 §5.9 的手表信息密度）
 ///
 /// 一眼可读：今日卡（类别 emoji + 卡名）、连续天数、总盒数、数据来源。
-/// iPhone 已连接时显示 WCSession 摘要里的数据，否则用 `BlindWalkStore.demo()`。
+/// iPhone 已连接时显示 WCSession 摘要里的数据，否则用 `WalkaholicStore.demo()`。
 @MainActor
 struct WatchMineView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     let bridge: WatchBridge
 
     private var isPhoneDriven: Bool { bridge.source == .phone }
@@ -49,7 +49,7 @@ struct WatchMineView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("我的")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(BWTheme.amber)
+                .foregroundStyle(WATheme.amber)
                 .accessibilityAddTraits(.isHeader)
 
             todayCard
@@ -95,11 +95,11 @@ struct WatchMineView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(BWTheme.amber.opacity(0.14))
+                .fill(WATheme.amber.opacity(0.14))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(BWTheme.amber.opacity(0.25), lineWidth: 1)
+                .strokeBorder(WATheme.amber.opacity(0.25), lineWidth: 1)
         )
     }
 

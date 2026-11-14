@@ -20,14 +20,14 @@ mapkeys.json（不进主仓）      GET /api/public/mapkeys
 客户端加载优先级（`app.js` 的 `loadMapKeys()`）：
 
 1. `mapkeys.json`（部署时从后台 DB 生成，随 Pages 发布）
-2. 后台公开端点 `/api/public/mapkeys`（本地开发 / 局域网，地址可存 `localStorage['bw.mapkeys.endpoint']`）
+2. 后台公开端点 `/api/public/mapkeys`（本地开发 / 局域网，地址可存 `localStorage['wa.mapkeys.endpoint']`）
 3. 都没有 → 只用免费源（OpenStreetMap + 中文维基），功能不受影响
 
 ## 后台怎么用
 
 ```bash
 # 启动后台（密码自己定）
-BW_ADMIN_PASSWORD='你的密码' bash scripts/start-admin.sh
+WA_ADMIN_PASSWORD='你的密码' bash scripts/start-admin.sh
 # 打开 http://127.0.0.1:8802/admin → 登录 → 顶栏「地图 Key」
 ```
 

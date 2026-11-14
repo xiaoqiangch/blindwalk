@@ -17,9 +17,9 @@ import {
 } from '../server/llm.mjs';
 
 const ENV_KEY = {
-  BW_LLM_BASE_URL: 'https://api.example.com/v1/',
-  BW_LLM_API_KEY: 'sk-test',
-  BW_LLM_MODEL: 'fake-model'
+  WA_LLM_BASE_URL: 'https://api.example.com/v1/',
+  WA_LLM_API_KEY: 'sk-test',
+  WA_LLM_MODEL: 'fake-model'
 };
 
 function samplePoi(overrides = {}) {

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 数据源状态面板
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 数据源状态面板
  *
  * parity.md §1 的产品要求：**Key 由后台统一配置，用户不需要也无法填写**。
  * 所以这里只做「状态展示」，不是输入框：
@@ -14,11 +14,11 @@
 import { DataSourceStatus } from '../core/contract';
 import { SourceReport } from '../core/http';
 import { mapKeysSourceText } from '../core/mapkeys';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
-import { BwMicroLabel } from './Common';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
+import { WaMicroLabel } from './Common';
 
 @Component
-export struct BwDataSourcePanel {
+export struct WaDataSourcePanel {
   @Prop status: DataSourceStatus = emptyDataSourceStatus();
   /** 策展数据条数（pois.json；人工审核过的点） */
   @Prop curatedCount: number = 0;
@@ -44,12 +44,12 @@ export struct BwDataSourcePanel {
   statusRow(label: string, value: string, good: boolean) {
     Row({ space: 10 }) {
       Text(label)
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
       Blank()
       Text(value)
-        .fontSize(BWFont.caption)
-        .fontColor(good ? BWColor.teal : BWColor.ink2)
+        .fontSize(WAFont.caption)
+        .fontColor(good ? WAColor.teal : WAColor.ink2)
         .maxLines(1)
     }
     .width('100%')
@@ -63,22 +63,22 @@ export struct BwDataSourcePanel {
           // ---------- 顶栏 ----------
           Row({ space: 8 }) {
             Text('‹')
-              .fontSize(BWFont.titleSm)
-              .fontColor(BWColor.ink2)
+              .fontSize(WAFont.titleSm)
+              .fontColor(WAColor.ink2)
               .textAlign(TextAlign.Center)
               .width(34)
               .height(34)
-              .backgroundColor(BWColor.paper)
+              .backgroundColor(WAColor.paper)
               .borderRadius(17)
-              .border({ width: 1, color: BWColor.line, radius: 17 })
+              .border({ width: 1, color: WAColor.line, radius: 17 })
               .onClick(() => {
                 this.onBack();
               })
 
             Text('数据源')
-              .fontSize(BWFont.hero)
+              .fontSize(WAFont.hero)
               .fontWeight(FontWeight.Bold)
-              .fontColor(BWColor.ink)
+              .fontColor(WAColor.ink)
 
             Blank()
           }
@@ -86,38 +86,38 @@ export struct BwDataSourcePanel {
           .padding({ bottom: 4 })
 
           Text('Key 由后台统一管理，你不需要填写')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink3)
             .width('100%')
 
           // ---------- 各源状态 ----------
           Column({ space: 0 }) {
             this.statusRow('高德地图', this.status.amapReady ? '已由后台配置' : '后台未配置', this.status.amapReady)
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
             this.statusRow('百度地图', this.status.baiduReady ? '已由后台配置' : '后台未配置', this.status.baiduReady)
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
             this.statusRow('OpenStreetMap', '免费 · 始终可用', true)
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
             this.statusRow('中文维基百科', '免费 · 带实景照片', true)
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
             this.statusRow('后台策展地点', this.curatedCount > 0 ? String(this.curatedCount) + ' 个（优先使用）' : '暂无', this.curatedCount > 0)
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
             this.statusRow('Key 来源', mapKeysSourceText(this.status.keySource), this.status.amapReady || this.status.baiduReady)
           }
           .width('100%')
           .padding({ left: 16, right: 16 })
-          .backgroundColor(BWColor.paper)
-          .borderRadius(BWSize.cardRadius)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+          .backgroundColor(WAColor.paper)
+          .borderRadius(WASize.cardRadius)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
 
           // ---------- 上次抓取 ----------
           if (this.sourceLines().length > 0) {
             Column({ space: 6 }) {
-              BwMicroLabel({ text: '上次抓取' })
+              WaMicroLabel({ text: '上次抓取' })
               ForEach(this.sourceLines(), (line: string, index: number) => {
                 Text(line)
-                  .fontSize(BWFont.captionSm)
-                  .fontColor(BWColor.ink3)
+                  .fontSize(WAFont.captionSm)
+                  .fontColor(WAColor.ink3)
                   .width('100%')
                   .lineHeight(19)
               }, (line: string, index: number) => String(index) + line)
@@ -129,47 +129,47 @@ export struct BwDataSourcePanel {
           // ---------- 说明 ----------
           Column({ space: 8 }) {
             Text('地图服务商的 Key 由管理后台统一配置并下发，所有用户共用。')
-              .fontSize(BWFont.captionSm)
-              .fontColor(BWColor.ink2)
+              .fontSize(WAFont.captionSm)
+              .fontColor(WAColor.ink2)
               .width('100%')
               .lineHeight(20)
             Text('只用免费源（OpenStreetMap + 中文维基）也能正常抽到真实地点。')
-              .fontSize(BWFont.captionSm)
-              .fontColor(BWColor.ink2)
+              .fontSize(WAFont.captionSm)
+              .fontColor(WAColor.ink2)
               .width('100%')
               .lineHeight(20)
             Text('需要替换 Key？在后台「地图 Key」页修改，重启 App 后自动生效。')
-              .fontSize(BWFont.captionSm)
-              .fontColor(BWColor.ink3)
+              .fontSize(WAFont.captionSm)
+              .fontColor(WAColor.ink3)
               .width('100%')
               .lineHeight(20)
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
           .padding(16)
-          .backgroundColor(BWColor.paperHalf)
-          .borderRadius(BWSize.cardRadiusSm)
-          .border({ width: 1, color: BWColor.line, style: BorderStyle.Dashed, radius: BWSize.cardRadiusSm })
+          .backgroundColor(WAColor.paperHalf)
+          .borderRadius(WASize.cardRadiusSm)
+          .border({ width: 1, color: WAColor.line, style: BorderStyle.Dashed, radius: WASize.cardRadiusSm })
 
           Button() {
             Text('重新加载 Key')
-              .fontSize(BWFont.caption)
-              .fontColor(BWColor.ink)
+              .fontSize(WAFont.caption)
+              .fontColor(WAColor.ink)
           }
           .type(ButtonType.Capsule)
           .height(44)
           .width('100%')
-          .backgroundColor(BWColor.paper2)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+          .backgroundColor(WAColor.paper2)
+          .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
           .onClick(() => {
             this.onReload();
           })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8,
           bottom: 24
         })
@@ -181,7 +181,7 @@ export struct BwDataSourcePanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BWColor.cream)
+    .backgroundColor(WAColor.cream)
   }
 }
 

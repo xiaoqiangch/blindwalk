@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 把盲走安装到已连接的 iPhone 真机。
+# 把步迷安装到已连接的 iPhone 真机。
 #
 # 前提（一次性）：
 #   1. Xcode → Settings → Accounts 登录 Apple ID（免费个人账号即可，7 天有效）
@@ -33,11 +33,11 @@ fi
 echo "✅ 找到 $VALID 个签名身份"
 
 echo "== 1) 检测已连接的真机（不含模拟器）=="
-xcrun devicectl list devices --json-output /tmp/bw-devices.json >/dev/null 2>&1
+xcrun devicectl list devices --json-output /tmp/wa-devices.json >/dev/null 2>&1
 python3 - <<'PY'
 import json, sys
 try:
-    d = json.load(open('/tmp/bw-devices.json'))
+    d = json.load(open('/tmp/wa-devices.json'))
 except Exception:
     print("❌ 无法读取设备列表"); sys.exit(1)
 rows = []
@@ -75,7 +75,7 @@ TARGET="${1:-}"
 if [ -z "$TARGET" ]; then
   TARGET=$(python3 - <<'PY'
 import json
-d = json.load(open('/tmp/bw-devices.json'))
+d = json.load(open('/tmp/wa-devices.json'))
 for dev in d.get('result', {}).get('devices', []):
     hw = dev.get('hardwareProperties', {})
     if str(hw.get('reality','')).lower() == 'physical':
@@ -104,7 +104,7 @@ if [ ${#TEAM_ARGS[@]} -eq 0 ]; then
 ❌ 找不到 Team ID。
 
 两种做法：
-  A) 在 Xcode 里打开 apple/BlindWalk.xcodeproj → 选 BlindWalk target
+  A) 在 Xcode 里打开 apple/Walkaholic.xcodeproj → 选 Walkaholic target
      → Signing & Capabilities → Team 选你的 Personal Team（会写进工程文件，之后不用再传）
   B) 直接传：DEVELOPMENT_TEAM=你的TeamID scripts/install-to-device.sh
      （Team ID 在 Xcode → Settings → Accounts → 选中账号右侧的 Team ID）
@@ -125,16 +125,16 @@ fi
 trap 'if [ "$NEED_WATCH_RESTORE" = "1" ]; then python3 scripts/watch-off.py on >/dev/null 2>&1 || true; fi' EXIT
 
 xcodebuild \
-  -project BlindWalk.xcodeproj \
-  -scheme BlindWalk \
+  -project Walkaholic.xcodeproj \
+  -scheme Walkaholic \
   -destination "id=$TARGET" \
-  -derivedDataPath /tmp/blindwalk-dd-device \
+  -derivedDataPath /tmp/walkaholic-dd-device \
   -allowProvisioningUpdates \
   -allowProvisioningDeviceRegistration \
   "${TEAM_ARGS[@]}" \
-  build 2>&1 | tee /tmp/blindwalk-device-build.log | grep -E "error:|warning: .*signing|BUILD SUCCEEDED|BUILD FAILED"
+  build 2>&1 | tee /tmp/walkaholic-device-build.log | grep -E "error:|warning: .*signing|BUILD SUCCEEDED|BUILD FAILED"
 
-APP=/tmp/blindwalk-dd-device/Build/Products/Debug-iphoneos/BlindWalk.app
+APP=/tmp/walkaholic-dd-device/Build/Products/Debug-iphoneos/Walkaholic.app
 if [ ! -d "$APP" ]; then
   echo "❌ 构建产物不存在：$APP"
   echo "   若是签名错误，请先在 Xcode 里打开工程 → Signing & Capabilities → 选择 Team 后重试。"
@@ -143,19 +143,19 @@ fi
 
 echo "== 3) 安装到 $TARGET =="
 # 旧版本先卸掉，否则残留在 LaunchServices 里的旧签名会让新装的一直报 invalid signature
-xcrun devicectl device uninstall app --device "$TARGET" com.blindwalk.app >/dev/null 2>&1
+xcrun devicectl device uninstall app --device "$TARGET" com.walkaholic.app >/dev/null 2>&1
 xcrun devicectl device install app --device "$TARGET" "$APP"
 
 echo "== 4) 启动 =="
-xcrun devicectl device process launch --device "$TARGET" com.blindwalk.app 2>&1 | tee /tmp/blindwalk-launch.log | grep -E "Launched|error|trusted" | head -3
+xcrun devicectl device process launch --device "$TARGET" com.walkaholic.app 2>&1 | tee /tmp/walkaholic-launch.log | grep -E "Launched|error|trusted" | head -3
 
-if grep -q "profile has not been explicitly trusted\|invalid code signature" /tmp/blindwalk-launch.log 2>/dev/null; then
+if grep -q "profile has not been explicitly trusted\|invalid code signature" /tmp/walkaholic-launch.log 2>/dev/null; then
   cat <<'MSG'
 
 ⚠️  已安装，但 iOS 拒绝启动它（签名校验没过）。这不是构建问题，需要在手机上点一下：
 
   设置 → 通用 → VPN 与设备管理 → 「开发者 App」下点你的 Apple ID
-  → 信任「xiaoqiangch@gmail.com」→ 回到桌面打开「步谜」
+  → 信任「xiaoqiangch@gmail.com」→ 回到桌面打开「步迷」
 
   如果那个页面里没有你的账号、或者点了信任还是打不开，
   说明手机当前离线/连不上 Apple 的校验服务器（ppq.apple.com）：
@@ -164,5 +164,5 @@ if grep -q "profile has not been explicitly trusted\|invalid code signature" /tm
   免费个人账号的描述文件只有 7 天有效（本次到 $(date -r "$(stat -f %m "$APP/embedded.mobileprovision" 2>/dev/null || echo 0)" +%m-%d 2>/dev/null || echo '约 7 天后') 过期）。过期后 App 会闪退，重跑本脚本即可。
 MSG
 else
-  echo "完成。手机上打开『步谜』即可。"
+  echo "完成。手机上打开『步迷』即可。"
 fi

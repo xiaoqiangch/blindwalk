@@ -1,5 +1,5 @@
 #!/bin/sh
-# BlindWalk 鸿蒙版 一键构建 + 安装 + 启动
+# Walkaholic 鸿蒙版 一键构建 + 安装 + 启动
 # 用法: ./build-install.sh
 #
 # 依赖 DevEco Studio 工具链 + 已在 IDE 里配置好的签名

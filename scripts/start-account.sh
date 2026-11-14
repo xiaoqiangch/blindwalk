@@ -8,10 +8,10 @@ if [ -f account/.env ]; then
   set -a; . account/.env; set +a
 fi
 echo "═══════════════════════════════════════════════"
-echo " 盲走 · 账号服务"
+echo " 步迷 · 账号服务"
 echo "═══════════════════════════════════════════════"
 echo " 接口:     http://127.0.0.1:${PORT:-8803}/api/health"
-echo " 数据库:   account/data/blindwalk-users.db"
+echo " 数据库:   account/data/walkaholic-users.db"
 echo " App 配置: 打开 App → 我的 → 账号 → 服务地址填 http://127.0.0.1:${PORT:-8803}"
 echo "═══════════════════════════════════════════════"
 exec node account/server/index.mjs

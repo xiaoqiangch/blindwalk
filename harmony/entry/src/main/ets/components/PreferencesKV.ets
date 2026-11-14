@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — @ohos.data.preferences 的 KeyValueStore 实现
+ * 步迷 Walkaholic · HarmonyOS ArkUI — @ohos.data.preferences 的 KeyValueStore 实现
  *
  * 逻辑层 core/persistence.ts 只依赖 contract.KeyValueStore（纯 TS，可在 Node 测试），
  * HarmonyOS 的 preferences 实现由 UI 层注入（见 core/store.ts 的 initStore(kv) 注释）。
@@ -17,7 +17,7 @@ import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { KeyValueStore } from '../core/contract';
 
-const STORE_NAME: string = 'blindwalk_store';
+const STORE_NAME: string = 'walkaholic_store';
 
 export class PreferencesKV implements KeyValueStore {
   private context: common.UIAbilityContext;

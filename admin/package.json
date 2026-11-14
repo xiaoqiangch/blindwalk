@@ -1,9 +1,9 @@
 {
-  "name": "blindwalk-admin",
+  "name": "walkaholic-admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "盲走 BlindWalk · 兴趣点管理后台（零依赖 Node.js：抓取 / 编辑 / 大模型整理 / 审核 / 导出）",
+  "description": "步迷 Walkaholic · 兴趣点管理后台（零依赖 Node.js：抓取 / 编辑 / 大模型整理 / 审核 / 导出）",
   "engines": {
     "node": ">=18"
   },

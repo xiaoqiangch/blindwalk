@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 文案 / 数字格式化（纯函数）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 文案 / 数字格式化（纯函数）
  *
  * 与 apple/Shared/Core 的格式化口径一致（web prototype 同文案）。
  * 只被 views / components 引用，不依赖 store 状态。

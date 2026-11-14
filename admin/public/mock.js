@@ -1,4 +1,4 @@
-/* 步谜 · 兴趣点后台 — 开发用 Mock 服务（仅 ?mock=1 时生效）
+/* 步迷 · 兴趣点后台 — 开发用 Mock 服务（仅 ?mock=1 时生效）
  *
  * 用途：服务端并行开发期间，用假数据把界面和截图先跑通。
  * 开启方式：
@@ -563,7 +563,7 @@
     // AI 编辑
     if (pathname === '/api/llm/edit' && method === 'POST') {
       if (!llmReady) {
-        return fail('未配置大模型（BW_LLM_API_KEY），无法用指令改写。', 'LLM_UNAVAILABLE', 400);
+        return fail('未配置大模型（WA_LLM_API_KEY），无法用指令改写。', 'LLM_UNAVAILABLE', 400);
       }
       const index = findIndex(body && body.id);
       if (index < 0) return fail('找不到兴趣点：' + (body && body.id), 'NOT_FOUND', 404);
@@ -677,5 +677,5 @@
     }
   };
 
-  window.__BW_MOCK__ = { mode: mockMode, llmReady: llmReady, store: store };
+  window.__WA_MOCK__ = { mode: mockMode, llmReady: llmReady, store: store };
 })();

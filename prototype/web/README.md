@@ -1,4 +1,4 @@
-# 盲走 BlindWalk · Web 高保真交互原型 v0.1
+# 步迷 Walkaholic · Web 高保真交互原型 v0.1
 
 > 不看见终点，才看得见路。
 > 打开一个散步盲盒，它只带你走，不告诉你去哪；到了，才揭晓这个地方藏着的小惊喜。
@@ -14,7 +14,7 @@
 也可以用任意静态服务器（可选，非必需）：
 
 ```bash
-cd Projects/BlindWalk/prototype/web
+cd Projects/Walkaholic/prototype/web
 python3 -m http.server 8080
 # 打开 http://localhost:8080/index.html
 ```
@@ -27,7 +27,7 @@ python3 -m http.server 8080
 |---|---|
 | `index.html?demo=1#/home` | **推荐**。演示态：xp 4240（Lv.6 黄昏猎人，240/800）、连续 12 天、18/24 张卡（稀有 7 / 隐藏 1）、42.6 km、18 盒、本周惊喜值 **305**、周榜本人**第 4**、正在走 3 号盲盒（旧码头边的石阶，剩余 480m） |
 | `index.html?fresh=1#/home` | 清空 localStorage，回到新用户态（0 卡、0 天、空动态流） |
-| 无参数 | 读取 `localStorage['blindwalk:v1']`；没有存档则给新用户态 |
+| 无参数 | 读取 `localStorage['walkaholic:v1']`；没有存档则给新用户态 |
 | `#/reveal`（可配 `?demo=1`） | 直达揭晓卡（旧码头边的石阶 / 稀有 / No.0247），跳过开盒动画 |
 
 > `#setup` 路由会打开抽盒 sheet；`#/reveal?demo=1` 这类 hash 内 query 也支持。
@@ -88,7 +88,7 @@ prototype/web/
 
 核心逻辑：
 
-- **状态**：`localStorage['blindwalk:v1']`（档案 / 旅程 / 动态 / 设置）；hash 路由与旅程进度在切 tab、刷新后保持
+- **状态**：`localStorage['walkaholic:v1']`（档案 / 旅程 / 动态 / 设置）；hash 路由与旅程进度在切 tab、刷新后保持
 - **抽盒**：区域过滤 + 稀有度权重（常见 70 / 稀有 22 / 史诗 6 / 隐藏 2，隐藏款只在 60 分钟开放）+ 7 天内去过的不重复 + 心情加权
 - **无障碍**：按钮/图标均带 `aria-label`，进度条 `role="progressbar"`，`prefers-reduced-motion` 降级全部动效（含摇盒、开盒、地图呼吸、彩纸）
 
@@ -110,7 +110,7 @@ prototype/web/
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
   --window-size=720,360 \
-  --screenshot=/tmp/blindwalk-watch.png \
+  --screenshot=/tmp/walkaholic-watch.png \
   "file:///…/prototype/web/watch.html"
 ```
 
@@ -130,7 +130,7 @@ prototype/web/
 实现以 `docs/design-system.md` 为准；以下是文档内部或与 Swift 实现不一致处的处理：
 
 1. **周榜老陈的分数**：Swift `SocialFeed.leaderboard` 给老陈 320 分，但 design-system §7 要求「本人第 4（305 分）」。320 > 305 会让本人掉到第 5，因此原型将老陈设为 **285**，保证「阿澈 305 · 第 4」。若改为 320，则本人变第 5。
-2. **收录 toast**：§5.4 示例写作「已收录 · 惊喜值 +40」，但真实收益为 `40 + 稀有度加成`（稀有 = +50，见 `BlindWalkStore.collect`）。原型显示实际值，稀有卡即 **+50**。
+2. **收录 toast**：§5.4 示例写作「已收录 · 惊喜值 +40」，但真实收益为 `40 + 稀有度加成`（稀有 = +50，见 `WalkaholicStore.collect`）。原型显示实际值，稀有卡即 **+50**。
 3. **演示卡片日期**：`DemoData` 用 `index + 2` 天前，§5.1 首页示例文案是「已是 3 天前」，原型取 `index + 3`，让首页与设计稿逐字一致。
 4. **首页「继续 · 480 m」小胶囊**：§5.1 未列出，但没有它无法从首页回到正在进行的旅程（旅程页隐藏 tab）。仅在有进行中盲盒时出现。
 5. **区域名称**：设置页 chips 用「河边」（§5.2），揭晓卡/地图小字用「河岸」（§5.4 / `PlaceCatalog` 注释）。两套词都按文档保留，映射在 `data.js` 的 `AREAS[].word`。
@@ -151,7 +151,7 @@ prototype/web/
 
 ---
 
-BlindWalk 0.1 · 原型 · 2026-11
+Walkaholic 0.1 · 原型 · 2026-11
 
 ## 在 iPhone 上安装（PWA，推荐先这样体验）
 
@@ -164,7 +164,7 @@ BlindWalk 0.1 · 原型 · 2026-11
    ```
    终端会打印 `📱 iPhone 打开：http://<你的局域网IP>:8799/`
 2. iPhone 用 **Safari** 打开这个地址（必须 Safari，Chrome 不支持"添加到主屏幕"的独立模式）
-3. 点底部 **分享** → **添加到主屏幕** → 命名「盲走」
+3. 点底部 **分享** → **添加到主屏幕** → 命名「步迷」
 4. 从主屏打开：全屏、无工具栏、图标是牛皮纸礼盒
 5. 之后即使 Mac 关了服务，只要先前打开过一次，Service Worker 已缓存全部资源，仍可离线继续走
 

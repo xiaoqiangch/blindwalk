@@ -5,7 +5,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { existsSync } from "node:fs";
 
-const dbPath = process.argv[2] || "admin/data/blindwalk.db";
+const dbPath = process.argv[2] || "admin/data/walkaholic.db";
 if (!existsSync(dbPath)) {
   process.stderr.write(`[export-mapkeys] 找不到 ${dbPath}\n`);
   process.exit(2);

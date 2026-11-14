@@ -5,9 +5,9 @@ import UIKit
 
 struct SocialView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
-    @State private var toast: BWToast?
+    @State private var toast: WAToast?
     @State private var tappedReactions: Set<String> = []
     @State private var showAllLeaderboard = false
 
@@ -20,7 +20,7 @@ struct SocialView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -29,21 +29,21 @@ struct SocialView: View {
                     leaderboardSection.padding(.top, 20)
                     feedSection.padding(.top, 20)
                 }
-                .padding(.horizontal, BWTheme.pagePadding)
+                .padding(.horizontal, WATheme.pagePadding)
                 .padding(.top, 6)
                 .padding(.bottom, 26)
             }
         }
-        .bwToast($toast)
+        .waToast($toast)
         .toolbar(.hidden, for: .navigationBar)
-        .bwTabBarChrome()
-        .bwTypeBounds()
+        .waTabBarChrome()
+        .waTypeBounds()
         .onAppear {
-            // 仅用于截图/演示：`BW_PREVIEW_TOAST=1` 启动即弹一次 toast，验证层级与位置
-            guard ProcessInfo.processInfo.environment["BW_PREVIEW_TOAST"] == "1" else { return }
-            bwAfter(1.6) {
-                withAnimation(BWAnimation.regular) {
-                    toast = BWToast(text: "已复制同频码", icon: "doc.on.doc", tint: BWTheme.teal)
+            // 仅用于截图/演示：`WA_PREVIEW_TOAST=1` 启动即弹一次 toast，验证层级与位置
+            guard ProcessInfo.processInfo.environment["WA_PREVIEW_TOAST"] == "1" else { return }
+            waAfter(1.6) {
+                withAnimation(WAAnimation.regular) {
+                    toast = WAToast(text: "已复制同频码", icon: "doc.on.doc", tint: WATheme.teal)
                 }
             }
         }
@@ -54,8 +54,8 @@ struct SocialView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Text("圈子")
-                .font(BWType.pageTitle())
-                .foregroundStyle(BWTheme.ink)
+                .font(WAType.pageTitle())
+                .foregroundStyle(WATheme.ink)
 
             Spacer(minLength: 0)
 
@@ -66,14 +66,14 @@ struct SocialView: View {
                     Text("换一个")
                         .font(.system(size: 12.5))
                 }
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .padding(.horizontal, 11)
                 .frame(height: 30)
-                .background(BWTheme.paper)
+                .background(WATheme.paper)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .accessibilityLabel("刷新同频码")
         }
         .padding(.bottom, 14)
@@ -114,20 +114,20 @@ struct SocialView: View {
                     Text("复制")
                         .font(.system(size: 13, weight: .medium))
                 }
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
                 .padding(.horizontal, 14)
                 .frame(height: 32)
                 .background(Color.white)
                 .clipShape(Capsule())
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .padding(.top, 16)
             .accessibilityLabel("复制同频码 \(store.togetherCode)")
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.ink)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.ink)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
     }
 
     // MARK: 本周榜
@@ -139,11 +139,11 @@ struct SocialView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("本周榜")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                 Spacer(minLength: 0)
                 Text("惊喜指数")
                     .font(.system(size: 12))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
 
             VStack(spacing: 0) {
@@ -152,13 +152,13 @@ struct SocialView: View {
                 }
 
                 Button {
-                    withAnimation(BWAnimation.regular) {
+                    withAnimation(WAAnimation.regular) {
                         showAllLeaderboard.toggle()
                     }
                 } label: {
                     Text(showAllLeaderboard ? "收起" : "其余 \(max(0, allLeaderboard.count - entries.count)) 位")
                         .font(.system(size: 12.5))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                         .frame(maxWidth: .infinity)
                         .frame(height: 40)
                         .contentShape(Rectangle())
@@ -166,11 +166,11 @@ struct SocialView: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 10)
-            .background(BWTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
         }
     }
@@ -186,18 +186,18 @@ struct SocialView: View {
             Text(entry.emoji)
                 .font(.system(size: 13))
                 .frame(width: 26, height: 26)
-                .background(BWTheme.paper2)
+                .background(WATheme.paper2)
                 .clipShape(Circle())
 
             HStack(spacing: 5) {
                 Text(entry.name)
                     .font(.system(size: 14, weight: entry.isMe ? .medium : .regular))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .lineLimit(1)
                 if entry.isMe {
                     Text("你")
                         .font(.system(size: 11))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
             }
 
@@ -206,19 +206,19 @@ struct SocialView: View {
             Text("\(entry.score)")
                 .font(.system(size: 14, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
         }
         .padding(.horizontal, 8)
         .frame(height: 44)
-        .background(entry.isMe ? BWTheme.amberSoft : Color.clear)
+        .background(entry.isMe ? WATheme.amberSoft : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func rankColor(_ rank: Int) -> Color {
         switch rank {
-        case 1: return BWTheme.amberDeep
-        case 2, 3: return BWTheme.ink2
-        default: return BWTheme.ink3
+        case 1: return WATheme.amberDeep
+        case 2, 3: return WATheme.ink2
+        default: return WATheme.ink3
         }
     }
 
@@ -249,10 +249,10 @@ struct SocialView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("今晚的惊喜")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(BWTheme.ink)
+                .foregroundStyle(WATheme.ink)
 
             if posts.isEmpty {
-                BWEmptyState(
+                WAEmptyState(
                     title: "还没有人分享今晚的惊喜。",
                     subtitle: "去开一个盲盒，把第一个留在这里。"
                 )
@@ -270,17 +270,17 @@ struct SocialView: View {
                 Text(post.authorEmoji)
                     .font(.system(size: 14))
                     .frame(width: 30, height: 30)
-                    .background(BWTheme.paper2)
+                    .background(WATheme.paper2)
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(post.authorName)
                         .font(.system(size: 13.5, weight: .medium))
-                        .foregroundStyle(BWTheme.ink)
-                    Text(BWFormat.relative(post.createdAt))
+                        .foregroundStyle(WATheme.ink)
+                    Text(WAFormat.relative(post.createdAt))
                         .font(.system(size: 12))
                         .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
 
                 Spacer(minLength: 0)
@@ -288,7 +288,7 @@ struct SocialView: View {
                 if post.isMine {
                     Text("你埋的")
                         .font(.system(size: 11))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                 }
             }
             .padding(.bottom, 10)
@@ -298,19 +298,19 @@ struct SocialView: View {
                     .font(.system(size: 15))
                 Text(post.placeName)
                     .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
                     .lineLimit(1)
                 Spacer(minLength: 6)
-                BWRarityBadge(rarity: post.rarity)
+                WARarityBadge(rarity: post.rarity)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(BWTheme.paper2)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.controlRadius, style: .continuous))
+            .background(WATheme.paper2)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous))
 
             Text(post.caption)
                 .font(.system(size: 14))
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
@@ -324,11 +324,11 @@ struct SocialView: View {
             .padding(.top, 12)
         }
         .padding(14)
-        .background(BWTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                .stroke(BWTheme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                .stroke(WATheme.line, lineWidth: 1)
         )
     }
 
@@ -341,7 +341,7 @@ struct SocialView: View {
         return Button {
             store.react(to: post.id, reaction: key)
             tappedReactions.insert(identifier)
-            BWHaptics.light()
+            WAHaptics.light()
         } label: {
             HStack(spacing: 4) {
                 if emoji.isEmpty {
@@ -355,17 +355,17 @@ struct SocialView: View {
                     .font(.system(size: 12))
                     .monospacedDigit()
             }
-            .foregroundStyle(isTapped ? BWTheme.amberDeep : BWTheme.ink2)
+            .foregroundStyle(isTapped ? WATheme.amberDeep : WATheme.ink2)
             .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: 28)
-            .background(isTapped ? BWTheme.amberSoft : BWTheme.paper2)
+            .background(isTapped ? WATheme.amberSoft : WATheme.paper2)
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(isTapped ? BWTheme.amber.opacity(0.30) : Color.clear, lineWidth: 1)
+                Capsule().stroke(isTapped ? WATheme.amber.opacity(0.30) : Color.clear, lineWidth: 1)
             )
         }
-        .buttonStyle(BWPressEffectStyle())
+        .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel("\(key) \(count)")
     }
 
@@ -383,17 +383,17 @@ struct SocialView: View {
 
     private func copyTogetherCode() {
         UIPasteboard.general.string = store.togetherCode
-        BWHaptics.light()
-        withAnimation(BWAnimation.regular) {
-            toast = BWToast(text: "已复制同频码", icon: "doc.on.doc", tint: BWTheme.teal)
+        WAHaptics.light()
+        withAnimation(WAAnimation.regular) {
+            toast = WAToast(text: "已复制同频码", icon: "doc.on.doc", tint: WATheme.teal)
         }
     }
 
     private func refreshTogetherCode() {
         store.togetherCode = SocialFeed.makeTogetherCode()
-        BWHaptics.light()
-        withAnimation(BWAnimation.regular) {
-            toast = BWToast(text: "同频码已更新", icon: "waveform")
+        WAHaptics.light()
+        withAnimation(WAAnimation.regular) {
+            toast = WAToast(text: "同频码已更新", icon: "waveform")
         }
     }
 }

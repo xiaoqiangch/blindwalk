@@ -1,4 +1,4 @@
--- 步谜 · 账号服务（Cloudflare D1 = SQLite）
+-- 步迷 · 账号服务（Cloudflare D1 = SQLite）
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,

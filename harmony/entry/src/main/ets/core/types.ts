@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 移植版 —— 核心数据契约
+ * 步迷 Walkaholic · HarmonyOS 移植版 —— 核心数据契约
  *
  * 这是「逻辑层」与「UI 层」之间唯一的契约文件。
  * 逻辑层（core/*.ts）只依赖这里定义的类型；UI 层只调用 store.ts 的公开 API。

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 账号服务（零依赖 Node.js）
+ * 步迷 Walkaholic · 账号服务（零依赖 Node.js）
  *
  * 启动：node account/server/index.mjs（默认 http://127.0.0.1:8803）
  * 存储：node:sqlite（DatabaseSync）+ WAL；密码 scrypt；会话 HttpOnly Cookie。
@@ -13,10 +13,10 @@
  *
  * 可用环境变量：
  *   PORT=8803  HOST=127.0.0.1
- *   BW_DATA_DIR=./data（默认 account/data）
- *   BW_ALLOWED_ORIGINS=http://a.com,http://b.com（不设 = 回显任意 Origin，便于本地预览）
- *   BW_COOKIE_SECURE=1（部署 HTTPS 时加 Secure；本地 http 不要开）
- *   BW_TRUST_PROXY=1（放在反向代理后时信任 X-Forwarded-For）
+ *   WA_DATA_DIR=./data（默认 account/data）
+ *   WA_ALLOWED_ORIGINS=http://a.com,http://b.com（不设 = 回显任意 Origin，便于本地预览）
+ *   WA_COOKIE_SECURE=1（部署 HTTPS 时加 Secure；本地 http 不要开）
+ *   WA_TRUST_PROXY=1（放在反向代理后时信任 X-Forwarded-For）
  */
 
 import http from 'node:http';
@@ -200,21 +200,21 @@ function corsHeaders(req) {
 export function createServer(options = {}) {
   const env = options.env || process.env;
   const now = options.now || (() => Date.now());
-  const dataDir = path.resolve(options.dataDir || env.BW_DATA_DIR || DEFAULT_DATA_DIR);
+  const dataDir = path.resolve(options.dataDir || env.WA_DATA_DIR || DEFAULT_DATA_DIR);
   const store = options.store || new AccountStore({ dataDir });
   const limiter = options.rateLimiter || new LoginRateLimiter({ now: now });
-  const trustProxy = boolEnv(env.BW_TRUST_PROXY);
-  const cookieSecure = boolEnv(env.BW_COOKIE_SECURE);
+  const trustProxy = boolEnv(env.WA_TRUST_PROXY);
+  const cookieSecure = boolEnv(env.WA_COOKIE_SECURE);
   // 前端与账号服务不同域（GitHub Pages 等）时必须开：SameSite=None; Secure
-  const cookieCrossSite = boolEnv(env.BW_COOKIE_CROSS_SITE);
+  const cookieCrossSite = boolEnv(env.WA_COOKIE_CROSS_SITE);
   const cookieOptions = { secure: cookieSecure, crossSite: cookieCrossSite };
 
-  const allowedOrigins = String(env.BW_ALLOWED_ORIGINS || '').trim();
+  const allowedOrigins = String(env.WA_ALLOWED_ORIGINS || '').trim();
   const version = '1';
 
   function sessionTokenFromRequest(req) {
     const cookies = parseCookies(req.headers ? req.headers.cookie : undefined);
-    return cookies.bw_uid;
+    return cookies.wa_uid;
   }
 
   function requireUser(req) {
@@ -444,10 +444,10 @@ export function startServer(options = {}) {
   const host = options.host || env.HOST || '127.0.0.1';
   const server = createServer(options);
   server.listen(port, host, () => {
-    console.log('盲走 BlindWalk · 账号服务');
+    console.log('步迷 Walkaholic · 账号服务');
     console.log('  接口地址  http://' + host + ':' + port + '/api/health');
     console.log('  数据目录  ' + server.options.dataDir);
-    console.log('  Cookie    bw_uid（HttpOnly / SameSite=Lax / 30 天' +
+    console.log('  Cookie    wa_uid（HttpOnly / SameSite=Lax / 30 天' +
       (server.options.cookieSecure ? ' / Secure' : ' / 本地 http 不加 Secure') + '）');
     console.log('  CORS      ' + (server.options.allowedOrigins
       ? '仅允许 ' + server.options.allowedOrigins

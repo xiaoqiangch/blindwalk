@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — @ohos.net.http 的 HttpClient 实现
+ * 步迷 Walkaholic · HarmonyOS ArkUI — @ohos.net.http 的 HttpClient 实现
  *
  * core/ 是纯 TypeScript（不 import 任何 @ohos.*），网络能力由这里注入，
  * 这样逻辑层能在 Node 里跑单测、平台 API 变更也只影响这一个文件。

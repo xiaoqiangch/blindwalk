@@ -3,27 +3,27 @@
 #   bash scripts/ingest-address.sh "南京市鼓楼区金银街16号"            # 默认半径 1500m
 #   bash scripts/ingest-address.sh "南京市鼓楼区金银街16号" 2500 20
 #
-# 需要：后台已启动（scripts/start-admin.sh），并设置 BW_ADMIN_PASSWORD
+# 需要：后台已启动（scripts/start-admin.sh），并设置 WA_ADMIN_PASSWORD
 set -uo pipefail
 ADDRESS="${1:-}"
 RADIUS="${2:-1500}"
 LIMIT="${3:-20}"
-BASE="${BW_ADMIN_URL:-http://127.0.0.1:8802}"
-PASS="${BW_ADMIN_PASSWORD:-}"
+BASE="${WA_ADMIN_URL:-http://127.0.0.1:8802}"
+PASS="${WA_ADMIN_PASSWORD:-}"
 
 if [ -z "$ADDRESS" ]; then
   echo "用法：bash scripts/ingest-address.sh \"<地址>\" [半径米] [数量]"
   exit 1
 fi
 if [ -z "$PASS" ]; then
-  echo "需要 BW_ADMIN_PASSWORD（后台登录密码）"
+  echo "需要 WA_ADMIN_PASSWORD（后台登录密码）"
   exit 1
 fi
 
 # 地址常有门牌号在 OSM 里查不到：逐级退化成「街道」「区+街道」再试
 geocode() {
   local q="$1"
-  curl -s -m 20 -H 'User-Agent: BlindWalkPrototype/0.1 (contact: dev@blindwalk.local)' \
+  curl -s -m 20 -H 'User-Agent: WalkaholicPrototype/0.1 (contact: dev@walkaholic.local)' \
     "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=zh-CN&q=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$q")" \
     | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);if(!j.length){console.log('')}else{console.log(j[0].lat+','+j[0].lon+'|'+j[0].display_name)}}catch(e){console.log('')}})"
 }
@@ -75,11 +75,11 @@ LON="${COORD##*,}"
 echo "  坐标：${LAT}, ${LON}"
 
 echo "② 登录后台"
-COOKIE="/tmp/bw-ingest-cookie.$$"
+COOKIE="/tmp/wa-ingest-cookie.$$"
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -c "$COOKIE" -X POST "$BASE/api/auth/login" \
   -H 'content-type: application/json' -d "{\"password\":\"$PASS\"}")
 if [ "$CODE" != "200" ]; then
-  echo "  ✗ 登录失败（HTTP $CODE），检查 BW_ADMIN_PASSWORD"
+  echo "  ✗ 登录失败（HTTP $CODE），检查 WA_ADMIN_PASSWORD"
   rm -f "$COOKIE"; exit 1
 fi
 echo "  ✓ 已登录"

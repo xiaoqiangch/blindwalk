@@ -1,8 +1,8 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 读取 store 快照的小工具
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 读取 store 快照的小工具
  *
  * 约定（core/contract.ts）：
- * - UI 只能通过 getStore() 调用 BlindWalkStoreApi 方法；
+ * - UI 只能通过 getStore() 调用 WalkaholicStoreApi 方法；
  * - 状态只在交互后 / 页面显示时用 snapshot() 重读；
  * - UI 不修改 snapshot 字段。
  *
@@ -308,7 +308,7 @@ export function buildSyncPayload(): Record<string, Object> {
   envelope['settings'] = settings;
 
   const payload: Record<string, Object> = {};
-  payload['app'] = 'blindwalk';
+  payload['app'] = 'walkaholic';
   payload['version'] = 1;
   payload['savedAt'] = Date.now();
   payload['profile'] = envelope;

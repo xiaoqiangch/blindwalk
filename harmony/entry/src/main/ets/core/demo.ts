@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 演示数据
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 演示数据
  *
  * 口径与 Web / iOS 完全一致（design-system §7、DemoData.swift）：
  * xp 4240（Lv.6 黄昏猎人，240/800）、连续 12 天、18 张卡（稀有 7 / 隐藏 1）、

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - 后台策展兴趣点（admin/docs/CONTRACT.md §4.6）
 //
 // 后台（admin）把审核通过的 POI 导出成 pois.json：
-//   https://xiaoqiangch.github.io/blindwalk/pois.json
+//   https://xiaoqiangch.github.io/walkaholic/pois.json
 // App 抽盒时优先从这里挑一个「编辑精选」地点，失败/为空时再退回 MapKit 附近搜索。
 //
 // 设计约束：
@@ -70,12 +70,12 @@ final class AdminPOIService {
 
     static let shared = AdminPOIService()
 
-    /// 公网策展数据（可用 `BW_POIS_URL` 覆盖，调试/内网用）
-    static let defaultEndpoint = "https://xiaoqiangch.github.io/blindwalk/pois.json"
+    /// 公网策展数据（可用 `WA_POIS_URL` 覆盖，调试/内网用）
+    static let defaultEndpoint = "https://xiaoqiangch.github.io/walkaholic/pois.json"
 
     private static let memoryTTL: TimeInterval = 6 * 3600
-    private static let diskDataKey = "blindwalk.adminPois.data.v1"
-    private static let diskFetchedAtKey = "blindwalk.adminPois.fetchedAt.v1"
+    private static let diskDataKey = "walkaholic.adminPois.data.v1"
+    private static let diskFetchedAtKey = "walkaholic.adminPois.fetchedAt.v1"
 
     private var pois: [CuratedPOI] = []
     private var infos: [String: CuratedPlaceInfo] = [:]
@@ -160,7 +160,7 @@ final class AdminPOIService {
     }
 
     private static func endpointURL() -> URL? {
-        let env = ProcessInfo.processInfo.environment["BW_POIS_URL"] ?? ""
+        let env = ProcessInfo.processInfo.environment["WA_POIS_URL"] ?? ""
         let raw = env.trimmingCharacters(in: .whitespacesAndNewlines)
         if !raw.isEmpty, let url = URL(string: raw) {
             return url

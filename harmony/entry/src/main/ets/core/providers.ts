@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 多数据源 POI
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 多数据源 POI
  *
  * 移植自 prototype/web/providers.js，但去掉了 Web 专属的 JSONP：
  * 鸿蒙是原生 App，`@ohos.net.http` 直接 GET 即可拿到 JSON（无 CORS 限制）。
@@ -50,7 +50,7 @@ import {
  * 浏览器会自动带 UA，所以 Web 版没暴露这个问题；鸿蒙是原生 HTTP 客户端，
  * 不设置就是空的 —— 结果免费源全挂，只剩商业源（或直接失败）。
  */
-export const USER_AGENT: string = 'BlindWalk-Harmony/0.7 (https://github.com/xiaoqiangch/blindwalk)';
+export const USER_AGENT: string = 'Walkaholic-Harmony/0.7 (https://github.com/xiaoqiangch/walkaholic)';
 
 /** 所有对外的 GET 请求都带上的默认头 */
 function defaultHeaders(): Record<string, string> {

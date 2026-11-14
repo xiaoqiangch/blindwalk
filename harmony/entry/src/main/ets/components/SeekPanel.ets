@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 探寻面板（寻惊喜详情）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 探寻面板（寻惊喜详情）
  *
  * 对齐 Web v46 的 `#/seek/:id`（`seekDetailHTML`）：
  *   三阶线索按距离解锁 + 当前距离分档 + 「当作到了（演示）」
@@ -25,14 +25,14 @@ import {
   seekClueState,
   seekLeadText
 } from '../core/hints';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
-import { BwIconButton, BwMicroLabel, BwPrimaryButton, BwQuietButton } from './Common';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
+import { WaIconButton, WaMicroLabel, WaPrimaryButton, WaQuietButton } from './Common';
 
 /** 线索下标（固定 3 条） */
 const CLUE_INDEXES: number[] = [0, 1, 2];
 
 @Component
-export struct BwSeekPanel {
+export struct WaSeekPanel {
   /** 目标惊喜（外部传只读副本；本组件不修改它） */
   @Prop @Watch('onInputChanged') surpriseID: string = '';
   @Prop @Watch('onInputChanged') clues: string[] = [];
@@ -118,7 +118,7 @@ export struct BwSeekPanel {
   @Builder
   topBar() {
     Row({ space: 10 }) {
-      BwIconButton({
+      WaIconButton({
         name: 'chevron_left',
         onTap: () => {
           this.onBack();
@@ -126,10 +126,10 @@ export struct BwSeekPanel {
       })
 
       Column({ space: 2 }) {
-        BwMicroLabel({ text: '正在探寻' })
+        WaMicroLabel({ text: '正在探寻' })
         Text('一个还没被找到的惊喜')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink)
           .maxLines(1)
       }
       .alignItems(HorizontalAlign.Start)
@@ -137,12 +137,12 @@ export struct BwSeekPanel {
       Blank()
 
       Text(this.state.distanceText)
-        .fontSize(BWFont.microSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.microSm)
+        .fontColor(WAColor.ink3)
         .maxLines(1)
     }
     .width('100%')
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, top: 6, bottom: 10 })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding, top: 6, bottom: 10 })
   }
 
   /** 顶部摘要：作者 emoji + 氛围句 + 距离（**不含区域名**） */
@@ -151,22 +151,22 @@ export struct BwSeekPanel {
     Column({ space: 8 }) {
       Row({ space: 10 }) {
         Text(this.authorEmoji)
-          .fontSize(BWFont.titleSm)
+          .fontSize(WAFont.titleSm)
           .textAlign(TextAlign.Center)
           .width(40)
           .height(40)
-          .backgroundColor(BWColor.paper2)
+          .backgroundColor(WAColor.paper2)
           .borderRadius(20)
 
         Column({ space: 3 }) {
           Text('有人在这儿留下一张照片')
-            .fontSize(BWFont.caption)
+            .fontSize(WAFont.caption)
             .fontWeight(FontWeight.Medium)
-            .fontColor(BWColor.ink)
+            .fontColor(WAColor.ink)
             .maxLines(1)
           Text(this.atmosphereText())
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink2)
             .maxLines(2)
             .lineHeight(18)
         }
@@ -178,14 +178,14 @@ export struct BwSeekPanel {
 
       Row({ space: 8 }) {
         Text(this.state.distanceText)
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
         Text('·')
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
         Text('线索 ' + this.unlockedText())
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
         Blank()
       }
       .width('100%')
@@ -193,8 +193,8 @@ export struct BwSeekPanel {
       // 没定位：明确说明（不假装解锁）
       if (!this.hasOrigin) {
         Text(SEEK_NO_LOCATION_TEXT)
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ember)
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ember)
           .width('100%')
           .lineHeight(18)
       }
@@ -202,9 +202,9 @@ export struct BwSeekPanel {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(14)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
   }
 
   @Builder
@@ -214,45 +214,45 @@ export struct BwSeekPanel {
         Circle()
           .width(24)
           .height(24)
-          .fill(this.isUnlocked(index) ? BWColor.tealSoft : BWColor.paper2)
-          .stroke(this.isUnlocked(index) ? '#662E7D78' : BWColor.line)
+          .fill(this.isUnlocked(index) ? WAColor.tealSoft : WAColor.paper2)
+          .stroke(this.isUnlocked(index) ? '#662E7D78' : WAColor.line)
           .strokeWidth(1)
 
         if (this.isUnlocked(index)) {
           SymbolGlyph($r('sys.symbol.checkmark'))
-            .fontSize(BWFont.micro)
-            .fontColor([BWColor.teal])
+            .fontSize(WAFont.micro)
+            .fontColor([WAColor.teal])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         } else {
           Text(String(index + 1))
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
             .fontWeight(FontWeight.Bold)
-            .fontColor(BWColor.ink3)
+            .fontColor(WAColor.ink3)
         }
       }
 
       Text(this.clueText(index))
-        .fontSize(BWFont.caption)
-        .fontColor(this.isUnlocked(index) ? BWColor.ink : BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(this.isUnlocked(index) ? WAColor.ink : WAColor.ink3)
         .lineHeight(20)
         .layoutWeight(1)
 
       if (!this.isUnlocked(index)) {
         SymbolGlyph($r('sys.symbol.lock'))
-          .fontSize(BWFont.caption)
-          .fontColor([BWColor.ink3])
+          .fontSize(WAFont.caption)
+          .fontColor([WAColor.ink3])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-          .fontSize(BWFont.microSm)
+          .fontSize(WAFont.microSm)
       }
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
     .padding({ left: 13, right: 13, top: 11, bottom: 11 })
-    .backgroundColor(this.isUnlocked(index) ? BWColor.paper : '#8CFBF4E9')
+    .backgroundColor(this.isUnlocked(index) ? WAColor.paper : '#8CFBF4E9')
     .borderRadius(16)
     .border({
       width: 1,
-      color: BWColor.line,
+      color: WAColor.line,
       radius: 16,
       style: this.isUnlocked(index) ? BorderStyle.Solid : BorderStyle.Dashed
     })
@@ -263,12 +263,12 @@ export struct BwSeekPanel {
     Column({ space: 8 }) {
       Row({ space: 6 }) {
         Text('三阶线索')
-          .fontSize(BWFont.caption)
+          .fontSize(WAFont.caption)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Text(this.unlockedText())
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
         Blank()
       }
       .width('100%')
@@ -286,8 +286,8 @@ export struct BwSeekPanel {
   actionSection() {
     Column({ space: 8 }) {
       Text(this.leadText())
-        .fontSize(BWFont.caption)
-        .fontColor(this.state.inRange ? BWColor.ink : BWColor.ink2)
+        .fontSize(WAFont.caption)
+        .fontColor(this.state.inRange ? WAColor.ink : WAColor.ink2)
         .width('100%')
         .textAlign(TextAlign.Center)
         .lineHeight(20)
@@ -295,7 +295,7 @@ export struct BwSeekPanel {
       if (this.state.inRange) {
         // 到了：下一步是「拍一张同款」。拍照/对比本轮不在范围内，
         // 所以这里只说明「下一步要拍」，绝不显示作者原图（先拍后看）。
-        BwPrimaryButton({
+        WaPrimaryButton({
           title: '这样拍一张',
           tag: this.state.demoArrived ? '演示' : '',
           onTap: () => {
@@ -304,13 +304,13 @@ export struct BwSeekPanel {
         })
 
         Text('先别急着看原图 · 拍完才揭晓')
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)
       } else {
         if (!this.state.demoArrived) {
-          BwQuietButton({
+          WaQuietButton({
             title: '当作到了（演示）',
             onTap: () => {
               this.demoArrive();
@@ -320,8 +320,8 @@ export struct BwSeekPanel {
       }
 
       Text(HINT_FOOTER)
-        .fontSize(BWFont.microSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.microSm)
+        .fontColor(WAColor.ink3)
         .width('100%')
         .textAlign(TextAlign.Center)
     }
@@ -333,7 +333,7 @@ export struct BwSeekPanel {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       Scroll() {
         Column({ space: 14 }) {
@@ -343,10 +343,10 @@ export struct BwSeekPanel {
           this.actionSection()
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 0,
           bottom: 28
         })
@@ -358,7 +358,7 @@ export struct BwSeekPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BWColor.cream)
+    .backgroundColor(WAColor.cream)
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 图鉴 Cards（design-system §5.5 + parity: 附近惊喜）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 图鉴 Cards（design-system §5.5 + parity: 附近惊喜）
  *
  * 视觉基准：prototype/web/app.js cardsHTML（Web v46）+ screenshots/showcase.png（CARDS 屏）
  * 结构：回忆册 header + 筛选图标 → 统计条 → **附近的惊喜（隐晦提示）** → 筛选 chips → 卡片网格
@@ -24,10 +24,10 @@ import {
   nearbyHints
 } from '../core/hints';
 import {
-  BwHairline,
-  BwMicroLabel,
-  BwPill,
-  BwRarityBadge
+  WaHairline,
+  WaMicroLabel,
+  WaPill,
+  WaRarityBadge
 } from '../components/Common';
 import {
   emptySnapshot,
@@ -41,14 +41,14 @@ import {
   unexploredNearbyCount
 } from '../components/StoreBridge';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
+  WAColor,
+  WAFont,
+  WASize,
   areaWord,
   rarityColor
 } from '../theme/Theme';
 import { formatShortDate } from '../components/Format';
-import { categorySymbol } from '../components/BwSymbol';
+import { categorySymbol } from '../components/WaSymbol';
 
 enum CardFilter {
   All = 'all',
@@ -205,17 +205,17 @@ export struct CardsView {
   }
 
   private columnCount(): number {
-    if (this.winHeight < BWSize.shortHeightBreakpoint) {
+    if (this.winHeight < WASize.shortHeightBreakpoint) {
       return 4;
     }
-    if (this.winWidth >= BWSize.wideBreakpoint) {
+    if (this.winWidth >= WASize.wideBreakpoint) {
       return 5;
     }
     return 3;
   }
 
   private isWide(): boolean {
-    return this.winWidth >= BWSize.wideBreakpoint;
+    return this.winWidth >= WASize.wideBreakpoint;
   }
 
   /** 展开态：左右分屏时每栏更窄，列数相应减少 */
@@ -235,7 +235,7 @@ export struct CardsView {
   }
 
   private cardHeight(): number {
-    return this.winHeight < BWSize.shortHeightBreakpoint ? 112 : 128;
+    return this.winHeight < WASize.shortHeightBreakpoint ? 112 : 128;
   }
 
   private selectedPlace(): Place | undefined {
@@ -279,21 +279,21 @@ export struct CardsView {
   header() {
     Row() {
       Text('回忆册')
-        .fontSize(BWFont.hero)
+        .fontSize(WAFont.hero)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
 
       Blank()
 
       Stack({ alignContent: Alignment.Center }) {
         SymbolGlyph($r('sys.symbol.square_grid_2x2'))
-          .fontSize(BWSize.iconSizeSm)
-          .fontColor([BWColor.ink2])
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.ink2])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
       }
       .width(36)
       .height(36)
-      .backgroundColor(BWColor.paper2)
+      .backgroundColor(WAColor.paper2)
       .borderRadius(18)
       .onClick(() => {
         this.cycleFilter();
@@ -306,32 +306,32 @@ export struct CardsView {
   statsLine() {
     Row({ space: 6 }) {
       Text('已收集')
-        .fontSize(BWFont.captionSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink3)
       Text(String(this.snapshot.profile.cards.length) + '/' + String(this.snapshot.places.length))
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
       Text('·')
-        .fontSize(BWFont.captionSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink3)
       Text('稀有')
-        .fontSize(BWFont.captionSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink3)
       Text(String(rareCardCount(this.snapshot)))
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
       Text('·')
-        .fontSize(BWFont.captionSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink3)
       Text('隐藏')
-        .fontSize(BWFont.captionSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink3)
       Text(String(hiddenCardCount(this.snapshot)))
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
       Blank()
     }
     .width('100%')
@@ -348,12 +348,12 @@ export struct CardsView {
       // 标题行
       Row({ space: 6 }) {
         Text('附近的惊喜')
-          .fontSize(BWFont.caption)
+          .fontSize(WAFont.caption)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Text(nearbyHintCountText(this.nearbyHintList().length))
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
           .maxLines(1)
         Blank()
       }
@@ -363,9 +363,9 @@ export struct CardsView {
         // 空状态：CTA 去埋一个
         Button() {
           Text(HINT_EMPTY_CTA)
-            .fontSize(BWFont.caption)
+            .fontSize(WAFont.caption)
             .fontWeight(FontWeight.Medium)
-            .fontColor(BWColor.amberDeep)
+            .fontColor(WAColor.amberDeep)
             .textAlign(TextAlign.Center)
             .width('100%')
         }
@@ -373,11 +373,11 @@ export struct CardsView {
         .height(42)
         .width('100%')
         .backgroundColor('#0DE89B4C')
-        .borderRadius(BWSize.cardRadiusXs)
+        .borderRadius(WASize.cardRadiusXs)
         .border({
           width: 1,
           color: '#59E89B4C',
-          radius: BWSize.cardRadiusXs,
+          radius: WASize.cardRadiusXs,
           style: BorderStyle.Dashed
         })
         .onClick(() => {
@@ -392,10 +392,10 @@ export struct CardsView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(14)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-    .shadow({ radius: 12, color: BWColor.shadowSoft, offsetX: 0, offsetY: 6 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+    .shadow({ radius: 12, color: WAColor.shadowSoft, offsetX: 0, offsetY: 6 })
   }
 
   /** 一张隐晦提示卡：emoji + 「距离分档 · 有人留下一张照片」+ 氛围句 + 底部提示 */
@@ -404,31 +404,31 @@ export struct CardsView {
     Row({ space: 10 }) {
       // 作者 emoji：三端唯一允许的社交信息
       Text(hint.emoji)
-        .fontSize(BWFont.titleMd)
+        .fontSize(WAFont.titleMd)
         .textAlign(TextAlign.Center)
         .width(32)
         .height(32)
-        .backgroundColor(BWColor.amberSoft)
+        .backgroundColor(WAColor.amberSoft)
         .borderRadius(10)
 
       Column({ space: 2 }) {
         Text(hint.distanceText + ' · ' + HINT_TITLE_SUFFIX)
-          .fontSize(BWFont.caption)
+          .fontSize(WAFont.caption)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .maxLines(2)
           .width('100%')
 
         Text(hint.atmosphere)
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ink2)
           .maxLines(2)
           .lineHeight(18)
           .width('100%')
 
         Text(HINT_FOOTER)
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
           .maxLines(1)
           .width('100%')
       }
@@ -436,15 +436,15 @@ export struct CardsView {
       .alignItems(HorizontalAlign.Start)
 
       Text('›')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
     .padding({ left: 12, right: 12, top: 11, bottom: 11 })
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadiusXs)
-    .border({ width: 1, color: '#2EE89B4C', radius: BWSize.cardRadiusXs })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadiusXs)
+    .border({ width: 1, color: '#2EE89B4C', radius: WASize.cardRadiusXs })
     .onClick(() => {
       // 只把 id 交出去；其余信息（区域/线索/照片）由探寻页按距离决定是否给
       this.onOpenSeek(hint.id);
@@ -464,12 +464,12 @@ export struct CardsView {
     Column({ space: 8 }) {
       Row({ space: 6 }) {
         Text('附近的兴趣点')
-          .fontSize(BWFont.caption)
+          .fontSize(WAFont.caption)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
         Text(String(unexploredNearbyCount(this.snapshot)) + ' 个待探索')
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
         Blank()
       }
       .width('100%')
@@ -477,12 +477,12 @@ export struct CardsView {
       if (this.snapshot.nearbyPlaces.length === 0) {
         Row({ space: 6 }) {
           SymbolGlyph($r('sys.symbol.magnifyingglass'))
-            .fontSize(BWFont.caption)
-            .fontColor([BWColor.ink3])
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.ink3])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           Text(this.hasLocation() ? '正在搜附近…（没找到就下拉重试）' : '需要先定位才能列出附近')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink3)
         }
         .width('100%')
         .padding({ top: 6, bottom: 6 })
@@ -498,9 +498,9 @@ export struct CardsView {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(14)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
   }
 
   /** 单个兴趣点：未探索显示 ?，已探索显示真实信息 */
@@ -510,14 +510,14 @@ export struct CardsView {
       if (isNearbyExplored(this.snapshot, place)) {
         SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
           .fontSize(22)
-          .fontColor([BWColor.ink2])
+          .fontColor([WAColor.ink2])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           .width('100%')
 
         Text(place.name)
-          .fontSize(BWFont.captionSm)
+          .fontSize(WAFont.captionSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
@@ -527,13 +527,13 @@ export struct CardsView {
         Text('?')
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink3)
+          .fontColor(WAColor.ink3)
           .width('100%')
 
         Text(place.category)
-          .fontSize(BWFont.captionSm)
+          .fontSize(WAFont.captionSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink2)
+          .fontColor(WAColor.ink2)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
@@ -544,13 +544,13 @@ export struct CardsView {
 
       Row({ space: 3 }) {
         SymbolGlyph($r('sys.symbol.pin'))
-          .fontSize(BWFont.micro)
-          .fontColor([BWColor.ink3])
+          .fontSize(WAFont.micro)
+          .fontColor([WAColor.ink3])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
 
         Text(this.poiDistanceText(place))
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
           .maxLines(1)
       }
       .width('100%')
@@ -559,12 +559,12 @@ export struct CardsView {
     .height(this.cardHeight())
     .padding(10)
     .margin({ bottom: 10 })
-    .backgroundColor(isNearbyExplored(this.snapshot, place) ? BWColor.paper : BWColor.paper2)
-    .borderRadius(BWSize.cardRadiusSm)
+    .backgroundColor(isNearbyExplored(this.snapshot, place) ? WAColor.paper : WAColor.paper2)
+    .borderRadius(WASize.cardRadiusSm)
     .border({
       width: 1,
-      color: BWColor.line,
-      radius: BWSize.cardRadiusSm,
+      color: WAColor.line,
+      radius: WASize.cardRadiusSm,
       style: isNearbyExplored(this.snapshot, place) ? BorderStyle.Solid : BorderStyle.Dashed
     })
     .onClick(() => {
@@ -592,7 +592,7 @@ export struct CardsView {
   filterRow() {
     Row({ space: 8 }) {
       ForEach(FILTERS, (info: FilterInfo) => {
-        BwPill({
+        WaPill({
           text: info.label,
           selected: this.filter === info.value,
           onTap: () => {
@@ -612,12 +612,12 @@ export struct CardsView {
         .width('100%')
         .height('100%')
         .backgroundColor('#80FBF4E9')
-        .borderRadius(BWSize.cardRadiusSm)
+        .borderRadius(WASize.cardRadiusSm)
         .border({
           width: 1,
-          color: BWColor.line,
+          color: WAColor.line,
           style: BorderStyle.Dashed,
-          radius: BWSize.cardRadiusSm
+          radius: WASize.cardRadiusSm
         })
 
       Column({ space: 5 }) {
@@ -626,8 +626,8 @@ export struct CardsView {
           .fontWeight(FontWeight.Bold)
           .fontColor('#B3A69C8C')
         Text('未解锁')
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
       }
     }
     .width('100%')
@@ -639,14 +639,14 @@ export struct CardsView {
     Column({ space: 0 }) {
       SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
         .fontSize(26)
-        .fontColor([BWColor.ink2])
+        .fontColor([WAColor.ink2])
         .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         .width('100%')
 
       Text(place.name)
-        .fontSize(BWFont.captionSm)
+        .fontSize(WAFont.captionSm)
         .fontWeight(FontWeight.Medium)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .width('100%')
@@ -656,8 +656,8 @@ export struct CardsView {
 
       Row() {
         Text(formatShortDate(card.collectedAt))
-          .fontSize(BWFont.microSm)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
 
         Blank()
 
@@ -671,10 +671,10 @@ export struct CardsView {
     .width('100%')
     .height('100%')
     .padding(10)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
-    .shadow({ radius: 8, color: BWColor.shadowSoft, offsetX: 0, offsetY: 4 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadiusSm)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
+    .shadow({ radius: 8, color: WAColor.shadowSoft, offsetX: 0, offsetY: 4 })
   }
 
   @Builder
@@ -716,7 +716,7 @@ export struct CardsView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.scrim)
+        .backgroundColor(WAColor.scrim)
         .onClick(() => {
           this.selectedPlaceID = '';
         })
@@ -724,79 +724,79 @@ export struct CardsView {
       Scroll() {
         Column({ space: 14 }) {
           Row() {
-            BwMicroLabel({ text: '图鉴 · ' + areaWord(place.area) })
+            WaMicroLabel({ text: '图鉴 · ' + areaWord(place.area) })
             Blank()
-            BwRarityBadge({ rarity: place.rarity })
+            WaRarityBadge({ rarity: place.rarity })
           }
           .width('100%')
 
           Column({ space: 6 }) {
             SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
               .fontSize(40)
-              .fontColor([BWColor.amber])
+              .fontColor([WAColor.amber])
               .renderingStrategy(SymbolRenderingStrategy.SINGLE)
             Text(place.name)
-              .fontSize(BWFont.title)
+              .fontSize(WAFont.title)
               .fontWeight(FontWeight.Bold)
-              .fontColor(BWColor.ink)
+              .fontColor(WAColor.ink)
               .textAlign(TextAlign.Center)
               .maxLines(2)
 
             if (this.cardFor(place.id) !== undefined) {
               Text(this.cardSerialText(place.id) + ' · ' + this.cardDateText(place.id))
-                .fontSize(BWFont.micro)
-                .fontColor(BWColor.ink3)
+                .fontSize(WAFont.micro)
+                .fontColor(WAColor.ink3)
             }
           }
           .width('100%')
 
-          BwHairline()
+          WaHairline()
 
           Text(place.why)
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink2)
             .lineHeight(21)
             .width('100%')
 
           Column({ space: 6 }) {
-            BwMicroLabel({ text: '小任务' })
+            WaMicroLabel({ text: '小任务' })
             Text(place.task)
-              .fontSize(BWFont.caption)
-              .fontColor(BWColor.ink)
+              .fontSize(WAFont.caption)
+              .fontColor(WAColor.ink)
               .lineHeight(20)
 
             if (this.cardFor(place.id) !== undefined) {
               Text(this.isTaskDone(place.id) ? '已完成' : '还没打卡')
-                .fontSize(BWFont.micro)
-                .fontColor(this.isTaskDone(place.id) ? BWColor.teal : BWColor.ink3)
+                .fontSize(WAFont.micro)
+                .fontColor(this.isTaskDone(place.id) ? WAColor.teal : WAColor.ink3)
             }
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
           .padding(14)
-          .backgroundColor(BWColor.paper2)
-          .borderRadius(BWSize.cardRadiusSm)
+          .backgroundColor(WAColor.paper2)
+          .borderRadius(WASize.cardRadiusSm)
 
           Button() {
             Text('关闭')
-              .fontSize(BWFont.bodySm)
-              .fontColor(BWColor.ink2)
+              .fontSize(WAFont.bodySm)
+              .fontColor(WAColor.ink2)
           }
           .type(ButtonType.Capsule)
           .height(42)
           .width('100%')
-          .backgroundColor(BWColor.paper2)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+          .backgroundColor(WAColor.paper2)
+          .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
           .onClick(() => {
             this.selectedPlaceID = '';
           })
         }
         .width('100%')
         .padding(20)
-        .backgroundColor(BWColor.paper)
-        .borderRadius(BWSize.cardRadius)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-        .shadow({ radius: 16, color: BWColor.shadow, offsetX: 0, offsetY: 4 })
+        .backgroundColor(WAColor.paper)
+        .borderRadius(WASize.cardRadius)
+        .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+        .shadow({ radius: 16, color: WAColor.shadow, offsetX: 0, offsetY: 4 })
       }
       .width('100%')
       .constraintSize({ maxWidth: 420 })
@@ -847,7 +847,7 @@ export struct CardsView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       Scroll() {
         Column({ space: 0 }) {
@@ -905,10 +905,10 @@ export struct CardsView {
           }
         }
         .width('100%')
-        .constraintSize({ maxWidth: this.isWide() ? '100%' : BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: this.isWide() ? '100%' : WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8,
           bottom: 24
         })

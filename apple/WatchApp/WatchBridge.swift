@@ -45,7 +45,7 @@ final class WatchBridge: NSObject {
         guard let wcSession, wcSession.activationState == .activated else { return }
 
         let payload: [String: Any] = [
-            "blindwalk.checkIn": true,
+            "walkaholic.checkIn": true,
             "at": date.timeIntervalSince1970
         ]
         if wcSession.isReachable {

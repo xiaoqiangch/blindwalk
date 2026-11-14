@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — POI 规范化 / 校验 / 保密过滤 / 导出
+ * 步迷 Walkaholic · 兴趣点管理后台 — POI 规范化 / 校验 / 保密过滤 / 导出
  *
  * 契约：admin/docs/CONTRACT.md（字段名与类别表不得改）
  * 零依赖：只用 Node 内置能力（这里只用到 crypto）。

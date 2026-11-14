@@ -8,11 +8,11 @@
 
 ## 1. 它解决什么
 
-「盲走」PWA 原本只有 OSM Overpass + 维基百科两个免费源，用户嫌「地点就那几个」。
+「步迷」PWA 原本只有 OSM Overpass + 维基百科两个免费源，用户嫌「地点就那几个」。
 这个模块加上 **高德 / 百度**（用户自带 Key，JSONP 绕 CORS），统一去重排序后交给抽盒：
 
 - 纯静态 HTTPS 环境（GitHub Pages）没有服务端代理 → 高德/百度只能走 **JSONP**
-- Key 存 `localStorage('bw.keys.v1')`，**不硬编码、不上传到任何服务器**（只随请求发给对应服务商）
+- Key 存 `localStorage('wa.keys.v1')`，**不硬编码、不上传到任何服务器**（只随请求发给对应服务商）
 - 没配 Key 也能用：默认只跑 OSM + 中文维基
 - 坐标统一成 **WGS-84** 再返回（高德 GCJ-02 / 百度 BD-09 在模块内转换，避免抽到点偏移几百米）
 
@@ -29,7 +29,7 @@
 
 ```js
 // 任意需要「附近真实地点」的地方（WGS-84 坐标，通常是 Geolocation）
-BW_PROVIDERS.nearby({
+WA_PROVIDERS.nearby({
   lat: 31.2304,
   lon: 121.4737,
   radius: 1200,
@@ -45,7 +45,7 @@ BW_PROVIDERS.nearby({
 
 1. **传入/拿出都必须当 WGS-84 用**。不要把 `geo.js` 里已转成 GCJ/BD 的坐标再传进来；本模块内部自己转。
 2. `nearby` 最长可能等 **8 秒**（JSONP / 免费源超时）。UI 要有 loading；也可以只传 `sources:['osm','wiki']` 先快后补。
-3. 某个源失败 **不会 reject**，只会从结果里缺席；用 `BW_PROVIDERS.lastReport()` 看每个源成功/失败（适合调试面板）。
+3. 某个源失败 **不会 reject**，只会从结果里缺席；用 `WA_PROVIDERS.lastReport()` 看每个源成功/失败（适合调试面板）。
 4. 高德/百度返回的照片受服务商条款约束；若不想外链，接 `photoUrl` 时自行决定是否丢弃（`photoCredit` 已带）。
 5. 免费源必须署名：OSM 要 `© OpenStreetMap contributors`，维基照片要 `photoCredit`（模块已提供 `Wikimedia Commons`）。
 6. 如果页面以后加 CSP，需要放行 JSONP 的 script 域名：
@@ -84,12 +84,12 @@ BW_PROVIDERS.nearby({
 ### 其余契约 API
 
 ```js
-BW_PROVIDERS.setKeys({ amap: '你的Web服务Key', baidu: '你的服务端AK' });
-BW_PROVIDERS.getKeys();   // { amap: '***' | '', baidu: '***' | '' } —— 只回显是否配置，不返回明文
-BW_PROVIDERS.status();    // { sources: [{id,label,enabled,reason}], keys: {...} }
-BW_PROVIDERS.parseAmap(json);              // 高德响应 → Candidate[]（测试用）
-BW_PROVIDERS.parseBaidu(json);             // 百度响应 → Candidate[]（测试用）
-BW_PROVIDERS.dedupe(list, radiusMeters);   // 去重（默认 30m；测试/接入用）
+WA_PROVIDERS.setKeys({ amap: '你的Web服务Key', baidu: '你的服务端AK' });
+WA_PROVIDERS.getKeys();   // { amap: '***' | '', baidu: '***' | '' } —— 只回显是否配置，不返回明文
+WA_PROVIDERS.status();    // { sources: [{id,label,enabled,reason}], keys: {...} }
+WA_PROVIDERS.parseAmap(json);              // 高德响应 → Candidate[]（测试用）
+WA_PROVIDERS.parseBaidu(json);             // 百度响应 → Candidate[]（测试用）
+WA_PROVIDERS.dedupe(list, radiusMeters);   // 去重（默认 30m；测试/接入用）
 ```
 
 `status()` 示例（没配 Key）：
@@ -109,10 +109,10 @@ BW_PROVIDERS.dedupe(list, radiusMeters);   // 去重（默认 30m；测试/接�
 ### 额外暴露（调试 / 测试 / 坐标转换）
 
 ```js
-BW_PROVIDERS.mapCategory(raw, name);   // 17 类映射
-BW_PROVIDERS.sortByDistance(list, lat, lon, radiusMeters);
-BW_PROVIDERS.wgs84ToGcj02(lat, lon);   // 以及 gcj02ToWgs84 / wgs84ToBd09 / bd09ToWgs84
-BW_PROVIDERS.lastReport();             // { at, sources: [{id,label,ok,count,error}] } 最近一次 nearby
+WA_PROVIDERS.mapCategory(raw, name);   // 17 类映射
+WA_PROVIDERS.sortByDistance(list, lat, lon, radiusMeters);
+WA_PROVIDERS.wgs84ToGcj02(lat, lon);   // 以及 gcj02ToWgs84 / wgs84ToBd09 / bd09ToWgs84
+WA_PROVIDERS.lastReport();             // { at, sources: [{id,label,ok,count,error}] } 最近一次 nearby
 ```
 
 ---
@@ -129,7 +129,7 @@ BW_PROVIDERS.lastReport();             // { at, sources: [{id,label,ok,count,err
 2. 注册/登录（个人开发者需实名认证）
 3. 「应用管理 → 我的应用 → 创建新应用」
 4. 添加 Key：**服务平台选「Web 服务」**（不要选「Web端(JS API)」，两者不通用）
-5. 把 Key 填进 App 设置：`BW_PROVIDERS.setKeys({ amap: 'xxx' })`
+5. 把 Key 填进 App 设置：`WA_PROVIDERS.setKeys({ amap: 'xxx' })`
 6. 接口文档：<https://lbs.amap.com/api/webservice/guide/api/search>（周边搜索 `/v3/place/around`）
 7. 免费额度/并发以控制台为准；Web 服务 Key 支持 IP 白名单，但浏览器端 IP 不固定，通常只能靠限额+吊销控制风险
 
@@ -139,7 +139,7 @@ BW_PROVIDERS.lastReport();             // { at, sources: [{id,label,ok,count,err
 2. 注册/登录并完成开发者认证
 3. 「应用管理 → 创建应用」，应用类型选 **服务端**
 4. 创建 AK 后勾选/确认可用服务包含 **地点检索（Place API v2）**
-5. 填进 App：`BW_PROVIDERS.setKeys({ baidu: 'xxx' })`
+5. 填进 App：`WA_PROVIDERS.setKeys({ baidu: 'xxx' })`
 6. 接口文档：<https://lbsyun.baidu.com/faq/api?title=webapi/guide/webservice-placeapi>
 7. 注意：百度不同 AK 类型的白名单策略不同；如果返回 `status=2xx` 的权限/白名单错误，按控制台提示处理
 
@@ -162,10 +162,10 @@ BW_PROVIDERS.lastReport();             // { at, sources: [{id,label,ok,count,err
 ### 4.5 清空 / 轮换 Key
 
 ```js
-BW_PROVIDERS.setKeys({ amap: '', baidu: '' }); // 内存 + localStorage 一起清
+WA_PROVIDERS.setKeys({ amap: '', baidu: '' }); // 内存 + localStorage 一起清
 ```
 
-> 如果担心遗留：清空后可在浏览器 DevTools → Application → Local Storage 删除 `bw.keys.v1`。
+> 如果担心遗留：清空后可在浏览器 DevTools → Application → Local Storage 删除 `wa.keys.v1`。
 
 ---
 
@@ -236,7 +236,7 @@ BW_PROVIDERS.setKeys({ amap: '', baidu: '' }); // 内存 + localStorage 一起�
 
 - 所有源失败时 `nearby` 返回 `[]`，**不 reject**（只有 `lat/lon` 非法才 reject）。
 - **未配置 Key 的源不会发请求**：`status()` 里 `enabled:false, reason:'未配置 Key'`；`nearby` 的 `lastReport()` 里也会记录 `error:'未配置 Key'`。
-- JSONP 实现：动态 `<script>` + 唯一全局回调 `bwCb_N_xxx`；**8s 超时清理**；结束（成功/失败/超时）都会 `delete window[callback]` 并移除 script 节点，不留全局污染。
+- JSONP 实现：动态 `<script>` + 唯一全局回调 `waCb_N_xxx`；**8s 超时清理**；结束（成功/失败/超时）都会 `delete window[callback]` 并移除 script 节点，不留全局污染。
 
 ---
 
@@ -253,7 +253,7 @@ BW_PROVIDERS.setKeys({ amap: '', baidu: '' }); // 内存 + localStorage 一起�
 ## 10. 测试
 
 ```bash
-cd /Users/chenxiaoqiang/Projects/BlindWalk
+cd /Users/chenxiaoqiang/Projects/Walkaholic
 node --test prototype/web/tests/providers.test.mjs
 ```
 

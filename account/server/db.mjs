@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 账号服务 — SQLite 数据访问
+ * 步迷 Walkaholic · 账号服务 — SQLite 数据访问
  *
  * 零依赖：Node 内置 `node:sqlite`（DatabaseSync）。
  *
@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const DB_FILENAME = 'blindwalk-users.db';
+export const DB_FILENAME = 'walkaholic-users.db';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (

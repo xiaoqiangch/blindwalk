@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 找不到真实地点时的**明确失败面板**
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 找不到真实地点时的**明确失败面板**
  *
  * 规格：docs/parity.md §2 末段。文案与按钮与 Web 逐字一致：
  *   标题「没找到真实地点，这次不抽了」
@@ -13,11 +13,11 @@
 import { SourceReport } from '../core/http';
 import { sourceReportLines } from '../core/search';
 import { searchFailText } from '../core/parity';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
-import { BwPrimaryButton, BwQuietButton } from './Common';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
+import { WaPrimaryButton, WaQuietButton } from './Common';
 
 @Component
-export struct BwSearchFailedPanel {
+export struct WaSearchFailedPanel {
   /** 失败原因：no-real-place / network / not-real / no-origin */
   @Prop reason: string = 'no-real-place';
   /** 每个源的回报 */
@@ -40,27 +40,27 @@ export struct BwSearchFailedPanel {
     Column({ space: 10 }) {
       Row({ space: 8 }) {
         SymbolGlyph($r('sys.symbol.exclamationmark_triangle'))
-          .fontSize(BWFont.title)
-          .fontColor([BWColor.gold])
+          .fontSize(WAFont.title)
+          .fontColor([WAColor.gold])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-          .fontSize(BWFont.title)
+          .fontSize(WAFont.title)
         Text('没找到真实地点，这次不抽了')
-          .fontSize(BWFont.titleSm)
+          .fontSize(WAFont.titleSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .layoutWeight(1)
       }
       .width('100%')
 
       Text(searchFailText(this.reason))
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink2)
         .lineHeight(21)
         .width('100%')
 
       Text('不会用虚构地点糊弄你。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
         .width('100%')
 
       // ---------- 每个数据源的具体原因 ----------
@@ -69,11 +69,11 @@ export struct BwSearchFailedPanel {
           ForEach(this.lines(), (line: string, index: number) => {
             Row({ space: 6 }) {
               Text('·')
-                .fontSize(BWFont.caption)
-                .fontColor(BWColor.ink3)
+                .fontSize(WAFont.caption)
+                .fontColor(WAColor.ink3)
               Text(line)
-                .fontSize(BWFont.captionSm)
-                .fontColor(BWColor.ink3)
+                .fontSize(WAFont.captionSm)
+                .fontColor(WAColor.ink3)
                 .layoutWeight(1)
             }
             .width('100%')
@@ -84,7 +84,7 @@ export struct BwSearchFailedPanel {
       }
 
       // ---------- 三个出口 ----------
-      BwPrimaryButton({
+      WaPrimaryButton({
         title: this.tier >= 2 ? '还是没找到，再扩大一次' : '扩大范围再找',
         onTap: () => {
           this.onSearchWider();
@@ -94,14 +94,14 @@ export struct BwSearchFailedPanel {
       Row({ space: 8 }) {
         Button() {
           Text('换个位置')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink2)
         }
         .type(ButtonType.Capsule)
         .height(40)
         .layoutWeight(1)
-        .backgroundColor(BWColor.paper2)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+        .backgroundColor(WAColor.paper2)
+        .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
         .onClick(() => {
           this.onManualLocation();
         })
@@ -111,9 +111,9 @@ export struct BwSearchFailedPanel {
       // 演示模式：显式选择，且文案明确写了「虚构地点」
       Button() {
         Text('改成演示模式（虚构地点）')
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink3)
-          .decoration({ type: TextDecorationType.Underline, color: BWColor.ink3 })
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ink3)
+          .decoration({ type: TextDecorationType.Underline, color: WAColor.ink3 })
       }
       .type(ButtonType.Capsule)
       .height(34)
@@ -126,9 +126,9 @@ export struct BwSearchFailedPanel {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadiusSm)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
   }
 }
 
@@ -137,7 +137,7 @@ export struct BwSearchFailedPanel {
  * 文案与 Web 版 locationBlockedHTML 对齐。
  */
 @Component
-export struct BwLocationBlockedPanel {
+export struct WaLocationBlockedPanel {
   /** denied / timeout / no-fix */
   @Prop reason: string = 'no-fix';
 
@@ -157,18 +157,18 @@ export struct BwLocationBlockedPanel {
   build() {
     Column({ space: 10 }) {
       Text('没拿到你的位置，抽不了真实地点')
-        .fontSize(BWFont.titleSm)
+        .fontSize(WAFont.titleSm)
         .fontWeight(FontWeight.Medium)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
         .width('100%')
 
       Text(this.reasonText() + '。真实盲盒必须知道你在哪。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink2)
         .lineHeight(21)
         .width('100%')
 
-      BwPrimaryButton({
+      WaPrimaryButton({
         title: '再试一次定位',
         onTap: () => {
           this.onRetryLocation();
@@ -178,14 +178,14 @@ export struct BwLocationBlockedPanel {
       Row({ space: 8 }) {
         Button() {
           Text('手动输入位置')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink2)
         }
         .type(ButtonType.Capsule)
         .height(40)
         .layoutWeight(1)
-        .backgroundColor(BWColor.paper2)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+        .backgroundColor(WAColor.paper2)
+        .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
         .onClick(() => {
           this.onManualLocation();
         })
@@ -194,9 +194,9 @@ export struct BwLocationBlockedPanel {
 
       Button() {
         Text('不定位，先看演示（虚构地点）')
-          .fontSize(BWFont.captionSm)
-          .fontColor(BWColor.ink3)
-          .decoration({ type: TextDecorationType.Underline, color: BWColor.ink3 })
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.ink3)
+          .decoration({ type: TextDecorationType.Underline, color: WAColor.ink3 })
       }
       .type(ButtonType.Capsule)
       .height(34)
@@ -209,15 +209,15 @@ export struct BwLocationBlockedPanel {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(16)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadiusSm)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
   }
 }
 
 /** 手动输入位置的小弹层（换一个位置再找） */
 @Component
-export struct BwManualLocationSheet {
+export struct WaManualLocationSheet {
   onCancel: () => void = () => {
   };
   onSubmit: (query: string) => void = () => {
@@ -229,22 +229,22 @@ export struct BwManualLocationSheet {
   build() {
     Column({ space: 12 }) {
       Text('换个位置')
-        .fontSize(BWFont.titleMd)
+        .fontSize(WAFont.titleMd)
         .fontWeight(FontWeight.Medium)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
         .width('100%')
 
       Text('输入地址或「纬度,经度」。用真实地点，不用虚构的。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
         .width('100%')
 
       TextInput({ placeholder: '例如：静安寺 / 31.2304,121.4737', text: this.query })
         .height(44)
-        .fontSize(BWFont.caption)
-        .backgroundColor(BWColor.paper2)
-        .borderRadius(BWSize.cardRadiusXs)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusXs })
+        .fontSize(WAFont.caption)
+        .backgroundColor(WAColor.paper2)
+        .borderRadius(WASize.cardRadiusXs)
+        .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
         .onChange((value: string) => {
           this.query = value;
         })
@@ -252,14 +252,14 @@ export struct BwManualLocationSheet {
       Row({ space: 8 }) {
         Button() {
           Text('取消')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink2)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink2)
         }
         .type(ButtonType.Capsule)
         .height(42)
         .layoutWeight(1)
-        .backgroundColor(BWColor.paper2)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+        .backgroundColor(WAColor.paper2)
+        .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
         .enabled(!this.busy)
         .onClick(() => {
           this.onCancel();
@@ -267,13 +267,13 @@ export struct BwManualLocationSheet {
 
         Button() {
           Text(this.busy ? '查找中…' : '用这个位置')
-            .fontSize(BWFont.caption)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.caption)
+            .fontColor(WAColor.ink)
         }
         .type(ButtonType.Capsule)
         .height(42)
         .layoutWeight(1)
-        .backgroundColor(BWColor.amber)
+        .backgroundColor(WAColor.amber)
         .enabled(!this.busy)
         .opacity(this.busy ? 0.6 : 1)
         .onClick(() => {
@@ -289,9 +289,9 @@ export struct BwManualLocationSheet {
     .width('100%')
     .alignItems(HorizontalAlign.Start)
     .padding(20)
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
-    .shadow({ radius: 16, color: BWColor.shadow, offsetX: 0, offsetY: 4 })
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+    .shadow({ radius: 16, color: WAColor.shadow, offsetX: 0, offsetY: 4 })
   }
 }

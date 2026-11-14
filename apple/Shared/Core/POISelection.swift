@@ -73,7 +73,7 @@ public enum POISelection {
 
     // MARK: 黑名单（parity.md §2）
 
-    /// 第一级：绝对不适合盲走 → 直接排除
+    /// 第一级：绝对不适合步迷 → 直接排除
     private static let neverPattern =
         "公厕|厕所|垃圾|污水|变电|加油站|停车场|停车库|ATM|自助取款|售楼|工业园|物流|工厂|仓库|暂停开放|已关闭|停止营业|暂停营业|装修中|施工中"
 

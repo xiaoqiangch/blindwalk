@@ -212,7 +212,7 @@ enum PhotoLibraryService {
     //
     // 照片流程是明天真机测试的关键路径，但它依赖相机/相册这些「没法在 CI 里点」的东西。
     // 这里把可自动验证的部分（灰度化 → dHash → 相似度 → 存盘读回）做成一次自检，
-    // 启动时用 `SIMCTL_CHILD_BW_PREVIEW=dhash-check` 触发，日志里看结果。
+    // 启动时用 `SIMCTL_CHILD_WA_PREVIEW=dhash-check` 触发，日志里看结果。
 
     #if DEBUG
     @discardableResult
@@ -302,7 +302,7 @@ enum PhotoLibraryService {
 
     /// 按 seed 生成一张确定的「像一张照片」的替身（同一 id 每次一致）
     static func demoStandInImage(seed: String) -> UIImage {
-        var generator = BWPseudoRandom(seed: UInt64(truncatingIfNeeded: seed.hashValue) | 1)
+        var generator = WAPseudoRandom(seed: UInt64(truncatingIfNeeded: seed.hashValue) | 1)
         let warmth = 0.35 + Double(generator.nextDouble()) * 0.4
         return placeholderImage(
             size: CGSize(width: 600, height: 800),
@@ -316,7 +316,7 @@ enum PhotoLibraryService {
         UIGraphicsImageRenderer(size: size).image { context in
             let cg = context.cgContext
             let rect = CGRect(origin: .zero, size: size)
-            cg.setFillColor(UIColor(BWTheme.paper2).cgColor)
+            cg.setFillColor(UIColor(WATheme.paper2).cgColor)
             cg.fill(rect)
 
             // 斜着的一束暖光
@@ -329,21 +329,21 @@ enum PhotoLibraryService {
                 width: size.width * (0.55 + warmth * 0.25),
                 height: size.height * 0.84
             )
-            cg.setFillColor(UIColor(BWTheme.amber).withAlphaComponent(0.18 + 0.22 * warmth).cgColor)
+            cg.setFillColor(UIColor(WATheme.amber).withAlphaComponent(0.18 + 0.22 * warmth).cgColor)
             cg.fill(glowRect)
             cg.restoreGState()
 
             // 一扇窗
-            cg.setFillColor(UIColor(BWTheme.amberDeep).withAlphaComponent(0.22).cgColor)
+            cg.setFillColor(UIColor(WATheme.amberDeep).withAlphaComponent(0.22).cgColor)
             cg.fill(CGRect(x: size.width * 0.14, y: size.height * 0.14, width: size.width * 0.34, height: size.height * 0.3))
             cg.stroke(CGRect(x: size.width * 0.14, y: size.height * 0.14, width: size.width * 0.34, height: size.height * 0.3), width: 3)
 
             // 柜台 / 地面
-            cg.setFillColor(UIColor(BWTheme.ink).withAlphaComponent(0.22).cgColor)
+            cg.setFillColor(UIColor(WATheme.ink).withAlphaComponent(0.22).cgColor)
             cg.fill(CGRect(x: 0, y: size.height * 0.76, width: size.width, height: size.height * 0.24))
 
             // 一粒灯
-            cg.setFillColor(UIColor(BWTheme.cream).cgColor)
+            cg.setFillColor(UIColor(WATheme.cream).cgColor)
             cg.fillEllipse(in: CGRect(
                 x: size.width * (0.58 + warmth * 0.08),
                 y: size.height * 0.3,
@@ -352,7 +352,7 @@ enum PhotoLibraryService {
             ))
 
             // 纸纹：极淡横线，避免「纯色块」的塑料感
-            cg.setStrokeColor(UIColor(BWTheme.ink).withAlphaComponent(0.035).cgColor)
+            cg.setStrokeColor(UIColor(WATheme.ink).withAlphaComponent(0.035).cgColor)
             cg.setLineWidth(1)
             var y: CGFloat = 4
             while y < size.height {
@@ -372,13 +372,13 @@ enum PhotoLibraryService {
     static func debugContrastImage(size: CGSize = CGSize(width: 900, height: 1200)) -> UIImage {
         UIGraphicsImageRenderer(size: size).image { context in
             let cg = context.cgContext
-            cg.setFillColor(UIColor(BWTheme.cream).cgColor)
+            cg.setFillColor(UIColor(WATheme.cream).cgColor)
             cg.fill(CGRect(origin: .zero, size: size))
             // 竖向黑白条纹：明暗变化方向与占位图（竖向大色块）完全相反
             var x: CGFloat = 0
             var dark = true
             while x < size.width {
-                cg.setFillColor((dark ? UIColor(BWTheme.ink) : UIColor(BWTheme.teal)).withAlphaComponent(0.85).cgColor)
+                cg.setFillColor((dark ? UIColor(WATheme.ink) : UIColor(WATheme.teal)).withAlphaComponent(0.85).cgColor)
                 cg.fill(CGRect(x: x, y: 0, width: size.width / 12, height: size.height))
                 dark.toggle()
                 x += size.width / 12
@@ -388,22 +388,22 @@ enum PhotoLibraryService {
     }
 
     /// 一张「像照片」的演示图：暖光窗与灯，不用外部资源。
-    /// 只用于 `BW_PREVIEW=bury-filled / seek-compare` 的截图自检，不进产品路径。
+    /// 只用于 `WA_PREVIEW=bury-filled / seek-compare` 的截图自检，不进产品路径。
     static func debugPlaceholderImage(size: CGSize = CGSize(width: 900, height: 1200)) -> UIImage {
         UIGraphicsImageRenderer(size: size).image { context in
             let cg = context.cgContext
-            let colors = [UIColor(BWTheme.ink), UIColor(BWTheme.amberDeep)].map { $0.cgColor } as CFArray
+            let colors = [UIColor(WATheme.ink), UIColor(WATheme.amberDeep)].map { $0.cgColor } as CFArray
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
                 cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
             }
             // 暖光窗
-            cg.setFillColor(UIColor(BWTheme.amber).cgColor)
+            cg.setFillColor(UIColor(WATheme.amber).cgColor)
             cg.fill(CGRect(x: size.width * 0.18, y: size.height * 0.16, width: size.width * 0.4, height: size.height * 0.34))
             // 柜台
-            cg.setFillColor(UIColor(BWTheme.ink).withAlphaComponent(0.9).cgColor)
+            cg.setFillColor(UIColor(WATheme.ink).withAlphaComponent(0.9).cgColor)
             cg.fill(CGRect(x: 0, y: size.height * 0.72, width: size.width, height: size.height * 0.28))
             // 灯
-            cg.setFillColor(UIColor(BWTheme.cream).cgColor)
+            cg.setFillColor(UIColor(WATheme.cream).cgColor)
             cg.fillEllipse(in: CGRect(x: size.width * 0.66, y: size.height * 0.3, width: size.width * 0.16, height: size.width * 0.16))
         }
         .preparingForDisplay() ?? UIImage()
@@ -505,14 +505,14 @@ struct SurprisePhotoPickRow: View {
                 Button(action: onPickCamera) {
                     chip(title: primaryTitle, systemName: "camera.fill", emphasized: true)
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
                 .accessibilityLabel("用相机\(primaryTitle)")
             }
 
             PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
                 chip(title: album, systemName: "photo.on.rectangle", emphasized: !cameraAvailable)
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
             .accessibilityLabel("从相册选择照片")
         }
     }
@@ -524,12 +524,12 @@ struct SurprisePhotoPickRow: View {
             Text(title)
                 .font(.system(size: 12.5, weight: .semibold))
         }
-        .foregroundStyle(emphasized ? BWTheme.ink : BWTheme.ink2)
+        .foregroundStyle(emphasized ? WATheme.ink : WATheme.ink2)
         .padding(.horizontal, 15)
         .frame(height: height)
-        .background(emphasized ? BWTheme.amber : BWTheme.paper)
+        .background(emphasized ? WATheme.amber : WATheme.paper)
         .clipShape(Capsule())
-        .overlay(Capsule().stroke(emphasized ? Color.clear : BWTheme.line, lineWidth: 1))
+        .overlay(Capsule().stroke(emphasized ? Color.clear : WATheme.line, lineWidth: 1))
     }
 }
 

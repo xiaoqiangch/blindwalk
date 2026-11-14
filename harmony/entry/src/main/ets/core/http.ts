@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — HTTP 抽象
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — HTTP 抽象
  *
  * 为什么需要它：`core/` 全部是纯 TypeScript（不 import 任何 `@ohos.*`），
  * 才能在 Node 里跑单测。真实网络请求由 UI 层注入：

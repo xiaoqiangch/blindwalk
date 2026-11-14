@@ -1,4 +1,4 @@
-/* 盲走 BlindWalk · Web 高保真原型样式（零依赖）
+/* 步迷 Walkaholic · Web 高保真原型样式（零依赖）
  * 依据 docs/design-system.md：奶油纸 + 墨色 + 琥珀光 + 旧纸纹理
  * 禁止：渐变紫蓝 / 科技蓝 / 玻璃拟态 / 外链字体与图片
  */
@@ -3308,10 +3308,10 @@ body[data-mode="standalone"] .toast-root {
   border-radius: 50%;
   border: 2px solid rgba(17, 24, 39, .12);
   border-top-color: var(--amber);
-  animation: bwspin .8s linear infinite;
+  animation: waspin .8s linear infinite;
 }
 
-@keyframes bwspin { to { transform: rotate(360deg); } }
+@keyframes waspin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal-card__spinner { animation: none; border-top-color: rgba(17, 24, 39, .3); }

@@ -69,7 +69,7 @@ test('CORS + Cookie 往返：注册带上 Origin，Cookie 可用于后续跨源�
     assert.equal(registered.result.status, 200);
     assert.equal(registered.result.headers.get('access-control-allow-origin'), TEST_ORIGIN);
     assert.equal(registered.result.headers.get('access-control-allow-credentials'), 'true');
-    assert.ok(cookieFrom(registered.result).startsWith('bw_uid='));
+    assert.ok(cookieFrom(registered.result).startsWith('wa_uid='));
 
     const me = await request(server.base, 'GET', '/api/auth/me', undefined, {
       Origin: TEST_ORIGIN,
@@ -98,9 +98,9 @@ test('CORS：没有 Origin 时不返回 *（curl/同源场景）', async () => {
   }
 });
 
-test('CORS 白名单：配置 BW_ALLOWED_ORIGINS 后只回显允许的来源', async () => {
+test('CORS 白名单：配置 WA_ALLOWED_ORIGINS 后只回显允许的来源', async () => {
   const allowed = 'http://allowed.example';
-  const server = await startTestServer({ env: { BW_ALLOWED_ORIGINS: allowed } });
+  const server = await startTestServer({ env: { WA_ALLOWED_ORIGINS: allowed } });
   try {
     const ok = await request(server.base, 'GET', '/api/health', undefined, { Origin: allowed });
     assert.equal(ok.headers.get('access-control-allow-origin'), allowed);

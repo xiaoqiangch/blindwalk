@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * BlindWalk 截图流水线：用 Chrome DevTools Protocol 精确模拟 390×844 @2x 视口。
+ * Walkaholic 截图流水线：用 Chrome DevTools Protocol 精确模拟 390×844 @2x 视口。
  * 为什么不用 --screenshot：Chrome headless 有最小窗口限制（约 500×701），
  * 会把 390 宽视口抬到 500，触发原型的桌面设备外框模式，截出来是裁切的。
  *
@@ -18,7 +18,7 @@ const OUT = path.join(ROOT, "screenshots");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const RUN_ID = `${process.pid}-${Date.now()}`;
 const PORT = 9400 + (process.pid % 400);
-const UDD = `/tmp/blindwalk-cdp-${RUN_ID}`;
+const UDD = `/tmp/walkaholic-cdp-${RUN_ID}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const withTimeout = (p, ms, label) =>
   Promise.race([

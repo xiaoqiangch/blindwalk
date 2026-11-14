@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 账号面板（parity.md §4）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 账号面板（parity.md §4）
  *
  * 入口在「我的 → 设置 → 账号」。未登录也能用（本地单机），登录只是多两种能力：
  *   同步到账号（整包覆盖云端） / 从账号恢复（覆盖本机）
@@ -29,14 +29,14 @@ import {
 } from '../core/account';
 import { KeyValueStore } from '../core/contract';
 import { HttpClient } from '../core/http';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
 
 /** 面板状态 */
 const MODE_IDLE: string = 'idle';
 const MODE_BUSY: string = 'busy';
 
 @Component
-export struct BwAccountPanel {
+export struct WaAccountPanel {
   @Prop revision: number = 0;
 
   /** 由 Index 注入：PreferencesKV（持久化 Cookie / 配置） */
@@ -220,28 +220,28 @@ export struct BwAccountPanel {
   header() {
     Row({ space: 8 }) {
       Text('‹')
-        .fontSize(BWFont.titleSm)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.titleSm)
+        .fontColor(WAColor.ink2)
         .textAlign(TextAlign.Center)
         .width(34)
         .height(34)
-        .backgroundColor(BWColor.paper)
+        .backgroundColor(WAColor.paper)
         .borderRadius(17)
-        .border({ width: 1, color: BWColor.line, radius: 17 })
+        .border({ width: 1, color: WAColor.line, radius: 17 })
         .onClick(() => {
           this.onBack();
         })
 
       Text('账号')
-        .fontSize(BWFont.hero)
+        .fontSize(WAFont.hero)
         .fontWeight(FontWeight.Bold)
-        .fontColor(BWColor.ink)
+        .fontColor(WAColor.ink)
 
       Blank()
 
       Text(accountStatusText(this.config))
-        .fontSize(BWFont.captionSm)
-        .fontColor(this.loggedIn() ? BWColor.teal : BWColor.ink3)
+        .fontSize(WAFont.captionSm)
+        .fontColor(this.loggedIn() ? WAColor.teal : WAColor.ink3)
     }
     .width('100%')
     .padding({ bottom: 8 })
@@ -251,32 +251,32 @@ export struct BwAccountPanel {
   baseUrlRow() {
     Column({ space: 6 }) {
       Text('账号服务地址')
-        .fontSize(BWFont.micro)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.micro)
+        .fontColor(WAColor.ink3)
         .letterSpacing(0.8)
 
       Row({ space: 8 }) {
         TextInput({ placeholder: ACCOUNT_BASE_DEFAULT, text: this.baseUrlText })
           .height(40)
-          .fontSize(BWFont.captionSm)
+          .fontSize(WAFont.captionSm)
           .layoutWeight(1)
-          .backgroundColor(BWColor.paper2)
-          .borderRadius(BWSize.cardRadiusXs)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusXs })
+          .backgroundColor(WAColor.paper2)
+          .borderRadius(WASize.cardRadiusXs)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
           .onChange((value: string) => {
             this.baseUrlText = value;
           })
 
         Button() {
           Text('保存')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink)
         }
         .type(ButtonType.Capsule)
         .height(40)
         .padding({ left: 16, right: 16 })
-        .backgroundColor(BWColor.amberSoftStrong)
-        .border({ width: 1, color: BWColor.amberBorder, radius: BWSize.chipRadius })
+        .backgroundColor(WAColor.amberSoftStrong)
+        .border({ width: 1, color: WAColor.amberBorder, radius: WASize.chipRadius })
         .onClick(() => {
           this.saveBaseUrl();
         })
@@ -284,8 +284,8 @@ export struct BwAccountPanel {
       .width('100%')
 
       Text('默认连公网 https://xqlounge.top。登录是可选的，不登录也能正常用。')
-        .fontSize(BWFont.microSm)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.microSm)
+        .fontColor(WAColor.ink3)
         .width('100%')
         .lineHeight(16)
     }
@@ -298,15 +298,15 @@ export struct BwAccountPanel {
     Column({ space: 10 }) {
       Column({ space: 6 }) {
         Text('用户名')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .letterSpacing(0.8)
         TextInput({ placeholder: '3–24 个字符', text: this.usernameText })
           .height(42)
-          .fontSize(BWFont.caption)
-          .backgroundColor(BWColor.paper2)
-          .borderRadius(BWSize.cardRadiusXs)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusXs })
+          .fontSize(WAFont.caption)
+          .backgroundColor(WAColor.paper2)
+          .borderRadius(WASize.cardRadiusXs)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
           .onChange((value: string) => {
             this.usernameText = value;
           })
@@ -316,16 +316,16 @@ export struct BwAccountPanel {
 
       Column({ space: 6 }) {
         Text('密码')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .letterSpacing(0.8)
         TextInput({ placeholder: '至少 6 位', text: this.passwordText })
           .type(InputType.Password)
           .height(42)
-          .fontSize(BWFont.caption)
-          .backgroundColor(BWColor.paper2)
-          .borderRadius(BWSize.cardRadiusXs)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusXs })
+          .fontSize(WAFont.caption)
+          .backgroundColor(WAColor.paper2)
+          .borderRadius(WASize.cardRadiusXs)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
           .onChange((value: string) => {
             this.passwordText = value;
           })
@@ -335,14 +335,14 @@ export struct BwAccountPanel {
 
       Button() {
         Text(this.mode === MODE_BUSY ? '请稍候…' : '登录')
-          .fontSize(BWFont.titleSm)
+          .fontSize(WAFont.titleSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
       }
       .type(ButtonType.Capsule)
       .height(48)
       .width('100%')
-      .backgroundColor(BWColor.amber)
+      .backgroundColor(WAColor.amber)
       .enabled(this.mode !== MODE_BUSY)
       .opacity(this.mode === MODE_BUSY ? 0.6 : 1)
       .onClick(() => {
@@ -351,14 +351,14 @@ export struct BwAccountPanel {
 
       Button() {
         Text('注册并登录')
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink2)
       }
       .type(ButtonType.Capsule)
       .height(40)
       .width('100%')
-      .backgroundColor(BWColor.paper2)
-      .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+      .backgroundColor(WAColor.paper2)
+      .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
       .enabled(this.mode !== MODE_BUSY)
       .onClick(() => {
         this.doRegister();
@@ -373,12 +373,12 @@ export struct BwAccountPanel {
     Column({ space: 10 }) {
       Column({ space: 4 }) {
         Text('当前账号')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
         Text(this.username())
-          .fontSize(BWFont.titleSm)
+          .fontSize(WAFont.titleSm)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
@@ -396,8 +396,8 @@ export struct BwAccountPanel {
       if (!this.confirmDelete) {
         Button() {
           Text('删除账号')
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ember)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ember)
         }
         .type(ButtonType.Capsule)
         .height(36)
@@ -409,30 +409,30 @@ export struct BwAccountPanel {
       } else {
         Column({ space: 8 }) {
           Text('删除账号会清掉云端数据，不可撤销。输入密码确认：')
-            .fontSize(BWFont.microSm)
-            .fontColor(BWColor.ember)
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ember)
             .width('100%')
           TextInput({ placeholder: '账号密码', text: this.deletePassword })
             .type(InputType.Password)
             .height(40)
-            .fontSize(BWFont.caption)
-            .backgroundColor(BWColor.paper2)
-            .borderRadius(BWSize.cardRadiusXs)
-            .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusXs })
+            .fontSize(WAFont.caption)
+            .backgroundColor(WAColor.paper2)
+            .borderRadius(WASize.cardRadiusXs)
+            .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
             .onChange((value: string) => {
               this.deletePassword = value;
             })
           Row({ space: 8 }) {
             Button() {
               Text('取消')
-                .fontSize(BWFont.captionSm)
-                .fontColor(BWColor.ink2)
+                .fontSize(WAFont.captionSm)
+                .fontColor(WAColor.ink2)
             }
             .type(ButtonType.Capsule)
             .height(38)
             .layoutWeight(1)
-            .backgroundColor(BWColor.paper2)
-            .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+            .backgroundColor(WAColor.paper2)
+            .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
             .onClick(() => {
               this.confirmDelete = false;
               this.deletePassword = '';
@@ -440,13 +440,13 @@ export struct BwAccountPanel {
 
             Button() {
               Text('确认删除')
-                .fontSize(BWFont.captionSm)
-                .fontColor(BWColor.cream)
+                .fontSize(WAFont.captionSm)
+                .fontColor(WAColor.cream)
             }
             .type(ButtonType.Capsule)
             .height(38)
             .layoutWeight(1)
-            .backgroundColor(BWColor.ember)
+            .backgroundColor(WAColor.ember)
             .onClick(() => {
               this.doDelete();
             })
@@ -464,15 +464,15 @@ export struct BwAccountPanel {
   actionRow(title: string, primary: boolean, action: () => void) {
     Button() {
       Text(title)
-        .fontSize(BWFont.caption)
+        .fontSize(WAFont.caption)
         .fontWeight(primary ? FontWeight.Medium : FontWeight.Regular)
-        .fontColor(primary ? BWColor.ink : BWColor.ink2)
+        .fontColor(primary ? WAColor.ink : WAColor.ink2)
     }
     .type(ButtonType.Capsule)
     .height(44)
     .width('100%')
-    .backgroundColor(primary ? BWColor.amber : BWColor.paper2)
-    .border({ width: primary ? 0 : 1, color: BWColor.line, radius: BWSize.chipRadius })
+    .backgroundColor(primary ? WAColor.amber : WAColor.paper2)
+    .border({ width: primary ? 0 : 1, color: WAColor.line, radius: WASize.chipRadius })
     .enabled(this.mode !== MODE_BUSY)
     .onClick(() => {
       action();
@@ -488,7 +488,7 @@ export struct BwAccountPanel {
           Column({ space: 14 }) {
             this.baseUrlRow()
 
-            Divider().strokeWidth(1).color(BWColor.line)
+            Divider().strokeWidth(1).color(WAColor.line)
 
             if (this.loggedIn()) {
               this.loggedInForm()
@@ -498,23 +498,23 @@ export struct BwAccountPanel {
 
             if (this.message.length > 0) {
               Text(this.message)
-                .fontSize(BWFont.captionSm)
-                .fontColor(this.messageBad ? BWColor.ember : BWColor.teal)
+                .fontSize(WAFont.captionSm)
+                .fontColor(this.messageBad ? WAColor.ember : WAColor.teal)
                 .width('100%')
             }
           }
           .width('100%')
           .alignItems(HorizontalAlign.Start)
           .padding(16)
-          .backgroundColor(BWColor.paper)
-          .borderRadius(BWSize.cardRadius)
-          .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadius })
+          .backgroundColor(WAColor.paper)
+          .borderRadius(WASize.cardRadius)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
         }
         .width('100%')
-        .constraintSize({ maxWidth: BWSize.contentMaxWidth })
+        .constraintSize({ maxWidth: WASize.contentMaxWidth })
         .padding({
-          left: BWSize.pagePadding,
-          right: BWSize.pagePadding,
+          left: WASize.pagePadding,
+          right: WASize.pagePadding,
           top: 8,
           bottom: 24
         })
@@ -526,6 +526,6 @@ export struct BwAccountPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BWColor.cream)
+    .backgroundColor(WAColor.cream)
   }
 }

@@ -2,9 +2,9 @@
 """临时从工程里摘掉 / 装回 watch target 依赖。
 
 为什么需要它：
-    iPhone 版 App 里嵌着 BlindWalkWatch.app，两个包必须一起签名。
+    iPhone 版 App 里嵌着 WalkaholicWatch.app，两个包必须一起签名。
     watchOS 的描述文件需要「已配对的实体 Apple Watch」才能生成；
-    这台 Mac 上只有模拟器手表（盲走 Watch 45mm 是 simulated），
+    这台 Mac 上只有模拟器手表（步迷 Watch 45mm 是 simulated），
     所以 watch target 的签名必然失败，连带 iPhone 版也构建不出来。
 
 用法：
@@ -12,14 +12,14 @@
     python3 scripts/watch-off.py on      # 装回依赖
     python3 scripts/watch-off.py status
 
-工程文件改动前会自动备份到 /tmp/bw-pbxproj-backup.pbxproj。
+工程文件改动前会自动备份到 /tmp/wa-pbxproj-backup.pbxproj。
 """
 import shutil
 import sys
 from pathlib import Path
 
-PROJ = Path(__file__).resolve().parent.parent / "apple/BlindWalk.xcodeproj/project.pbxproj"
-BACKUP = Path("/tmp/bw-pbxproj-backup.pbxproj")
+PROJ = Path(__file__).resolve().parent.parent / "apple/Walkaholic.xcodeproj/project.pbxproj"
+BACKUP = Path("/tmp/wa-pbxproj-backup.pbxproj")
 
 BLOCK_WITH = """			buildPhases = (
 				CFE9534CFBA0C855919001A3 /* Sources */,
@@ -31,7 +31,7 @@ BLOCK_WITH = """			buildPhases = (
 			dependencies = (
 				780D2B66268D9DF8CA0AF19A /* PBXTargetDependency */,
 			);
-			name = BlindWalk;"""
+			name = Walkaholic;"""
 
 BLOCK_WITHOUT = """			buildPhases = (
 				CFE9534CFBA0C855919001A3 /* Sources */,
@@ -41,7 +41,7 @@ BLOCK_WITHOUT = """			buildPhases = (
 			);
 			dependencies = (
 			);
-			name = BlindWalk;"""
+			name = Walkaholic;"""
 
 
 def main() -> int:

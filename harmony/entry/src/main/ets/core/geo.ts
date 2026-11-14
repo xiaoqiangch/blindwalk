@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 地理计算
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 地理计算
  *
  * 移植自 apple/Shared/Core/Geo.swift（Haversine 距离 / 方位角 / 按方位偏移 / 八方向 / 箭头）。
  * 全部为纯函数，不依赖 @ohos.*，可在 Node 中直接测试。

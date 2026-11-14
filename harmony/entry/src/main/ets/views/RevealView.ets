@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 揭晓 Reveal（design-system §5.4）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 揭晓 Reveal（design-system §5.4）
  *
  * 视觉基准：prototype/web/app.js revealOpenHTML / revealCardHTML + screenshots/showcase.png
  * 两段：
@@ -13,20 +13,20 @@ import { getStore } from '../core/store';
 import { AppSnapshot, CollectResult } from '../core/contract';
 import { Achievement, Place } from '../core/types';
 import {
-  BwHairline,
-  BwMicroLabel,
-  BwRarityBadge,
-  BwToastBar
+  WaHairline,
+  WaMicroLabel,
+  WaRarityBadge,
+  WaToastBar
 } from '../components/Common';
 import { emptyPlace, emptySnapshot, readSnapshot } from '../components/StoreBridge';
 import {
-  BWColor,
-  BWFont,
-  BWSize,
+  WAColor,
+  WAFont,
+  WASize,
   areaWord
 } from '../theme/Theme';
 import { clockHHMM } from '../components/Format';
-import { categorySymbol } from '../components/BwSymbol';
+import { categorySymbol } from '../components/WaSymbol';
 
 const PARTICLE_INDEXES: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -88,7 +88,7 @@ export struct RevealView {
   }
 
   private isShort(): boolean {
-    return this.winHeight < BWSize.shortHeightBreakpoint;
+    return this.winHeight < WASize.shortHeightBreakpoint;
   }
 
   private serialText(): string {
@@ -255,7 +255,7 @@ export struct RevealView {
     Row()
       .width(5 + (index % 3) * 2)
       .height(7 + (index % 3) * 2)
-      .backgroundColor(index % 2 === 0 ? BWColor.amber : BWColor.ember)
+      .backgroundColor(index % 2 === 0 ? WAColor.amber : WAColor.ember)
       .borderRadius(1.5)
       .rotate({ angle: index * 30 + (this.particlesOut ? 150 : 0) })
       .translate({
@@ -276,7 +276,7 @@ export struct RevealView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.stage)
+        .backgroundColor(WAColor.stage)
 
       Circle()
         .width(300)
@@ -296,7 +296,7 @@ export struct RevealView {
           Row()
             .width(156)
             .height(35)
-            .backgroundColor(BWColor.kraftLid)
+            .backgroundColor(WAColor.kraftLid)
             .borderRadius(5)
             .border({ width: 1.8, color: '#E6171410', radius: 5 })
             .rotate({ angle: this.lidUp ? -26 : 0 })
@@ -307,12 +307,12 @@ export struct RevealView {
             Text('?')
               .fontSize(50)
               .fontWeight(FontWeight.Bold)
-              .fontColor(BWColor.ink)
+              .fontColor(WAColor.ink)
           }
           .width(140)
           .height(92)
           .justifyContent(FlexAlign.Center)
-          .backgroundColor(BWColor.kraftBody)
+          .backgroundColor(WAColor.kraftBody)
           .borderRadius(8)
           .border({ width: 1.8, color: '#E6171410', radius: 8 })
           .translate({ y: 26 })
@@ -322,8 +322,8 @@ export struct RevealView {
         .rotate({ angle: this.lidUp ? 0 : this.boxShake })
 
         Text('这次，城市选了这个地方。')
-          .fontSize(BWFont.bodySm)
-          .fontColor(this.lightOn ? BWColor.creamOnStage : BWColor.creamOnStageDim)
+          .fontSize(WAFont.bodySm)
+          .fontColor(this.lightOn ? WAColor.creamOnStage : WAColor.creamOnStageDim)
           .textAlign(TextAlign.Center)
           .padding({ left: 40, right: 40 })
       }
@@ -344,20 +344,20 @@ export struct RevealView {
       Text(clockHHMM())
         .fontSize(13)
         .fontWeight(FontWeight.Medium)
-        .fontColor(BWColor.creamOnStage)
+        .fontColor(WAColor.creamOnStage)
 
       Blank()
 
       if (this.hasCollected) {
         Stack({ alignContent: Alignment.Center }) {
           SymbolGlyph($r('sys.symbol.xmark'))
-            .fontSize(BWFont.caption)
-            .fontColor([BWColor.creamOnStageDim])
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.creamOnStageDim])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         }
         .width(30)
         .height(30)
-        .backgroundColor(BWColor.stageClose)
+        .backgroundColor(WAColor.stageClose)
         .borderRadius(15)
         .onClick(() => {
           this.onGoCards();
@@ -366,7 +366,7 @@ export struct RevealView {
     }
     .width('100%')
     .height(46)
-    .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding })
+    .padding({ left: WASize.pagePadding, right: WASize.pagePadding })
   }
 
   @Builder
@@ -375,15 +375,15 @@ export struct RevealView {
       Column({ space: 4 }) {
         Row({ space: 3 }) {
           SymbolGlyph($r('sys.symbol.warning'))
-            .fontSize(BWFont.micro)
-            .fontColor([BWColor.gold])
+            .fontSize(WAFont.micro)
+            .fontColor([WAColor.gold])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
-            .fontSize(BWFont.micro)
-          BwMicroLabel({ text: '小任务：' })
+            .fontSize(WAFont.micro)
+          WaMicroLabel({ text: '小任务：' })
         }
         Text(place.task)
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink)
           .lineHeight(21)
           .layoutWeight(1)
       }
@@ -391,17 +391,17 @@ export struct RevealView {
       .layoutWeight(1)
 
       Text(this.taskDone ? '已完成' : '完成后点一下')
-        .fontSize(BWFont.micro)
-        .fontColor(this.taskDone ? BWColor.teal : BWColor.ink3)
+        .fontSize(WAFont.micro)
+        .fontColor(this.taskDone ? WAColor.teal : WAColor.ink3)
         .onClick(() => {
           this.toggleTaskDone();
         })
     }
     .width('100%')
     .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(BWColor.paper2)
-    .borderRadius(BWSize.cardRadiusSm)
-    .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+    .backgroundColor(WAColor.paper2)
+    .borderRadius(WASize.cardRadiusSm)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
   }
 
   @Builder
@@ -409,12 +409,12 @@ export struct RevealView {
     Column({ space: 0 }) {
       Row() {
         Text(this.serialText())
-          .fontSize(BWFont.micro)
+          .fontSize(WAFont.micro)
           .fontWeight(FontWeight.Medium)
-          .fontColor(BWColor.ink3)
+          .fontColor(WAColor.ink3)
           .letterSpacing(1)
         Blank()
-        BwRarityBadge({ rarity: place.rarity })
+        WaRarityBadge({ rarity: place.rarity })
       }
       .width('100%')
       .padding({ bottom: 13 })
@@ -426,14 +426,14 @@ export struct RevealView {
             .width('100%')
             .height(this.isShort() ? 132 : 168)
             .objectFit(ImageFit.Cover)
-            .borderRadius(BWSize.cardRadiusSm)
-            .border({ width: 1, color: BWColor.line, radius: BWSize.cardRadiusSm })
+            .borderRadius(WASize.cardRadiusSm)
+            .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
             .alt($r('app.media.app_icon'))
 
           if (place.photoCredit !== undefined && place.photoCredit.length > 0) {
             Text('图片：' + place.photoCredit)
-              .fontSize(BWFont.microSm)
-              .fontColor(BWColor.ink3)
+              .fontSize(WAFont.microSm)
+              .fontColor(WAColor.ink3)
               .width('100%')
               .textAlign(TextAlign.End)
           }
@@ -445,41 +445,41 @@ export struct RevealView {
       Column({ space: 7 }) {
         SymbolGlyph($r('sys.symbol.' + categorySymbol(place.category)))
           .fontSize(46)
-          .fontColor([BWColor.amber])
+          .fontColor([WAColor.amber])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         Text(place.name)
-          .fontSize(BWFont.title)
+          .fontSize(WAFont.title)
           .fontWeight(FontWeight.Bold)
-          .fontColor(BWColor.ink)
+          .fontColor(WAColor.ink)
           .textAlign(TextAlign.Center)
           .maxLines(2)
         Text(this.placeMeta(place))
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .textAlign(TextAlign.Center)
           .maxLines(2)
 
         // 来源标签：编辑精选 / 真实地标 / 演示
         Row({ space: 5 }) {
           SymbolGlyph($r('sys.symbol.' + (this.isCurated(place) ? 'star_fill' : (place.source === 'catalog' ? 'info_circle' : 'pin'))))
-            .fontSize(BWFont.micro)
-            .fontColor([BWColor.ink3])
+            .fontSize(WAFont.micro)
+            .fontColor([WAColor.ink3])
             .renderingStrategy(SymbolRenderingStrategy.SINGLE)
           Text(this.sourceLabel(place))
-            .fontSize(BWFont.microSm)
+            .fontSize(WAFont.microSm)
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.isCurated(place) ? BWColor.amberDeep
-              : (place.source === 'catalog' ? BWColor.ink3 : BWColor.teal))
+            .fontColor(this.isCurated(place) ? WAColor.amberDeep
+              : (place.source === 'catalog' ? WAColor.ink3 : WAColor.teal))
         }
         .padding({ left: 9, right: 9, top: 3, bottom: 3 })
-        .backgroundColor(this.isCurated(place) ? BWColor.amberSoft
-          : (place.source === 'catalog' ? BWColor.paper2 : BWColor.tealSoft))
-        .borderRadius(BWSize.chipRadius)
+        .backgroundColor(this.isCurated(place) ? WAColor.amberSoft
+          : (place.source === 'catalog' ? WAColor.paper2 : WAColor.tealSoft))
+        .borderRadius(WASize.chipRadius)
 
         if (place.summary !== undefined && place.summary.length > 0) {
           Text(place.summary)
-            .fontSize(BWFont.captionSm)
-            .fontColor(BWColor.ink3)
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink3)
             .textAlign(TextAlign.Center)
             .maxLines(3)
             .lineHeight(19)
@@ -488,20 +488,20 @@ export struct RevealView {
       .width('100%')
       .padding({ bottom: 11 })
 
-      BwHairline()
+      WaHairline()
 
       Column({ space: 6 }) {
-        BwMicroLabel({ text: '为什么是这里：' })
+        WaMicroLabel({ text: '为什么是这里：' })
         Text(place.why)
-          .fontSize(BWFont.caption)
-          .fontColor(BWColor.ink2)
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink2)
           .lineHeight(21)
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
       .padding({ top: 12, bottom: 12 })
 
-      BwHairline()
+      WaHairline()
 
       Column() {
         this.taskCard(place)
@@ -511,31 +511,31 @@ export struct RevealView {
       Row({ space: 8 }) {
         Button() {
           Text(this.hasCollected ? '去看看图鉴' : '收进图鉴')
-            .fontSize(BWFont.bodySm)
+            .fontSize(WAFont.bodySm)
             .fontWeight(FontWeight.Medium)
-            .fontColor(BWColor.ink)
+            .fontColor(WAColor.ink)
             .maxLines(1)
         }
         .type(ButtonType.Capsule)
         .height(46)
         .layoutWeight(1)
-        .backgroundColor(BWColor.amber)
-        .shadow({ radius: 12, color: BWColor.shadow, offsetX: 0, offsetY: 6 })
+        .backgroundColor(WAColor.amber)
+        .shadow({ radius: 12, color: WAColor.shadow, offsetX: 0, offsetY: 6 })
         .onClick(() => {
           this.collectCard();
         })
 
         Button() {
           Text('分享')
-            .fontSize(BWFont.bodySm)
+            .fontSize(WAFont.bodySm)
             .fontWeight(FontWeight.Medium)
-            .fontColor(BWColor.ink2)
+            .fontColor(WAColor.ink2)
         }
         .type(ButtonType.Capsule)
         .height(46)
         .width(96)
         .backgroundColor(Color.Transparent)
-        .border({ width: 1, color: BWColor.line, radius: BWSize.chipRadius })
+        .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
         .onClick(() => {
           this.shareToCircle();
         })
@@ -545,8 +545,8 @@ export struct RevealView {
 
       if (this.hasCollected) {
         Text('它现在是你的了。')
-          .fontSize(BWFont.micro)
-          .fontColor(BWColor.ink3)
+          .fontSize(WAFont.micro)
+          .fontColor(WAColor.ink3)
           .width('100%')
           .textAlign(TextAlign.Center)
           .margin({ top: 9 })
@@ -554,8 +554,8 @@ export struct RevealView {
     }
     .width('100%')
     .padding({ left: 20, right: 20, top: 17, bottom: 18 })
-    .backgroundColor(BWColor.paper)
-    .borderRadius(BWSize.cardRadius)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
     .shadow({ radius: 20, color: '#33000000', offsetX: 0, offsetY: 6 })
     .rotate({ angle: -1.2 })
     .scale({
@@ -572,7 +572,7 @@ export struct RevealView {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.stage)
+        .backgroundColor(WAColor.stage)
 
       Circle()
         .width(360)
@@ -589,8 +589,8 @@ export struct RevealView {
             this.revealCard(this.placeSafe())
 
             Text('这个地点，只为你亮一次。')
-              .fontSize(BWFont.micro)
-              .fontColor(BWColor.creamOnStageDim)
+              .fontSize(WAFont.micro)
+              .fontColor(WAColor.creamOnStageDim)
               .textAlign(TextAlign.Center)
               .width('100%')
               .margin({ top: 14 })
@@ -613,16 +613,16 @@ export struct RevealView {
   emptyStage() {
     Column({ space: 10 }) {
       Text('今晚的盲盒还没准备好。')
-        .fontSize(BWFont.body)
-        .fontColor(BWColor.creamOnStage)
+        .fontSize(WAFont.body)
+        .fontColor(WAColor.creamOnStage)
       Text('再走一会儿。')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.creamOnStageDim)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.creamOnStageDim)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(BWColor.stage)
+    .backgroundColor(WAColor.stage)
   }
 
   build() {
@@ -640,14 +640,14 @@ export struct RevealView {
       // 底部 toast 堆叠
       Column({ space: 8 }) {
         if (this.achievementText.length > 0) {
-          BwToastBar({
+          WaToastBar({
             text: this.achievementText,
             iconName: 'star_fill',
             amber: true
           })
         }
         if (this.toastText.length > 0) {
-          BwToastBar({
+          WaToastBar({
             text: this.toastText,
             iconName: this.toastIcon,
             amber: false
@@ -656,7 +656,7 @@ export struct RevealView {
       }
       .width('100%')
       .height('100%')
-      .padding({ left: BWSize.pagePadding, right: BWSize.pagePadding, bottom: 40 })
+      .padding({ left: WASize.pagePadding, right: WASize.pagePadding, bottom: 40 })
       .justifyContent(FlexAlign.End)
       .hitTestBehavior(HitTestMode.None)
     }

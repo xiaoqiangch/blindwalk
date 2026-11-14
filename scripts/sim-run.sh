@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在 iOS 模拟器里跑「步谜」，并把定位/权限一次配好。
+# 在 iOS 模拟器里跑「步迷」，并把定位/权限一次配好。
 #
 # 为什么需要这个脚本：
 #   模拟器默认没有「当前位置」，CLLocationManager.requestLocation() 会直接
@@ -15,7 +15,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/apple"
 
-BUNDLE_ID="com.blindwalk.app"
+BUNDLE_ID="com.walkaholic.app"
 LAT="${LAT:-31.2304}"
 LON="${LON:-121.4737}"
 WALK=0
@@ -66,11 +66,11 @@ xcrun simctl privacy "$TARGET" grant location "$BUNDLE_ID" 2>/dev/null
 xcrun simctl privacy "$TARGET" grant location-always "$BUNDLE_ID" 2>/dev/null
 
 echo "== 构建（增量）"
-xcodebuild -project BlindWalk.xcodeproj -scheme BlindWalk \
+xcodebuild -project Walkaholic.xcodeproj -scheme Walkaholic \
   -destination "id=$TARGET" -derivedDataPath ./build \
   build 2>&1 | grep -E "error:|BUILD SUCCEEDED|BUILD FAILED"
 
-APP=./build/Build/Products/Debug-iphonesimulator/BlindWalk.app
+APP=./build/Build/Products/Debug-iphonesimulator/Walkaholic.app
 [ -d "$APP" ] || { echo "❌ 构建产物不存在：$APP"; exit 1; }
 
 echo "== 安装 + 启动"
@@ -81,7 +81,7 @@ xcrun simctl launch "$TARGET" "$BUNDLE_ID" >/dev/null
 cat <<EOF
 
 完成。定位已设为 ${LAT},${LON}。若界面还提示「没拿到真实位置」：
-  1. 确认 设置 > 隐私与安全性 > 定位服务 里「步谜」是「使用期间」；
+  1. 确认 设置 > 隐私与安全性 > 定位服务 里「步迷」是「使用期间」；
   2. 定位是启动时取的，改完坐标要重新启动 App（脚本已做）；
   3. 想看走动效果：scripts/sim-run.sh --walk
 EOF

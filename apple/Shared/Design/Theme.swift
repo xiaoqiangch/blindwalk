@@ -6,7 +6,7 @@ import SwiftUI
 /// 上一版的问题是「什么都是紫的」——页面底色、卡片底色、渐变、阴影全由主色混出来，
 /// 界面因此发虚、像网页。这一版把中性面独立成一条冷灰梯，主色只允许出现在
 /// 一处主按钮、选中态、迷雾路径的「要走的那段」，以及一个关键数字上。
-public enum BWTheme {
+public enum WATheme {
 
     // MARK: 中性梯（唯一用于背景 / 卡片 / 分割线 / 文字的色板）
     /// 主文字
@@ -48,7 +48,7 @@ public enum BWTheme {
     public static let pillRadius: CGFloat = 999
 
     /// 卡片阴影：中性、极轻。深色阴影+彩色阴影会让界面发虚。
-    public static func cardShadow(_ color: Color = BWTheme.ink.opacity(0.05)) -> Color { color }
+    public static func cardShadow(_ color: Color = WATheme.ink.opacity(0.05)) -> Color { color }
 
     // MARK: 折叠屏 / 宽屏断点
     // iPhone Duo 展开态 669×951pt、折叠态 466×678pt（见 docs/foldable.md）

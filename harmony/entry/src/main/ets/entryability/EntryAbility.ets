@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS Stage 模型入口 Ability
+ * 步迷 Walkaholic · HarmonyOS Stage 模型入口 Ability
  *
  * 职责：加载 pages/Index、把窗口底色刷成奶油纸（避免状态栏下面出现白条）。
  * 状态初始化在 Index.ets 里 `await initStore(new PreferencesKV(context))`（可 await，更稳）。
@@ -13,12 +13,12 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 
 const DOMAIN: number = 0x0000;
-const TAG: string = 'BlindWalk';
+const TAG: string = 'Walkaholic';
 
 export default class EntryAbility extends UIAbility {
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    hilog.info(DOMAIN, TAG, 'BlindWalk onCreate');
+    hilog.info(DOMAIN, TAG, 'Walkaholic onCreate');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {

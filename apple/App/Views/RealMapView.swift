@@ -32,7 +32,7 @@ struct RealMapView: View {
                     MapPolyline(coordinates: trail.map {
                         CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
                     })
-                    .stroke(BWTheme.amber.opacity(0.85), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    .stroke(WATheme.amber.opacity(0.85), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                 }
                 if let coordinate {
                     Annotation("你", coordinate: coordinate) {
@@ -44,10 +44,10 @@ struct RealMapView: View {
             .mapControls { }
             .frame(height: height)
             .frame(maxHeight: height == nil ? .infinity : nil)
-            .clipShape(RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: BWTheme.cardRadius, style: .continuous)
-                    .stroke(BWTheme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
+                    .stroke(WATheme.line, lineWidth: 1)
             )
 
             // 左上角说明：目的地保密
@@ -55,14 +55,14 @@ struct RealMapView: View {
                 Image(systemName: "eye.slash")
                     .font(.system(size: 12, weight: .semibold))
                 Text("目的地保密中 · 还有 \(remainingMeters) 米")
-                    .font(BWTheme.caption(11))
+                    .font(WATheme.caption(11))
             }
-            .foregroundStyle(BWTheme.ink2)
+            .foregroundStyle(WATheme.ink2)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(BWTheme.paper.opacity(0.92))
+            .background(WATheme.paper.opacity(0.92))
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+            .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
             .padding(12)
 
             // 右下角「真实地图」标记
@@ -72,10 +72,10 @@ struct RealMapView: View {
                 Text("真实地图")
                     .font(.system(size: 11.5, weight: .semibold))
             }
-            .foregroundStyle(BWTheme.teal)
+            .foregroundStyle(WATheme.teal)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(BWTheme.paper.opacity(0.92))
+            .background(WATheme.paper.opacity(0.92))
             .clipShape(Capsule())
             .padding(12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -87,13 +87,13 @@ struct RealMapView: View {
     private var userDot: some View {
         ZStack {
             Circle()
-                .fill(BWTheme.amber.opacity(0.28))
+                .fill(WATheme.amber.opacity(0.28))
                 .frame(width: 34, height: 34)
             Circle()
-                .fill(BWTheme.amber)
+                .fill(WATheme.amber)
                 .frame(width: 14, height: 14)
-                .overlay(Circle().stroke(BWTheme.paper, lineWidth: 2.5))
-                .shadow(color: BWTheme.ink.opacity(0.2), radius: 4, y: 2)
+                .overlay(Circle().stroke(WATheme.paper, lineWidth: 2.5))
+                .shadow(color: WATheme.ink.opacity(0.2), radius: 4, y: 2)
         }
         .accessibilityLabel("你的位置")
     }

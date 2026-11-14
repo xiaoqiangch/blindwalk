@@ -29,7 +29,7 @@ public struct CollectResult {
 /// 全局应用状态（iOS / watchOS 共用）。
 @Observable
 @MainActor
-public final class BlindWalkStore {
+public final class WalkaholicStore {
 
     // MARK: 可变状态
 
@@ -105,8 +105,8 @@ public final class BlindWalkStore {
     }
 
     /// 演示模式：预置 18 张卡、连续 12 天、正在走第 3 个盲盒
-    public static func demo() -> BlindWalkStore {
-        let store = BlindWalkStore(
+    public static func demo() -> WalkaholicStore {
+        let store = WalkaholicStore(
             profile: DemoData.demoProfile(),
             surprises: DemoData.demoSurprises()
         )

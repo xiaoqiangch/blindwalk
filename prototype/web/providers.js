@@ -1,11 +1,11 @@
 /* ============================================================
-   盲走 BlindWalk · POI 多数据源模块（零依赖 / ES5 风格 / JSONP）
+   步迷 Walkaholic · POI 多数据源模块（零依赖 / ES5 风格 / JSONP）
    ============================================================
    背景：
    - PWA 部署在 GitHub Pages（纯静态、HTTPS），没有服务端代理。
    - 高德 / 百度开放平台都支持 JSONP（callback 参数），可绕过 CORS。
    - OSM Overpass / 中文维基 geosearch 是免费 CORS 源，无需 Key。
-   - Key 由用户自己填，存在 localStorage（'bw.keys.v1'），**不硬编码、不上传**。
+   - Key 由用户自己填，存在 localStorage（'wa.keys.v1'），**不硬编码、不上传**。
 
    坐标系（重要，偏差几百米会影响 30m 内到达判定）：
    - 本模块对外只使用 / 返回 WGS-84（GPS / 浏览器 Geolocation / OSM / 维基）
@@ -13,7 +13,7 @@
    - 百度地图：请求和返回都是 BD-09 → 发出前 WGS84→BD09，解析时 BD09→WGS84
    转换函数为业界通用算法（GCJ-02 逆算用 3 次迭代），误差在 1–3 米内。
 
-   对外契约（window.BW_PROVIDERS）：
+   对外契约（window.WA_PROVIDERS）：
      nearby({lat, lon, radius, limit, sources}) -> Promise<Array<Candidate>>
      setKeys({amap, baidu}) -> {amap:'***'|'', baidu:'***'|''}
      getKeys() -> 同上（只返回是否已配置，不返回明文）
@@ -37,7 +37,7 @@
   // 常量
   // ============================================================
 
-  var STORE_KEY = 'bw.keys.v1';
+  var STORE_KEY = 'wa.keys.v1';
   var JSONP_TIMEOUT = 8000;
   var FETCH_TIMEOUT = 8000;
   var DEDUPE_METERS = 30;
@@ -389,7 +389,7 @@
         reject(new Error('JSONP 需要浏览器环境'));
         return;
       }
-      var name = 'bwCb_' + (++jsonpSeq) + '_' + Date.now().toString(36);
+      var name = 'waCb_' + (++jsonpSeq) + '_' + Date.now().toString(36);
       var script = document.createElement('script');
       var settled = false;
       var timer = null;
@@ -888,7 +888,7 @@
     var lat = toNum(opts.lat);
     var lon = toNum(opts.lon);
     if (lat === null || lon === null || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-      return Promise.reject(new Error('BW_PROVIDERS.nearby 需要合法的 lat / lon（WGS-84）'));
+      return Promise.reject(new Error('WA_PROVIDERS.nearby 需要合法的 lat / lon（WGS-84）'));
     }
     var radius = clamp(toNum(opts.radius) || 1200, 100, 50000);
     var limit = clamp(toNum(opts.limit) || 30, 1, 100);
@@ -1025,7 +1025,7 @@
     lastReport: lastReport
   };
 
-  root.BW_PROVIDERS = api;
+  root.WA_PROVIDERS = api;
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
   }

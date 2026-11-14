@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS — KeyValueStore 的官方实现（仅 .ets，Node 测试不包含）
+ * 步迷 Walkaholic · HarmonyOS — KeyValueStore 的官方实现（仅 .ets，Node 测试不包含）
  *
  * 为什么单独一个文件：
  * - core/persistence.ts 必须保持「不 import @ohos.*」的纯净性（Node 里可跑单元测试）；
@@ -13,7 +13,7 @@ import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { KeyValueStore } from './contract';
 
-const PREFERENCES_NAME: string = 'blindwalk';
+const PREFERENCES_NAME: string = 'walkaholic';
 
 /** HarmonyOS 键值存储：包装 @ohos.data.preferences（API 12 / 5.0.0） */
 export class PreferencesKV implements KeyValueStore {

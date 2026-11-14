@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 单页外壳（pages/Index）
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 单页外壳（pages/Index）
  *
  * 结构：
  * - Tabs（今日 / 图鉴 / 圈子 / 我的）作为底部外壳；
@@ -15,13 +15,13 @@ import { common } from '@kit.AbilityKit';
 import { getStore, initStore, registerPlaces, setNearbyPlaces } from '../core/store';
 import { PreferencesKV } from '../components/PreferencesKV';
 import { HarmonyHttpClient, readBundledMapKeys } from '../components/HttpClient';
-import { BwAccountPanel } from '../components/AccountPanel';
-import { BwDataSourcePanel } from '../components/DataSourcePanel';
-import { BwSeekPanel } from '../components/SeekPanel';
+import { WaAccountPanel } from '../components/AccountPanel';
+import { WaDataSourcePanel } from '../components/DataSourcePanel';
+import { WaSeekPanel } from '../components/SeekPanel';
 import { BurySurprisePanel } from '../components/BurySurprisePanel';
 import { DataSourceStatus } from '../core/contract';
-import { BWColor, BWFont, BWSize } from '../theme/Theme';
-import { BwBoxArt } from '../components/BoxArt';
+import { WAColor, WAFont, WASize } from '../theme/Theme';
+import { WaBoxArt } from '../components/BoxArt';
 import { AchievementsPanel } from '../components/AchievementsPanel';
 import { KeyValueStore, RoutePolyline } from '../core/contract';
 import { QuestFlowDeps, planRoute } from '../core/flow';
@@ -30,7 +30,7 @@ import { getCurrentLocationOnce, requestLocationPermission } from '../components
 import { applySyncedPayload, buildSyncPayload } from '../components/StoreBridge';
 import { readAccountConfig } from '../core/account';
 import { MAPKEYS_CACHE_KEY, loadMapKeys, mapKeysSourceText } from '../core/mapkeys';
-import { bwToast } from '../components/Async';
+import { waToast } from '../components/Async';
 import { BuriedSurprise, GeoPoint, Place } from '../core/types';
 import { HomeView } from '../views/HomeView';
 import { CardsView } from '../views/CardsView';
@@ -254,7 +254,7 @@ struct Index {
       (): string | undefined => this.bundledKeys,
       this.adminBase, Date.now()
     );
-    bwToast(mapKeysSourceText(keys.source));
+    waToast(mapKeysSourceText(keys.source));
     this.refresh();
   }
 
@@ -278,7 +278,7 @@ struct Index {
       found = undefined;
     }
     if (found === undefined) {
-      bwToast('这个惊喜已经不在了');
+      waToast('这个惊喜已经不在了');
       this.refresh();
       return;
     }
@@ -371,18 +371,18 @@ struct Index {
       target = undefined;
     }
     if (target === undefined) {
-      bwToast('这个地点已经不在了');
+      waToast('这个地点已经不在了');
       this.refresh();
       return;
     }
     if (origin === undefined) {
-      bwToast('需要先定位才能出发');
+      waToast('需要先定位才能出发');
       this.refresh();
       return;
     }
     const started = getStore().startQuestWithPlace(target, origin);
     if (started === undefined) {
-      bwToast('这个地点信息不完整，换个试试');
+      waToast('这个地点信息不完整，换个试试');
       this.refresh();
       return;
     }
@@ -433,14 +433,14 @@ struct Index {
   tabBuilder(title: string, glyph: string, index: number) {
     Column({ space: 2 }) {
       SymbolGlyph($r('sys.symbol.' + glyph))
-        .fontSize(BWSize.iconSize)
-        .fontColor([this.tab === index ? BWColor.amber : BWColor.ink3])
+        .fontSize(WASize.iconSize)
+        .fontColor([this.tab === index ? WAColor.amber : WAColor.ink3])
         .renderingStrategy(SymbolRenderingStrategy.SINGLE)
 
       Text(title)
-        .fontSize(BWFont.micro)
+        .fontSize(WAFont.micro)
         .fontWeight(this.tab === index ? FontWeight.Medium : FontWeight.Regular)
-        .fontColor(this.tab === index ? BWColor.amber : BWColor.ink3)
+        .fontColor(this.tab === index ? WAColor.amber : WAColor.ink3)
     }
     .width('100%')
     .height(56)
@@ -535,11 +535,11 @@ struct Index {
       .tabBar(this.tabBuilder('我的', 'person', TAB_PROFILE))
     }
     .barHeight(56)
-    .barBackgroundColor(BWColor.paper)
+    .barBackgroundColor(WAColor.paper)
     .barMode(BarMode.Fixed)
     .scrollable(false)
     .animationDuration(0)
-    .divider({ strokeWidth: 1, color: BWColor.line })
+    .divider({ strokeWidth: 1, color: WAColor.line })
     .onChange((index: number) => {
       this.tab = index;
       this.refresh();
@@ -558,16 +558,16 @@ struct Index {
   @Builder
   loadingView() {
     Column({ space: 18 }) {
-      BwBoxArt({ artSize: 104 })
+      WaBoxArt({ artSize: 104 })
 
       Text('正在准备今晚的盲盒…')
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink3)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(BWColor.cream)
+    .backgroundColor(WAColor.cream)
   }
 
   @Builder
@@ -575,20 +575,20 @@ struct Index {
     Column({ space: 12 }) {
       SymbolGlyph($r('sys.symbol.exclamationmark_triangle'))
         .fontSize(32)
-        .fontColor([BWColor.gold])
+        .fontColor([WAColor.gold])
         .renderingStrategy(SymbolRenderingStrategy.SINGLE)
         .fontSize(32)
       Text(this.initError)
-        .fontSize(BWFont.bodySm)
-        .fontColor(BWColor.ink2)
+        .fontSize(WAFont.bodySm)
+        .fontColor(WAColor.ink2)
         .textAlign(TextAlign.Center)
       Button('重试')
         .type(ButtonType.Capsule)
         .height(40)
         .padding({ left: 22, right: 22 })
-        .fontSize(BWFont.caption)
-        .fontColor(BWColor.ink)
-        .backgroundColor(BWColor.amber)
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink)
+        .backgroundColor(WAColor.amber)
         .onClick(() => {
           this.bootstrap();
         })
@@ -596,8 +596,8 @@ struct Index {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-    .padding(BWSize.pagePadding)
-    .backgroundColor(BWColor.cream)
+    .padding(WASize.pagePadding)
+    .backgroundColor(WAColor.cream)
   }
 
   build() {
@@ -605,7 +605,7 @@ struct Index {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor(BWColor.cream)
+        .backgroundColor(WAColor.cream)
 
       if (this.initError.length > 0) {
         this.errorView()
@@ -638,7 +638,7 @@ struct Index {
       }
 
       if (this.ready && this.activeOverlay === OVERLAY_SEEK) {
-        BwSeekPanel({
+        WaSeekPanel({
           surpriseID: this.seekSurpriseID,
           clues: this.seekClues,
           authorEmoji: this.seekAuthorEmoji,
@@ -656,7 +656,7 @@ struct Index {
       }
 
       if (this.ready && this.activeOverlay === OVERLAY_DATASOURCE) {
-        BwDataSourcePanel({
+        WaDataSourcePanel({
           status: this.dataSourceStatus(),
           curatedCount: this.curatedCount,
           onBack: () => {
@@ -687,7 +687,7 @@ struct Index {
       }
 
       if (this.ready && this.activeOverlay === OVERLAY_ACCOUNT) {
-        BwAccountPanel({
+        WaAccountPanel({
           revision: this.revision,
           kv: this.kv,
           http: this.http,

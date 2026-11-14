@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 图鉴「附近惊喜」的隐晦提示
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 图鉴「附近惊喜」的隐晦提示
  *
  * 对齐 Web v46 的 `distanceBucket` / `HINT_ATMOSPHERE` / `nearbySurpriseHints`
  * 与 iOS `CardsView.nearbyHintsSection`。三端文案必须逐字一致。

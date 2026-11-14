@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 struct WatchHintsView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
     private var session: QuestSession? { store.session }
     private var place: Place? { store.reveal?.place ?? store.currentPlace }
@@ -20,7 +20,7 @@ struct WatchHintsView: View {
         VStack(alignment: .leading, spacing: 5) {
             Text("线索 · \(unlocked)/\(totalHints)")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(BWTheme.amber)
+                .foregroundStyle(WATheme.amber)
                 .accessibilityAddTraits(.isHeader)
 
             ScrollView {
@@ -55,7 +55,7 @@ struct WatchHintsView: View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: isUnlocked ? "checkmark.circle.fill" : "lock.fill")
                 .font(.system(size: isUnlocked ? 10 : 9, weight: .semibold))
-                .foregroundStyle(isUnlocked ? BWTheme.teal : Color.white.opacity(0.35))
+                .foregroundStyle(isUnlocked ? WATheme.teal : Color.white.opacity(0.35))
                 .padding(.top, 1)
 
             Text(text)

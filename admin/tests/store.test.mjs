@@ -10,7 +10,7 @@ import { SCHEMA_VERSION } from '../server/db.mjs';
 const tempDirs = [];
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-store-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-store-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -44,8 +44,8 @@ test('SQLite：新建 / 读取 / 列表 / 更新 / 删除 + 落库 + 表结构',
   const dir = makeTempDir();
   const store = makeStore(dir);
   assert.equal(store.count(), 0);
-  assert.ok(fs.existsSync(store.dbPath), 'blindwalk.db 应存在');
-  assert.equal(store.dbPath, path.join(dir, 'blindwalk.db'));
+  assert.ok(fs.existsSync(store.dbPath), 'walkaholic.db 应存在');
+  assert.equal(store.dbPath, path.join(dir, 'walkaholic.db'));
 
   const tables = store.db.prepare(
     "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
@@ -188,7 +188,7 @@ test('迁移：pois.json → SQLite，条数一致，原文件改名 .migrated-<
   assert.equal(store.migration.count, 2);
   assert.equal(store.get('poi-aaaaaa').name, '上海音乐厅');
   assert.equal(store.get('poi-bbbbbb').status, 'draft');
-  assert.ok(fs.existsSync(path.join(dir, 'blindwalk.db')));
+  assert.ok(fs.existsSync(path.join(dir, 'walkaholic.db')));
 
   const migratedFiles = fs.readdirSync(dir).filter((name) => name.startsWith('pois.json.migrated-'));
   assert.equal(migratedFiles.length, 1, '原 pois.json 应改名为 .migrated-<ts>');

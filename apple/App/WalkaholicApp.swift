@@ -3,15 +3,15 @@ import SwiftUI
 // MARK: - App 入口
 
 @main
-struct BlindWalkApp: App {
+struct WalkaholicApp: App {
 
     /// 正式版默认走真实路径（从 UserDefaults 读回 Profile）；
-    /// 只有带 `BW_PREVIEW` 的截图/走查模式才预置演示数据。
+    /// 只有带 `WA_PREVIEW` 的截图/走查模式才预置演示数据。
     private static var usesDemoData: Bool {
-        !(ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? "").isEmpty
+        !(ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? "").isEmpty
     }
 
-    @State private var store: BlindWalkStore = BlindWalkApp.makeStore()
+    @State private var store: WalkaholicStore = WalkaholicApp.makeStore()
 
     var body: some Scene {
         WindowGroup {
@@ -21,11 +21,11 @@ struct BlindWalkApp: App {
     }
 
     /// 真实的 init 路径保留在这里：不依赖任何演示数据。
-    private static func makeStore() -> BlindWalkStore {
+    private static func makeStore() -> WalkaholicStore {
         if usesDemoData {
-            let store = BlindWalkStore.demo()
-            // 仅用于截图/演示：`SIMCTL_CHILD_BW_PREVIEW=reveal` 启动即到达并开盒
-            let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+            let store = WalkaholicStore.demo()
+            // 仅用于截图/演示：`SIMCTL_CHILD_WA_PREVIEW=reveal` 启动即到达并开盒
+            let preview = ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? ""
             if preview == "reveal" {
                 _ = store.arriveNow()
                 store.beginReveal()
@@ -35,7 +35,7 @@ struct BlindWalkApp: App {
                 store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
                 _ = store.startQuest()
             }
-            // 三端对齐自检：真实地点 + 迷雾路径（`BW_PREVIEW=parity`）
+            // 三端对齐自检：真实地点 + 迷雾路径（`WA_PREVIEW=parity`）
             if preview == "parity" {
                 let origin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
                 let target = GeoPoint(latitude: 31.2330, longitude: 121.4710) // 人民公园（真实 POI，路线适合展示迷雾）
@@ -94,7 +94,7 @@ struct BlindWalkApp: App {
         }
         let persistence = UserDefaultsProfileStore()
         let profile = persistence.loadProfile() ?? Profile()
-        return BlindWalkStore(profile: profile, persistence: persistence)
+        return WalkaholicStore(profile: profile, persistence: persistence)
     }
 }
 
@@ -112,7 +112,7 @@ enum AppTab: Hashable {
 // 旅程与揭晓用 fullScreenCover 全屏承载，盖住 Tab。
 
 struct RootView: View {
-    let store: BlindWalkStore
+    let store: WalkaholicStore
 
     @State private var selectedTab: AppTab = .home
     @State private var isSetupPresented = false
@@ -123,12 +123,12 @@ struct RootView: View {
     @State private var watchSync = WatchSyncService()
     @Environment(\.scenePhase) private var scenePhase
 
-    /// 仅用于截图/演示：SIMCTL_CHILD_BW_PREVIEW=journey|reveal|cards|social|profile
+    /// 仅用于截图/演示：SIMCTL_CHILD_WA_PREVIEW=journey|reveal|cards|social|profile
     private let previewScreen: String
 
-    init(store: BlindWalkStore) {
+    init(store: WalkaholicStore) {
         self.store = store
-        let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        let preview = ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? ""
         self.previewScreen = preview
         let tab: AppTab
         switch preview {
@@ -143,8 +143,8 @@ struct RootView: View {
 
     var body: some View {
         coreTabs
-            .tint(BWTheme.amberDeep)
-            .toolbarBackground(BWTheme.paper, for: .tabBar)
+            .tint(WATheme.amberDeep)
+            .toolbarBackground(WATheme.paper, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
             .sheet(isPresented: $isSetupPresented) { setupSheet }
             .fullScreenCover(isPresented: $isJourneyPresented) { journeyCover }
@@ -195,7 +195,7 @@ struct RootView: View {
             onStart: {
                 // 先关 sheet，稍等 dismiss 动画结束再全屏推入旅程
                 isSetupPresented = false
-                bwAfter(0.45) { isJourneyPresented = true }
+                waAfter(0.45) { isJourneyPresented = true }
             },
             onCancel: { isSetupPresented = false }
         )

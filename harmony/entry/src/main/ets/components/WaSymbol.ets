@@ -1,19 +1,19 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 单色极简图标
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 单色极简图标
  *
  * 严格按鸿蒙官方规范：
  *   - 使用系统 SymbolGlyph + sys.symbol.* 内置符号
  *   - 渲染策略固定为单色（monochrome），只用一种颜色
  *   - 标准尺寸 24vp，小号 20vp
  *
- * 用法：BwIcon({ name: 'house' })、BwIcon({ name: 'chevron_left', size: 20 })
+ * 用法：WaIcon({ name: 'house' })、WaIcon({ name: 'chevron_left', size: 20 })
  * 找不到系统符号时降级为空（不破坏布局）。
  */
 
-import { BWColor, BWSize } from '../theme/Theme';
+import { WAColor, WASize } from '../theme/Theme';
 
 /** 业务语义 → 系统符号名（全部经编译验证存在） */
-export class BwSymbols {
+export class WaSymbols {
   // 导航
   static readonly home: string = 'house';
   static readonly homeFill: string = 'house_fill';
@@ -79,14 +79,14 @@ export class BwSymbols {
 
 /**
  * 单色系统图标
- * name 传 BwSymbols 里的短名（如 'house'）或完整符号名
+ * name 传 WaSymbols 里的短名（如 'house'）或完整符号名
  */
 @Component
-export struct BwIcon {
+export struct WaIcon {
   /** 系统符号名，例如 house / chevron_left */
   @Prop name: string = 'house';
-  @Prop iconSize: number = BWSize.iconSize;
-  @Prop color: string = BWColor.icon;
+  @Prop iconSize: number = WASize.iconSize;
+  @Prop color: string = WAColor.icon;
   @Prop weight: number = 1;
   onTap: () => void = () => {
   };
@@ -102,11 +102,11 @@ export struct BwIcon {
 }
 
 /** 可点击的单色图标按钮（44vp 触达区 + 圆形底） */@Component
-export struct BwIconButton {
+export struct WaIconButton {
   @Prop name: string = 'chevron_left';
-  @Prop iconSize: number = BWSize.iconSize;
-  @Prop color: string = BWColor.icon;
-  @Prop boxSize: number = BWSize.touchTarget;
+  @Prop iconSize: number = WASize.iconSize;
+  @Prop color: string = WAColor.icon;
+  @Prop boxSize: number = WASize.touchTarget;
   @Prop filled: boolean = false;
   @Prop dark: boolean = false;
   onTap: () => void = () => {
@@ -122,7 +122,7 @@ export struct BwIconButton {
     .width(this.boxSize)
     .height(this.boxSize)
     .backgroundColor(this.filled
-      ? (this.dark ? BWColor.stageClose : BWColor.paper2)
+      ? (this.dark ? WAColor.stageClose : WAColor.paper2)
       : Color.Transparent)
     .borderRadius(this.boxSize / 2)
     .onClick(() => {
@@ -133,11 +133,11 @@ export struct BwIconButton {
 
 /** 图标 + 文字的横向条目（官方列表项风格） */
 @Component
-export struct BwIconLabel {
+export struct WaIconLabel {
   @Prop name: string = 'info_circle';
   @Prop label: string = '';
-  @Prop iconSize: number = BWSize.iconSizeSm;
-  @Prop color: string = BWColor.ink2;
+  @Prop iconSize: number = WASize.iconSizeSm;
+  @Prop color: string = WAColor.ink2;
   @Prop textSize: number = 14;
 
   build() {

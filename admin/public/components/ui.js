@@ -1,6 +1,6 @@
-/* 盲走 · 兴趣点后台 — 共享 UI 工具（零依赖）
+/* 步迷 · 兴趣点后台 — 共享 UI 工具（零依赖）
  * 提供：转义 / 图标 / 设计 token 映射 / toast / 弹层 / 二次确认 / 忙碌态 / 空状态插画
- * 暴露在 window.BWUI，供 admin.js 使用。
+ * 暴露在 window.WAUI，供 admin.js 使用。
  */
 (function () {
   'use strict';
@@ -312,7 +312,7 @@
       '</svg>';
   }
 
-  window.BWUI = {
+  window.WAUI = {
     icon: icon,
     escapeHtml: escapeHtml,
     debounce: debounce,

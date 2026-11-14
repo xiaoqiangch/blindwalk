@@ -9,17 +9,17 @@ import UIKit
 //
 // 定位策略（真实 GPS 优先，演示兜底）：
 // 1. 进入即启动 `LiveLocationService`，首次进入会弹定位授权；
-// 2. 每次定位回调 → 算「到目的地的距离 + 方位角」→ 写进 `BlindWalkStore.updateLocation`，
+// 2. 每次定位回调 → 算「到目的地的距离 + 方位角」→ 写进 `WalkaholicStore.updateLocation`，
 //    由 Shared 层推进线索解锁 / 到达判定（≤30m 自动开盒）；
 // 3. 如果当前会话没有真实目的地（演示数据 / 抽盒时没拿到定位），拿到第一个定位点后
 //    用「当前位置 + 剩余距离 + 固定方向」补一个真实目的地，保证真实 GPS 也能走；
 // 4. 权限被拒 / 长时间拿不到定位 / 用户主动选择 → 切演示模式（+50m），绝不黑屏假死。
 // 5. 箭头：在真实定位 + 拿到 heading 时按「相对手机朝向」旋转（bearing - heading），
-//    这样「↑」永远表示往前直走，符合盲走用户的实际使用方式。
+//    这样「↑」永远表示往前直走，符合步迷用户的实际使用方式。
 
 struct JourneyView: View {
 
-    let store: BlindWalkStore
+    let store: WalkaholicStore
     var onClose: () -> Void
     var onCollected: (CollectResult) -> Void
 
@@ -31,7 +31,7 @@ struct JourneyView: View {
     @State private var demoService = SimulatedLocationService()
     /// 真实定位服务，首次 onAppear 才创建（避免 View 反复初始化时重复建 CLLocationManager）
     @State private var liveService: LiveLocationService?
-    @AppStorage("bw.mapFollowsHeading") private var mapFollowsHeading = true
+    @AppStorage("wa.mapFollowsHeading") private var mapFollowsHeading = true
 
     /// 当前定位模式
     @State private var locationMode: JourneyLocationMode = .waiting
@@ -70,7 +70,7 @@ struct JourneyView: View {
 
     var body: some View {
         ZStack {
-            BWPaperBackground()
+            WAPaperBackground()
 
             if let session = store.session, let place = store.currentPlace {
                 content(session: session, place: place)
@@ -124,18 +124,18 @@ struct JourneyView: View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 topBar(session: session)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 6)
                     .padding(.bottom, 8)
 
                 locationStatusRow
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.bottom, 10)
 
                 // 整页可滚动：地图 + 距离 + 线索一起滚，按钮固定在底部。
                 // 宽屏（折叠屏展开态）改为左右分栏：左地图 / 右「距离 + 线索」。
                 ScrollView(showsIndicators: false) {
-                    if BWTheme.isWide(geo.size.width) {
+                    if WATheme.isWide(geo.size.width) {
                         HStack(alignment: .top, spacing: 22) {
                             mapSection(session: session)
                                 .frame(height: max(260, mapHeight(for: geo.size.height)))
@@ -149,10 +149,10 @@ struct JourneyView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(.horizontal, BWTheme.pagePadding)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 6)
                         .padding(.bottom, 16)
-                        .frame(maxWidth: BWTheme.contentMaxWidth, alignment: .leading)
+                        .frame(maxWidth: WATheme.contentMaxWidth, alignment: .leading)
                         .frame(maxWidth: .infinity)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
@@ -169,7 +169,7 @@ struct JourneyView: View {
 
                                 clueSection(session: session, place: place)
                             }
-                            .padding(.horizontal, BWTheme.pagePadding)
+                            .padding(.horizontal, WATheme.pagePadding)
                             .padding(.top, 12)
                             .padding(.bottom, 16)
                         }
@@ -177,20 +177,20 @@ struct JourneyView: View {
                 }
 
                 actionBar
-                    .frame(maxWidth: BWTheme.contentMaxWidth)
-                    .padding(.horizontal, BWTheme.pagePadding)
+                    .frame(maxWidth: WATheme.contentMaxWidth)
+                    .padding(.horizontal, WATheme.pagePadding)
                     .padding(.top, 8)
                     .padding(.bottom, 10)
                     .background(
                         // 顶部 18pt 渐隐：滚动内容被按钮区遮住时自然淡出，而不是硬切一刀
                         VStack(spacing: 0) {
                             LinearGradient(
-                                colors: [BWTheme.cream.opacity(0), BWTheme.cream],
+                                colors: [WATheme.cream.opacity(0), WATheme.cream],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                             .frame(height: 18)
-                            Rectangle().fill(BWTheme.cream)
+                            Rectangle().fill(WATheme.cream)
                         }
                         .ignoresSafeArea(edges: .bottom)
                     )
@@ -206,13 +206,13 @@ struct JourneyView: View {
                 Text("盲盒进行中")
                     .font(.system(size: 12, weight: .semibold))
                     .tracking(1.2)
-                    .foregroundStyle(BWTheme.amberDeep)
+                    .foregroundStyle(WATheme.amberDeep)
 
                 TimelineView(.periodic(from: Date(), by: 1)) { context in
-                    Text(BWFormat.clock(seconds: elapsedSeconds(at: context.date, session: session)))
-                        .font(BWTheme.body(15))
+                    Text(WAFormat.clock(seconds: elapsedSeconds(at: context.date, session: session)))
+                        .font(WATheme.body(15))
                         .monospacedDigit()
-                        .foregroundStyle(BWTheme.ink)
+                        .foregroundStyle(WATheme.ink)
                 }
             }
 
@@ -223,18 +223,18 @@ struct JourneyView: View {
                     Image(systemName: isPaused ? "play.fill" : "pause.fill")
                         .font(.system(size: 12, weight: .semibold))
                     Text(isPaused ? "继续" : "暂停")
-                        .font(BWTheme.caption(11))
+                        .font(WATheme.caption(11))
                 }
-                .foregroundStyle(BWTheme.ink2)
+                .foregroundStyle(WATheme.ink2)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(BWTheme.paper2)
+                .background(WATheme.paper2)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
             }
-            .buttonStyle(BWPressEffectStyle())
+            .buttonStyle(WAPressEffectStyle())
 
-            BWIconButton(systemName: "xmark", action: onClose)
+            WAIconButton(systemName: "xmark", action: onClose)
         }
     }
 
@@ -247,16 +247,16 @@ struct JourneyView: View {
                     .fill(locationStatusColor)
                     .frame(width: 6, height: 6)
                 Text(locationStatusText)
-                    .font(BWTheme.caption(11))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(WATheme.caption(11))
+                    .foregroundStyle(WATheme.ink2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(BWTheme.paper)
+            .background(WATheme.paper)
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+            .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
 
             // 来源标签：真实地标 / 编辑精选 / 演示（只标来源，不泄露地点信息）
             HStack(spacing: 4) {
@@ -277,20 +277,20 @@ struct JourneyView: View {
 
             if authorization.isBlocked && locationMode == .demo {
                 Button("去设置", action: openSettings)
-                    .font(BWTheme.caption(11))
-                    .foregroundStyle(BWTheme.amberDeep)
+                    .font(WATheme.caption(11))
+                    .foregroundStyle(WATheme.amberDeep)
             } else if locationMode == .demo, liveService != nil, choseDemo || fixTimedOut {
                 Button(fixTimedOut ? "重试定位" : "用实时定位继续", action: retryLocating)
-                    .font(BWTheme.caption(11))
-                    .foregroundStyle(BWTheme.amberDeep)
+                    .font(WATheme.caption(11))
+                    .foregroundStyle(WATheme.amberDeep)
             } else if locationMode == .tracking {
                 Text("GPS")
                     .font(.system(size: 11, weight: .bold))
                     .tracking(0.8)
-                    .foregroundStyle(BWTheme.teal)
+                    .foregroundStyle(WATheme.teal)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(BWTheme.teal.opacity(0.10))
+                    .background(WATheme.teal.opacity(0.10))
                     .clipShape(Capsule())
             }
         }
@@ -298,9 +298,9 @@ struct JourneyView: View {
 
     private var locationStatusColor: Color {
         switch locationMode {
-        case .tracking: return BWTheme.teal
-        case .waiting: return BWTheme.amber
-        case .demo: return authorization.isBlocked ? BWTheme.ember : BWTheme.ink3
+        case .tracking: return WATheme.teal
+        case .waiting: return WATheme.amber
+        case .demo: return authorization.isBlocked ? WATheme.ember : WATheme.ink3
         }
     }
 
@@ -341,9 +341,9 @@ struct JourneyView: View {
 
     private var questSourceTint: Color {
         switch store.currentPlace?.source ?? "catalog" {
-        case "curated": return BWTheme.amberDeep
-        case "catalog": return BWTheme.ink3
-        default: return BWTheme.teal
+        case "curated": return WATheme.amberDeep
+        case "catalog": return WATheme.ink3
+        default: return WATheme.teal
         }
     }
 
@@ -358,20 +358,20 @@ struct JourneyView: View {
             }
             Text("终点仍然保密。到了才知道是哪里。")
                 .font(.system(size: 12))
-                .foregroundStyle(BWTheme.cream.opacity(0.68))
+                .foregroundStyle(WATheme.cream.opacity(0.68))
         }
-        .foregroundStyle(BWTheme.cream)
+        .foregroundStyle(WATheme.cream)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(BWTheme.ink.opacity(0.90))
+                .fill(WATheme.ink.opacity(0.90))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(BWTheme.amber.opacity(0.38), lineWidth: 1)
+                .stroke(WATheme.amber.opacity(0.38), lineWidth: 1)
         )
-        .shadow(color: BWTheme.ink.opacity(0.22), radius: 18, x: 0, y: 10)
+        .shadow(color: WATheme.ink.opacity(0.22), radius: 18, x: 0, y: 10)
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.top, 96)
         .transition(.opacity)
@@ -415,7 +415,7 @@ struct JourneyView: View {
             let fetched = await RouteService.shared.walkingRoute(from: here, to: target)
             guard routeTarget == target else { return }
             route = fetched
-            if ProcessInfo.processInfo.environment["BW_DEBUG_POI"] == "1" {
+            if ProcessInfo.processInfo.environment["WA_DEBUG_POI"] == "1" {
                 if let fetched {
                     let first = fetched.points.first ?? here
                     let last = fetched.points.last ?? target
@@ -436,12 +436,12 @@ struct JourneyView: View {
                 .font(.system(size: 12, weight: .medium))
                 .italic()
         }
-        .foregroundStyle(BWTheme.ink2)
+        .foregroundStyle(WATheme.ink2)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(BWTheme.cream.opacity(0.88))
+        .background(WATheme.cream.opacity(0.88))
         .clipShape(Capsule())
-        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -452,13 +452,13 @@ struct JourneyView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(session.remainingMeters)")
-                    .font(BWTheme.display(30))
+                    .font(WATheme.display(30))
                     .monospacedDigit()
-                    .foregroundStyle(BWTheme.ink)
+                    .foregroundStyle(WATheme.ink)
 
                 Text("米")
-                    .font(BWTheme.title(18))
-                    .foregroundStyle(BWTheme.ink2)
+                    .font(WATheme.title(18))
+                    .foregroundStyle(WATheme.ink2)
 
                 Spacer(minLength: 8)
 
@@ -468,20 +468,20 @@ struct JourneyView: View {
             }
 
             Text(session.compassCopy)
-                .font(BWTheme.body(14))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WATheme.body(14))
+                .foregroundStyle(WATheme.ink2)
 
             if locationMode == .tracking {
                 Text("箭头按你手机朝向校准，跟着它走")
-                    .font(BWTheme.caption(10))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WATheme.caption(10))
+                    .foregroundStyle(WATheme.ink3)
             }
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(BWTheme.line)
+                    Capsule().fill(WATheme.line)
                     Capsule()
-                        .fill(BWTheme.amber)
+                        .fill(WATheme.amber)
                         .frame(width: max(0, geo.size.width * CGFloat(session.progress)))
                 }
             }
@@ -489,8 +489,8 @@ struct JourneyView: View {
             .padding(.top, 4)
 
             Text("已走 \(session.totalMeters - session.remainingMeters) 米 · 共 \(session.totalMeters) 米")
-                .font(BWTheme.caption(10))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WATheme.caption(10))
+                .foregroundStyle(WATheme.ink3)
         }
     }
 
@@ -508,8 +508,8 @@ struct JourneyView: View {
     private func directionArrowView(session: QuestSession) -> some View {
         Text(directionArrow(session: session))
             .font(.system(size: 34, weight: .semibold))
-            .foregroundStyle(BWTheme.amberDeep)
-            .animation(reduceMotion ? nil : BWAnimation.quick, value: directionArrow(session: session))
+            .foregroundStyle(WATheme.amberDeep)
+            .animation(reduceMotion ? nil : WAAnimation.quick, value: directionArrow(session: session))
             .accessibilityLabel(directionAccessibilityLabel(session: session))
     }
 
@@ -542,51 +542,51 @@ struct JourneyView: View {
             HStack(spacing: 6) {
                 Image(systemName: "location.slash")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BWTheme.ember)
+                    .foregroundStyle(WATheme.ember)
                 Text("开启定位权限才能真实散步")
-                    .font(BWTheme.title(14))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WATheme.title(14))
+                    .foregroundStyle(WATheme.ink)
             }
 
-            Text("系统设置 → 步谜 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
-                .font(BWTheme.caption(12))
-                .foregroundStyle(BWTheme.ink2)
+            Text("系统设置 → 步迷 → 位置 → 选「使用 App 期间」。开启后回来，这里会自动切回真实定位。")
+                .font(WATheme.caption(12))
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 10) {
                 Button(action: openSettings) {
                     Text("去设置")
-                        .font(BWTheme.caption(12))
-                        .foregroundStyle(BWTheme.paper)
+                        .font(WATheme.caption(12))
+                        .foregroundStyle(WATheme.paper)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(BWTheme.amberDeep)
+                        .background(WATheme.amberDeep)
                         .clipShape(Capsule())
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
 
                 Button(action: switchToDemo) {
                     Text("用演示模式继续")
-                        .font(BWTheme.caption(12))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WATheme.caption(12))
+                        .foregroundStyle(WATheme.ink2)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(BWTheme.paper2)
+                        .background(WATheme.paper2)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
 
                 Spacer(minLength: 0)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BWTheme.paper)
+        .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(BWTheme.ember.opacity(0.3), lineWidth: 1)
+                .stroke(WATheme.ember.opacity(0.3), lineWidth: 1)
         )
     }
 
@@ -596,17 +596,17 @@ struct JourneyView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("线索")
-                    .font(BWTheme.title(17))
-                    .foregroundStyle(BWTheme.ink)
+                    .font(WATheme.title(17))
+                    .foregroundStyle(WATheme.ink)
                 Text("\(min(session.unlockedHintCount, 3))/3")
-                    .font(BWTheme.caption(12))
-                    .foregroundStyle(BWTheme.ink3)
+                    .font(WATheme.caption(12))
+                    .foregroundStyle(WATheme.ink3)
                 Spacer(minLength: 0)
             }
 
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(BWTheme.line)
+                    .fill(WATheme.line)
                     .frame(width: 1)
                     .padding(.leading, 12)
                     .padding(.vertical, 20)
@@ -631,39 +631,39 @@ struct JourneyView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Text("✅").font(.system(size: 14))
                     Text(hint)
-                        .font(BWTheme.body(14))
-                        .foregroundStyle(BWTheme.ink)
+                        .font(WATheme.body(14))
+                        .foregroundStyle(WATheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BWTheme.paper)
+                .background(WATheme.paper)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(BWTheme.line, lineWidth: 1)
+                        .stroke(WATheme.line, lineWidth: 1)
                 )
-                .shadow(color: BWTheme.ink.opacity(0.06), radius: 10, x: 0, y: 6)
+                .shadow(color: WATheme.ink.opacity(0.06), radius: 10, x: 0, y: 6)
             } else {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(BWTheme.ink3)
+                        .foregroundStyle(WATheme.ink3)
                     Text(lockedCopy(index: index, session: session))
-                        .font(BWTheme.caption(13))
-                        .foregroundStyle(BWTheme.ink3)
+                        .font(WATheme.caption(13))
+                        .foregroundStyle(WATheme.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BWTheme.paper2.opacity(0.55))
+                .background(WATheme.paper2.opacity(0.55))
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .strokeBorder(
-                            BWTheme.line,
+                            WATheme.line,
                             style: StrokeStyle(lineWidth: 1.2, dash: [5, 5])
                         )
                 )
@@ -674,17 +674,17 @@ struct JourneyView: View {
     private func clueIndicator(index: Int, unlocked: Bool) -> some View {
         ZStack {
             Circle()
-                .fill(unlocked ? BWTheme.teal.opacity(0.16) : BWTheme.paper2)
+                .fill(unlocked ? WATheme.teal.opacity(0.16) : WATheme.paper2)
             Circle()
-                .stroke(unlocked ? BWTheme.teal.opacity(0.4) : BWTheme.line, lineWidth: 1)
+                .stroke(unlocked ? WATheme.teal.opacity(0.4) : WATheme.line, lineWidth: 1)
             if unlocked {
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(BWTheme.teal)
+                    .foregroundStyle(WATheme.teal)
             } else {
                 Text("\(index + 1)")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(BWTheme.ink3)
+                    .foregroundStyle(WATheme.ink3)
             }
         }
         .frame(width: 26, height: 26)
@@ -698,7 +698,7 @@ struct JourneyView: View {
         }
         let threshold = QuestSession.hintThresholds[index]
         let gap = max(0, session.remainingMeters - threshold)
-        return "再走 \(gap) 米，解锁第\(BWFormat.chineseIndex(index))条线索"
+        return "再走 \(gap) 米，解锁第\(WAFormat.chineseIndex(index))条线索"
     }
 
     // MARK: 底部操作
@@ -708,7 +708,7 @@ struct JourneyView: View {
             switch locationMode {
             case .tracking:
                 // 真实定位在跑：主按钮只剩「我到了」，避免「模拟步行」误导
-                BWPrimaryButton(
+                WAPrimaryButton(
                     title: "我到了",
                     icon: "flag.checkered",
                     action: arriveNow
@@ -718,8 +718,8 @@ struct JourneyView: View {
 
                 Button(action: switchToDemo) {
                     Text("位置没动？改用演示模式")
-                        .font(BWTheme.caption(12))
-                        .foregroundStyle(BWTheme.ink3)
+                        .font(WATheme.caption(12))
+                        .foregroundStyle(WATheme.ink3)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                 }
@@ -727,7 +727,7 @@ struct JourneyView: View {
 
             case .waiting:
                 // 还在等第一个定位点：先别让用户按「模拟步行」，给出明确等待态
-                BWPrimaryButton(
+                WAPrimaryButton(
                     title: "正在获取定位…",
                     icon: "location",
                     action: retryLocating
@@ -737,18 +737,18 @@ struct JourneyView: View {
 
                 Button(action: switchToDemo) {
                     Text("先用演示模式继续")
-                        .font(BWTheme.caption(12))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WATheme.caption(12))
+                        .foregroundStyle(WATheme.ink2)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(BWTheme.paper2)
+                        .background(WATheme.paper2)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
 
             case .demo:
-                BWPrimaryButton(
+                WAPrimaryButton(
                     title: "模拟步行 +50m",
                     icon: "figure.walk",
                     caption: "演示",
@@ -759,15 +759,15 @@ struct JourneyView: View {
 
                 Button(action: arriveNow) {
                     Text("我到了")
-                        .font(BWTheme.title(14))
-                        .foregroundStyle(BWTheme.ink2)
+                        .font(WATheme.title(14))
+                        .foregroundStyle(WATheme.ink2)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
-                        .background(BWTheme.paper2)
+                        .background(WATheme.paper2)
                         .clipShape(Capsule())
-                        .overlay(Capsule().stroke(BWTheme.line, lineWidth: 1))
+                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
                 }
-                .buttonStyle(BWPressEffectStyle())
+                .buttonStyle(WAPressEffectStyle())
             }
         }
     }
@@ -776,15 +776,15 @@ struct JourneyView: View {
 
     private var arrivalOverlay: some View {
         ZStack {
-            BWTheme.ink.opacity(0.94).ignoresSafeArea()
+            WATheme.ink.opacity(0.94).ignoresSafeArea()
 
             VStack(spacing: 14) {
                 Text("到了")
-                    .font(BWTheme.display(46))
-                    .foregroundStyle(BWTheme.paper)
+                    .font(WATheme.display(46))
+                    .foregroundStyle(WATheme.paper)
                 Text("这个地点，只为你亮一次。")
-                    .font(BWTheme.body(14))
-                    .foregroundStyle(BWTheme.paper.opacity(0.7))
+                    .font(WATheme.body(14))
+                    .foregroundStyle(WATheme.paper.opacity(0.7))
             }
             .transition(.opacity)
         }
@@ -796,17 +796,17 @@ struct JourneyView: View {
         VStack(spacing: 16) {
             Image(systemName: "shippingbox")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(BWTheme.ink3)
+                .foregroundStyle(WATheme.ink3)
 
             Text("现在没有正在走的盲盒。")
-                .font(BWTheme.body(15))
-                .foregroundStyle(BWTheme.ink2)
+                .font(WATheme.body(15))
+                .foregroundStyle(WATheme.ink2)
 
             Text("回到今日，开一个吧。")
-                .font(BWTheme.caption(12))
-                .foregroundStyle(BWTheme.ink3)
+                .font(WATheme.caption(12))
+                .foregroundStyle(WATheme.ink3)
 
-            BWSecondaryButton(title: "关闭", action: onClose)
+            WASecondaryButton(title: "关闭", action: onClose)
                 .frame(maxWidth: 160)
         }
         .padding(28)
@@ -837,7 +837,7 @@ struct JourneyView: View {
             // 暂停时停止真实定位，避免「暂停了但距离还在变」
             liveService?.stop()
         }
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     // MARK: 演示步行
@@ -848,7 +848,7 @@ struct JourneyView: View {
         let events = store.advance(byMeters: 50)
         demoService.simulateAdvance(meters: 50)
         demoService.sync(remaining: store.session?.remainingMeters)
-        BWHaptics.light()
+        WAHaptics.light()
         handle(events: events)
     }
 
@@ -863,7 +863,7 @@ struct JourneyView: View {
         liveService?.stop()
         demoService.sync(remaining: store.session?.remainingMeters)
         refreshMode()
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     // MARK: 真实定位
@@ -877,18 +877,18 @@ struct JourneyView: View {
 
         // 抽到后台策展点 → 明确提示「编辑精选」（不剧透地点）
         if store.currentPlace?.source == "curated" {
-            withAnimation(BWAnimation.regular) {
+            withAnimation(WAAnimation.regular) {
                 curatedNoticeVisible = true
             }
-            bwAfter(2.6) {
-                withAnimation(BWAnimation.regular) {
+            waAfter(2.6) {
+                withAnimation(WAAnimation.regular) {
                     curatedNoticeVisible = false
                 }
             }
         }
 
-        // 截图/预览：不弹定位授权，用模拟起点做一条真实路线（`BW_PREVIEW=parity`）
-        let preview = ProcessInfo.processInfo.environment["BW_PREVIEW"] ?? ""
+        // 截图/预览：不弹定位授权，用模拟起点做一条真实路线（`WA_PREVIEW=parity`）
+        let preview = ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? ""
         if preview == "parity", let origin = store.lastKnownOrigin {
             lastReading = LocationReading(
                 origin: origin,
@@ -905,13 +905,13 @@ struct JourneyView: View {
         applyAutoArrivePreviewIfNeeded()
     }
 
-    /// 截图自检：`BW_AUTO_ARRIVE=<毫秒>` 时进入旅程后自动触发到达（便于 headless 截揭晓页）。
+    /// 截图自检：`WA_AUTO_ARRIVE=<毫秒>` 时进入旅程后自动触发到达（便于 headless 截揭晓页）。
     private func applyAutoArrivePreviewIfNeeded() {
         let env = ProcessInfo.processInfo.environment
-        guard let raw = env["BW_AUTO_ARRIVE"], let milliseconds = Double(raw), milliseconds >= 0 else {
+        guard let raw = env["WA_AUTO_ARRIVE"], let milliseconds = Double(raw), milliseconds >= 0 else {
             return
         }
-        bwAfter(milliseconds / 1000.0) {
+        waAfter(milliseconds / 1000.0) {
             guard store.session?.phase == .walking else { return }
             let events = store.arriveNow()
             handle(events: events)
@@ -926,7 +926,7 @@ struct JourneyView: View {
     /// 同时把定位点缓存进 store，下一次抽盒 `startQuest()` 就能直接生成真实目的地。
     /// - 有真实目的地 / 还没有目的地的会话（抽盒时没拿到定位）→ 真实模式
     /// - 截图/演示走查默认留在演示模式，避免系统权限弹窗打断截图；
-    ///   `BW_PREVIEW=live` 或 `BW_LIVE_GPS=1` 时走真实定位（模拟器自检用）。
+    ///   `WA_PREVIEW=live` 或 `WA_LIVE_GPS=1` 时走真实定位（模拟器自检用）。
     private func startLiveLocationIfPossible() {
         guard let session = store.session, session.phase == .walking else {
             refreshMode()
@@ -934,8 +934,8 @@ struct JourneyView: View {
         }
 
         let env = ProcessInfo.processInfo.environment
-        let preview = env["BW_PREVIEW"] ?? ""
-        let forceLive = env["BW_LIVE_GPS"] == "1" || preview == "live"
+        let preview = env["WA_PREVIEW"] ?? ""
+        let forceLive = env["WA_LIVE_GPS"] == "1" || preview == "live"
         if preview == "parity" {
             // 截图走查：用合成定位走真实路线，不弹系统授权
             refreshMode()
@@ -960,7 +960,7 @@ struct JourneyView: View {
         refreshMode()
 
         // 8 秒还没拿到第一个定位点 → 给出可用的演示兜底（不自动切，先提示）
-        bwAfter(8) {
+        waAfter(8) {
             guard lastReading == nil,
                   !choseDemo,
                   !authorization.isBlocked,
@@ -1121,13 +1121,13 @@ struct JourneyView: View {
         authorization = service.authorizationStatus
         service.start()
         refreshMode()
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     private func openSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         openURL(url)
-        BWHaptics.light()
+        WAHaptics.light()
     }
 
     // MARK: 事件
@@ -1137,7 +1137,7 @@ struct JourneyView: View {
             switch event {
             case .hintUnlocked(let index):
                 _ = index
-                BWHaptics.medium()
+                WAHaptics.medium()
             case .revealed:
                 break
             case .arrived:
@@ -1153,7 +1153,7 @@ struct JourneyView: View {
     private func triggerArrival() {
         guard !hasTriggeredArrival else { return }
         hasTriggeredArrival = true
-        BWHaptics.success()
+        WAHaptics.success()
 
         // 已到达：停掉真实定位省电（揭晓页不需要）
         liveService?.stop()
@@ -1163,15 +1163,15 @@ struct JourneyView: View {
             return
         }
 
-        withAnimation(BWAnimation.regular) {
+        withAnimation(WAAnimation.regular) {
             arrivalFlash = true
         }
 
-        bwAfter(0.9) {
-            withAnimation(BWAnimation.quick) {
+        waAfter(0.9) {
+            withAnimation(WAAnimation.quick) {
                 arrivalFlash = false
             }
-            bwAfter(0.15) {
+            waAfter(0.15) {
                 showReveal = true
             }
         }
@@ -1179,7 +1179,7 @@ struct JourneyView: View {
 
     private func handleCollected(_ result: CollectResult) {
         showReveal = false
-        bwAfter(0.5) {
+        waAfter(0.5) {
             onCollected(result)
         }
     }

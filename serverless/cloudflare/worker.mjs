@@ -1,4 +1,4 @@
-// 步谜 · 账号服务（Cloudflare Worker + D1）
+// 步迷 · 账号服务（Cloudflare Worker + D1）
 // 部署后 PWA 用 https://<worker>.workers.dev 作为账号地址即可，无需自己的服务器。
 
 import {
@@ -32,7 +32,7 @@ async function readJson(request) {
 }
 
 async function userFromSession(env, request) {
-  const token = parseCookies(request.headers.get('cookie')).bw_uid;
+  const token = parseCookies(request.headers.get('cookie')).wa_uid;
   if (!token) return null;
   const row = await env.DB.prepare(
     'SELECT u.id, u.username, u.created_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?'

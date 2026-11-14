@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS 逻辑层 — 地址 → 坐标（GPS 不可用时的出口）
+ * 步迷 Walkaholic · HarmonyOS 逻辑层 — 地址 → 坐标（GPS 不可用时的出口）
  *
  * 移植自 prototype/web/geo.js 的 geocodeAddress：
  *   1. 输入直接是坐标（31.23,121.47）→ 直接用
@@ -21,7 +21,7 @@ export const NOMINATIM_ENDPOINT: string = 'https://nominatim.openstreetmap.org/s
  * 原生 HTTP 客户端不会自动加，必须显式设置。
  */
 export const GEO_HEADERS: Record<string, string> = {
-  'User-Agent': 'BlindWalk-Harmony/0.7 (https://github.com/xiaoqiangch/blindwalk)',
+  'User-Agent': 'Walkaholic-Harmony/0.7 (https://github.com/xiaoqiangch/walkaholic)',
   'Accept': 'application/json'
 };
 export const PHOTON_ENDPOINT: string = 'https://photon.komoot.io/api/';

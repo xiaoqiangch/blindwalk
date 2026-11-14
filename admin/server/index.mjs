@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · 兴趣点管理后台 — HTTP 服务入口
+ * 步迷 Walkaholic · 兴趣点管理后台 — HTTP 服务入口
  *
  * 零依赖：node:http / node:fs / node:path / node:url
  * 启动：node admin/server/index.mjs（默认 http://127.0.0.1:8802/admin）
@@ -217,10 +217,10 @@ function loadDotEnv(filePath) {
  * 创建 HTTP 服务（测试可注入 store / ingest / 路径）。
  */
 export function createServer(options = {}) {
-  const dataDir = options.dataDir || process.env.BW_DATA_DIR || DEFAULT_DATA_DIR;
+  const dataDir = options.dataDir || process.env.WA_DATA_DIR || DEFAULT_DATA_DIR;
   const store = options.store || new PoiStore({ dataDir });
-  const publicDir = options.publicDir || process.env.BW_PUBLIC_DIR || DEFAULT_PUBLIC_DIR;
-  const exportPath = options.exportPath || process.env.BW_EXPORT_PATH || DEFAULT_EXPORT_PATH;
+  const publicDir = options.publicDir || process.env.WA_PUBLIC_DIR || DEFAULT_PUBLIC_DIR;
+  const exportPath = options.exportPath || process.env.WA_EXPORT_PATH || DEFAULT_EXPORT_PATH;
   const backupPath = path.join(dataDir, 'pois.export.json');
   const ingestCandidates = options.ingestCandidates || fetchCandidates;
   const fetchImpl = options.fetchImpl;
@@ -578,7 +578,7 @@ export function startServer(options = {}) {
   const server = createServer(options);
   server.listen(port, host, () => {
     const status = llmStatus(process.env);
-    console.log('盲走 BlindWalk · 兴趣点管理后台 v2（SQLite + 登录）');
+    console.log('步迷 Walkaholic · 兴趣点管理后台 v2（SQLite + 登录）');
     console.log('  管理界面  http://' + host + ':' + port + '/admin');
     console.log('  登录入口  http://' + host + ':' + port + '/admin/login');
     console.log('  数据目录  ' + server.paths.dataDir);
@@ -592,13 +592,13 @@ export function startServer(options = {}) {
     if (auth.passwordSource === 'generated') {
       console.log('  ' + auth.getExitWarning());
     } else if (auth.passwordSource === 'env') {
-      console.log('  登录密码  来自环境变量 BW_ADMIN_PASSWORD');
+      console.log('  登录密码  来自环境变量 WA_ADMIN_PASSWORD');
     } else {
       console.log('  登录密码  来自 admin/data/admin.secret.json（未打印）');
     }
     console.log(
       '  AI 模式   ' + status.mode + '（' + (status.mode === 'offline'
-        ? '未配置 BW_LLM_API_KEY，使用离线规则'
+        ? '未配置 WA_LLM_API_KEY，使用离线规则'
         : status.model + ' @ ' + status.baseUrl) + '）'
     );
   });

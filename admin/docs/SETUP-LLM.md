@@ -5,7 +5,7 @@
 
 ## 支持的服务
 
-| 服务 | BW_LLM_BASE_URL | BW_LLM_MODEL |
+| 服务 | WA_LLM_BASE_URL | WA_LLM_MODEL |
 |---|---|---|
 | **DeepSeek**（推荐，便宜） | `https://api.deepseek.com/v1` | `deepseek-chat` |
 | **火山方舟 Ark** | `https://ark.cn-beijing.volces.com/api/v3` | 你的推理接入点 ID（`ep-xxxx`）或模型名 |
@@ -18,9 +18,9 @@
 
 ### 方式 1：环境变量（临时）
 ```bash
-BW_LLM_API_KEY=sk-xxxx \
-BW_LLM_BASE_URL=https://api.deepseek.com/v1 \
-BW_LLM_MODEL=deepseek-chat \
+WA_LLM_API_KEY=sk-xxxx \
+WA_LLM_BASE_URL=https://api.deepseek.com/v1 \
+WA_LLM_MODEL=deepseek-chat \
 bash scripts/start-admin.sh
 ```
 
@@ -49,7 +49,7 @@ curl -s http://127.0.0.1:8802/api/llm/status
 | 能力 | 离线模式行为 |
 |---|---|
 | 收集整理 | 用内置类别模板生成 why / task / hints（和 App 内置文案同源），足够冷启动 |
-| 编辑处理 | 不支持，返回 400 并提示「需要配置 BW_LLM_API_KEY」 |
+| 编辑处理 | 不支持，返回 400 并提示「需要配置 WA_LLM_API_KEY」 |
 | 分析判断 | 用规则打分（有图 +1、公园/河岸 +1、hints 含地名 -3、缺 why/task -1）给出 verdict |
 
 界面右上角会明确写「离线规则模式（未配置大模型）」，AI 编辑按钮置灰。

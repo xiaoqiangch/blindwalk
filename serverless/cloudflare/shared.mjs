@@ -74,11 +74,11 @@ export function parseCookies(header) {
 
 export function sessionCookie(token, maxAgeSeconds) {
   // 跨站（github.io → workers.dev）必须 SameSite=None + Secure
-  return `bw_uid=${token}; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=${maxAgeSeconds}`;
+  return `wa_uid=${token}; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
 export function clearCookie() {
-  return 'bw_uid=; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0';
+  return 'wa_uid=; HttpOnly; SameSite=None; Secure; Path=/; Max-Age=0';
 }
 
 export function corsHeaders(origin, allowed) {

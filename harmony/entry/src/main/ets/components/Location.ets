@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS ArkUI — 首页定位 / 权限小工具
+ * 步迷 Walkaholic · HarmonyOS ArkUI — 首页定位 / 权限小工具
  *
  * 位置权限申请走 abilityAccessCtrl.requestPermissionsFromUser（module.json5 已声明
  * ohos.permission.LOCATION / APPROXIMATELY_LOCATION）。

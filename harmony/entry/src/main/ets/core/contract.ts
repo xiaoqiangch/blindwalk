@@ -1,5 +1,5 @@
 /**
- * 盲走 BlindWalk · HarmonyOS — UI 层与逻辑层的调用契约
+ * 步迷 Walkaholic · HarmonyOS — UI 层与逻辑层的调用契约
  *
  * UI 只允许通过 `getStore()` 拿到唯一的 store 实例，并调用这里声明的方法。
  * 实现文件：core/store.ts（由逻辑层负责）。本文件只有类型声明，不含实现。
@@ -8,7 +8,7 @@
  *   UI 交互 → store 方法 → 修改内部状态 → 返回结果
  *   UI 在页面 onPageShow / 交互后调用 store.snapshot() 读取最新状态重绘
  *
- * 这样和苹果版 `@Observable BlindWalkStore` 的语义一致：
+ * 这样和苹果版 `@Observable WalkaholicStore` 的语义一致：
  * 每次操作后 UI 重新读 snapshot，不做双向绑定。
  */
 
@@ -131,7 +131,7 @@ export interface KeyValueStore {
   delete(key: string): void;
 }
 
-export interface BlindWalkStoreApi {
+export interface WalkaholicStoreApi {
   // ---------- 抽盒 ----------
   /** 选择心情 */
   setMood(mood: Mood): void;
@@ -236,7 +236,7 @@ export interface SurpriseCompareResult {
 
 /** 逻辑层单例入口（实现见 core/store.ts） */
 export interface StoreProvider {
-  getStore(): BlindWalkStoreApi;
+  getStore(): WalkaholicStoreApi;
 }
 
 export { QuestPhase, Rarity };

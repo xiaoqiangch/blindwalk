@@ -1,11 +1,11 @@
-/* 盲走 BlindWalk · Service Worker
+/* 步迷 Walkaholic · Service Worker
  * 目标：装到 iPhone 主屏后，即使在户外没网（或 Mac 关了服务）也能打开继续走。
  * 策略：
  *   - 应用外壳（html/css/js/manifest/图标）：install 时预缓存，stale-while-revalidate
  *   - 其他同源请求：网络优先，失败回落缓存
  *   - 跨域请求一律不碰
  */
-const VERSION = "blindwalk-v48-upload"
+const VERSION = "walkaholic-v48-upload"
 const SHELL = [
   "./",
   "./index.html",

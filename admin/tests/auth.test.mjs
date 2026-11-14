@@ -19,7 +19,7 @@ const tempDirs = [];
 const runningServers = [];
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-auth-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-auth-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -35,7 +35,7 @@ async function startServer(options = {}) {
     publicDir,
     exportPath: path.join(root, 'pois.export.json'),
     llmEnv: {},
-    authEnv: options.authEnv || { BW_ADMIN_PASSWORD: 'test1234' },
+    authEnv: options.authEnv || { WA_ADMIN_PASSWORD: 'test1234' },
     ingestCandidates: async () => ({ source: 'wikipedia', items: [] })
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -81,8 +81,8 @@ test('auth 单元：scrypt 哈希 / 校验 / 随机密码 / Cookie 解析', () =
   assert.equal(password.length, 12);
   assert.match(password, /^[A-Za-z0-9]+$/);
 
-  const cookies = parseCookies('bw_session=abc123; other=1');
-  assert.equal(cookies.bw_session, 'abc123');
+  const cookies = parseCookies('wa_session=abc123; other=1');
+  assert.equal(cookies.wa_session, 'abc123');
   const header = sessionCookie('tok', 43200);
   assert.ok(header.includes('HttpOnly'));
   assert.ok(header.includes('SameSite=Strict'));
@@ -113,7 +113,7 @@ test('auth：登录失败 5 次 → 第 6 次 429', async () => {
 test('auth：登录成功 / 登出 / 会话重启后仍有效', async () => {
   const root = makeTempDir();
   const dataDir = path.join(root, 'data');
-  const first = await startServer({ dataDir, authEnv: { BW_ADMIN_PASSWORD: 'test1234' } });
+  const first = await startServer({ dataDir, authEnv: { WA_ADMIN_PASSWORD: 'test1234' } });
 
   const login = await postJson(first.base, '/api/auth/login', { password: 'test1234' });
   assert.equal(login.status, 200);
@@ -132,7 +132,7 @@ test('auth：登录成功 / 登出 / 会话重启后仍有效', async () => {
   // 重启：sessions.json 持久化，Cookie 仍然有效
   await stopServer(first.server);
   assert.ok(fs.existsSync(path.join(dataDir, 'sessions.json')), 'sessions.json 应持久化');
-  const second = await startServer({ dataDir, authEnv: { BW_ADMIN_PASSWORD: 'test1234' } });
+  const second = await startServer({ dataDir, authEnv: { WA_ADMIN_PASSWORD: 'test1234' } });
   const afterRestart = await fetch(second.base + '/api/pois?limit=2', { headers: { Cookie: cookie } });
   assert.equal(afterRestart.status, 200, '重启后会话应仍有效');
   const afterStatus = await fetch(second.base + '/api/auth/status', { headers: { Cookie: cookie } });
@@ -148,7 +148,7 @@ test('auth：登录成功 / 登出 / 会话重启后仍有效', async () => {
   await stopServer(second.server);
 });
 
-test('auth：无 BW_ADMIN_PASSWORD 时生成随机密码，只存 scrypt 哈希、权限 0600', async () => {
+test('auth：无 WA_ADMIN_PASSWORD 时生成随机密码，只存 scrypt 哈希、权限 0600', async () => {
   const root = makeTempDir();
   const dataDir = path.join(root, 'data');
   const { server, base } = await startServer({ dataDir, authEnv: {} });
@@ -210,7 +210,7 @@ test('auth：AuthManager 会话 token 生成/过期/删除', () => {
   let clock = 1000000;
   const auth = new AuthManager({
     dataDir: dir,
-    env: { BW_ADMIN_PASSWORD: 'test1234' },
+    env: { WA_ADMIN_PASSWORD: 'test1234' },
     now: () => clock
   });
   const request = {
@@ -219,7 +219,7 @@ test('auth：AuthManager 会话 token 生成/过期/删除', () => {
   };
   const token = auth.login('test1234', request);
   assert.match(token, /^[0-9a-f]{64}$/);
-  request.headers.cookie = 'bw_session=' + token;
+  request.headers.cookie = 'wa_session=' + token;
   assert.equal(auth.isAuthenticated(request), true);
 
   // 12 小时后过期
