@@ -17,9 +17,11 @@
 import { KeyValueStore } from './contract';
 import { HttpClient, MapKeys, SourceReport, emptyKeys } from './http';
 import { RoutePolyline } from './contract';
-import { GeoPoint, Mood, Place, WalkDuration } from './types';
+import { ExploreScope, GeoPoint, Mood, Place, WalkDuration } from './types';
+import { DayMoment } from './moment';
 import {
   CuratedPoi,
+  FindOptions,
   SearchOutcome,
   findRealPlace,
   parseCuratedPois
@@ -53,6 +55,12 @@ export interface QuestStartInput {
   duration: WalkDuration;
   /** 手动「扩大范围再找」时从最宽档开始 */
   startTier?: number;
+  /** 走路去 / 远程漫游（默认走路去） */
+  scope?: ExploreScope;
+  /** 已经探索过的地点 id（抽盒避开，与 iOS excluding 一致） */
+  excludedPlaceIDs?: string[];
+  /** 时段（不传按当前时刻；环境性盲盒） */
+  moment?: DayMoment;
 }
 
 /** 抽盒准备结果 */
@@ -136,17 +144,22 @@ export async function prepareQuest(
 
   // ③ 三档真实搜索（没有初始档位时从 0 开始）
   const startTier: number = input.startTier === undefined ? 0 : input.startTier;
+  const findOptions: FindOptions = {
+    scope: input.scope,
+    excludedPlaceIDs: input.excludedPlaceIDs,
+    moment: input.moment
+  };
   let outcome: SearchOutcome;
   if (startTier >= 1) {
     // 「扩大范围再找」：直接用最宽档重试一次
     outcome = await findRealPlace(
       deps.http, keyResult.keys, curated, input.origin,
-      input.mood, input.duration, random, 60
+      input.mood, input.duration, random, 60, findOptions
     );
   } else {
     outcome = await findRealPlace(
       deps.http, keyResult.keys, curated, input.origin,
-      input.mood, input.duration, random, 40
+      input.mood, input.duration, random, 40, findOptions
     );
   }
 

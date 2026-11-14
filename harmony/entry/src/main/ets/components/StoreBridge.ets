@@ -13,6 +13,8 @@ import { AppSnapshot } from '../core/contract';
 import {
   Achievement,
   Area,
+  BuriedSurprise,
+  ExploreScope,
   FeedPost,
   GeoPoint,
   Mood,
@@ -23,6 +25,7 @@ import {
   QuestSession,
   Rarity,
   ReactionKey,
+  SurpriseReceipt,
   WalkDuration
 } from '../core/types';
 import { getStore, getStoreInstance } from '../core/store';
@@ -46,12 +49,18 @@ export function emptySnapshot(): AppSnapshot {
     togetherCode: '',
     selectedMood: Mood.Drift,
     selectedDuration: WalkDuration.M30,
+    selectedScope: ExploreScope.Walk,
     feed: [],
     leaderboard: [],
     explorableSurprises: [],
     mySurprises: [],
+    foundSurprises: [],
     nearbyPlaces: [],
-    demoMode: true
+    demoMode: true,
+    receipts: [],
+    unreadReceiptCount: 0,
+    totalKm: 0,
+    boxesOpened: 0
   };
   return snapshot;
 }

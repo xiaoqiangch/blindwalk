@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import {
   Area,
   BuriedSurprise,
+  ExploreScope,
   FeedPost,
   GeoPoint,
   Mood,
@@ -31,6 +32,7 @@ import {
   QuestPhase,
   ReactionKey,
   Rarity,
+  SurpriseReceipt,
   WalkDuration
 } from '../entry/src/main/ets/core/types';
 import { WalkaholicStoreApi, BuryParams, DrawResult } from '../entry/src/main/ets/core/contract';
@@ -86,6 +88,32 @@ import {
 } from '../entry/src/main/ets/core/persistence';
 import { getStore, getStoreInstance, initStore, registerPlaces } from '../entry/src/main/ets/core/store';
 import {
+  DayMoment,
+  momentAtHour,
+  momentAffinity,
+  momentBoxTitle,
+  momentLine,
+  momentSymbol,
+  momentTitle
+} from '../entry/src/main/ets/core/moment';
+import {
+  MAX_TRACK_POINTS,
+  MIN_SPACING_METERS,
+  WalkTrackStore,
+  simplifyPoints,
+  trackOpacity
+} from '../entry/src/main/ets/core/track';
+import { RECEIPTS_KEY, SurpriseReceiptStore } from '../entry/src/main/ets/core/receipts';
+import {
+  claimSurprise,
+  fetchMySurpriseReceipts,
+  fetchNearbySurprises,
+  parseRemoteSurprise,
+  remotePhotoURL,
+  uploadCheckInPhoto,
+  uploadSurprise
+} from '../entry/src/main/ets/core/surpriseRemote';
+import {
   distance,
   offset,
   bearing,
@@ -114,6 +142,8 @@ import {
   durationMeters,
   isDullCandidate,
   pickCandidate,
+  roamRange,
+  roamSearchRadius,
   scoreWalkworthy,
   sortByDistance,
   tierParams,
@@ -152,6 +182,7 @@ import {
   normalizeBaseUrl,
   pushProfile,
   readAccountConfig,
+  readDeviceID,
   register,
   writeAccountConfig
 } from '../entry/src/main/ets/core/account';
@@ -3086,6 +3117,298 @@ test('常量：探寻页文案与 Web v46 一致', (): void => {
   assert.equal(LOCKED_CLUE_TEXT, '再走近一点…');
   assert.equal(SEEK_NO_LOCATION_TEXT, '拿不到定位，线索暂时解锁不了');
   assert.equal(seekLeadText(seekClueState(spoilerSurprise(), undefined, false)), SEEK_NO_LOCATION_TEXT);
+});
+
+// ============================================================
+// 新增（对齐 iOS 本轮）：时段 / 漫游 / 轨迹 / 回执 / 到达照片
+// ============================================================
+
+test('时段：小时 → 6 个档位、文案与图标对齐 iOS DayMoment', (): void => {
+  assert.equal(momentAtHour(5), DayMoment.Dawn);
+  assert.equal(momentAtHour(7), DayMoment.Dawn);
+  assert.equal(momentAtHour(8), DayMoment.Morning);
+  assert.equal(momentAtHour(11), DayMoment.Noon);
+  assert.equal(momentAtHour(14), DayMoment.Afternoon);
+  assert.equal(momentAtHour(17), DayMoment.Dusk);
+  assert.equal(momentAtHour(20), DayMoment.Night);
+  assert.equal(momentAtHour(3), DayMoment.Night);
+
+  assert.equal(momentTitle(DayMoment.Dusk), '黄昏');
+  assert.equal(momentBoxTitle(DayMoment.Dusk), '黄昏的盲盒');
+  assert.equal(momentLine(DayMoment.Dusk), '天要暗下来，往有水和有光的地方走。');
+  assert.equal(momentLine(DayMoment.Night), '夜里的城市只剩灯，去灯最好看的地方。');
+  assert.equal(momentSymbol(DayMoment.Night), 'moon_stars');
+});
+
+test('时段：权重偏置 黄昏偏水边 / 夜里避开公园（不硬排除）', (): void => {
+  assert.equal(momentAffinity(DayMoment.Dusk, 'river'), 1.45);
+  assert.equal(momentAffinity(DayMoment.Dusk, 'museum'), 0.45);
+  assert.equal(momentAffinity(DayMoment.Night, 'park'), 0.45);
+  assert.equal(momentAffinity(DayMoment.Night, 'viewpoint'), 1.45);
+  assert.equal(momentAffinity(DayMoment.Morning, 'temple'), 1);
+  // 时段偏好必须参与候选权重（否则「环境性盲盒」就是一句空话）
+  const park: PoiCandidate = {
+    id: 'p', name: '人民公园', latitude: 31.23, longitude: 121.47, category: 'park', source: 'osm'
+  };
+  const night: number = candidateWeight(park, Mood.Drift, 0, DayMoment.Night);
+  const dusk: number = candidateWeight(park, Mood.Drift, 0, DayMoment.Dusk);
+  assert.ok(night < dusk, '夜里的公园应比黄昏轻，实际 ' + String(night) + ' vs ' + String(dusk));
+});
+
+test('漫游：环带下限固定 10 公里，上限 45/55/65 逐档放宽', (): void => {
+  assert.equal(roamRange(0)[0], 10000);
+  assert.equal(roamRange(0)[1], 45000);
+  assert.equal(roamRange(1)[1], 55000);
+  assert.equal(roamRange(2)[1], 65000);
+  // 任何档位都不得低于 10 公里（否则就变成「能走过去却按开车流程」）
+  assert.equal(roamRange(9)[0], 10000);
+  assert.ok(roamSearchRadius(0) >= 12000);
+  assert.ok(roamSearchRadius(2) <= 50000);
+});
+
+test('漫游：会话 scope 落盘并可恢复；老存档按里程兜底', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  store.setScope(ExploreScope.Roam);
+  assert.equal(store.snapshot().selectedScope, ExploreScope.Roam);
+
+  const place: Place = {
+    id: 'real-roam-1', name: '远处的地标', area: Area.Near, category: '公园', emoji: '🌳',
+    rarity: Rarity.Rare, why: '', task: '', hints: [], mapPoint: { x: 0.5, y: 0.5 },
+    radiusMeters: 1200, coordinate: { latitude: 31.30, longitude: 121.60 }, source: 'osm'
+  };
+  const started = store.startQuestWithPlace(
+    place, { latitude: 31.2304, longitude: 121.4737 }, ExploreScope.Roam
+  );
+  assert.ok(started !== undefined);
+  assert.equal(store.snapshot().session?.scope, ExploreScope.Roam);
+
+  // 重启：session / selectedScope 都从存档恢复
+  await initStore(kv);
+  const rebooted = getStore();
+  assert.equal(rebooted.snapshot().session?.scope, ExploreScope.Roam);
+  assert.equal(rebooted.snapshot().selectedScope, ExploreScope.Roam);
+});
+
+test('轨迹：25 米内去抖、跨天必记、里程与格子统计', (): void => {
+  const kv: MemoryKV = new MemoryKV();
+  const track = new WalkTrackStore(kv);
+  const base: GeoPoint = { latitude: 31.2304, longitude: 121.4737 };
+  const day1: number = new Date(2026, 10, 10, 9, 0, 0).getTime();
+
+  assert.equal(track.append(base, day1), true);
+  // 10 米内同一天：不记（GPS 抖动不画毛线团）
+  assert.equal(track.append({ latitude: 31.23045, longitude: 121.4737 }, day1 + 1000), false);
+  // 40 米：记
+  assert.equal(track.append(offset(base, 40, 90), day1 + 2000), true);
+  // 跨天：即使很近也记（用来切分「这一天走过哪」）
+  assert.equal(track.append(offset(base, 5, 90), day1 + 86400000), true);
+
+  const stats = track.stats();
+  assert.equal(stats.walkedDayCount, 2);
+  // 40m + (40-5)m = 75m（GPS 抖动点没有计入）
+  assert.ok(stats.totalMeters > 70 && stats.totalMeters < 80, '实际 ' + String(stats.totalMeters));
+  assert.ok(stats.exploredCellCount >= 1);
+  assert.equal(track.days().length, 2);
+
+  // 落盘：重建后仍在
+  const reloaded = new WalkTrackStore(kv);
+  assert.equal(reloaded.allPoints().length, 3);
+  reloaded.clear();
+  assert.equal(reloaded.stats().isEmpty, true);
+});
+
+test('轨迹：抽稀保留首尾，亮度按新旧衰减到 0.22 下限', (): void => {
+  const points: GeoPoint[] = [];
+  for (let i = 0; i < 100; i += 1) {
+    points.push({ latitude: 31.23 + i * 0.0001, longitude: 121.47 });
+  }
+  const simplified: GeoPoint[] = simplifyPoints(points, 10);
+  assert.ok(simplified.length <= 11);
+  assert.equal(simplified[0].latitude, points[0].latitude);
+  assert.equal(simplified[simplified.length - 1].latitude, points[points.length - 1].latitude);
+  assert.equal(trackOpacity(0), 0.9);
+  assert.equal(trackOpacity(100), 0.22);
+});
+
+test('回执：合并保留本地已读、新条目才算 hasNew、标记已读后清零', (): void => {
+  const kv: MemoryKV = new MemoryKV();
+  const store = new SurpriseReceiptStore(kv);
+  const now: number = Date.now();
+  const first: SurpriseReceipt = {
+    id: 's1', areaLabel: '鼓楼 · 巷口', finderName: '小满', foundAt: now - 1000
+  };
+  const merged = store.merge([first]);
+  assert.equal(merged.hasNew, true);
+  assert.equal(store.unreadCount(), 1);
+  assert.equal(store.latestUnread()?.id, 's1');
+
+  // 同一条再来一次：不重复插、不算新
+  const again = store.merge([first]);
+  assert.equal(again.hasNew, false);
+  assert.equal(again.list.length, 1);
+
+  // 标记已读：红点熄灭
+  store.markAllRead(now);
+  assert.equal(store.unreadCount(), 0);
+
+  // 已有条目只更新寻者，不改已读状态
+  const updated: SurpriseReceipt = {
+    id: 's1', areaLabel: '鼓楼 · 巷口', finderName: '阿岛', foundAt: now
+  };
+  const after = store.merge([updated]);
+  assert.equal(after.list[0].finderName, '阿岛');
+  assert.equal(after.list[0].readAt, now);
+  assert.equal(store.unreadCount(), 0);
+
+  // 落盘
+  const reloaded = new SurpriseReceiptStore(kv);
+  assert.equal(reloaded.all().length, 1);
+});
+
+test('回执：Store 收到回执后把本机惊喜标成「被找到」，入口有未读数', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  const buriedValue: BuriedSurprise | undefined = store.burySurprise(buryParams());
+  if (buriedValue === undefined) throw new Error('埋惊喜失败');
+  const buried: BuriedSurprise = buriedValue;
+  const now: number = Date.now();
+  const isNew = store.applyReceipts([{
+    id: buried.id, areaLabel: '附近', finderName: '小满', foundAt: now
+  }]);
+  assert.equal(isNew, true);
+  const snapshot = store.snapshot();
+  assert.equal(snapshot.unreadReceiptCount, 1);
+  assert.equal(snapshot.receipts.length, 1);
+  const mine = snapshot.mySurprises.filter((item: BuriedSurprise): boolean => item.id === buried.id);
+  assert.equal(mine.length, 1);
+  assert.equal(mine[0].found, true);
+  assert.equal(mine[0].finderName, '小满');
+
+  store.markReceiptsRead(now);
+  assert.equal(store.snapshot().unreadReceiptCount, 0);
+});
+
+test('到达照片：挂到卡片上、可重拍覆盖、随存档与技术无关地读回', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  const place: Place = {
+    id: 'real-photo-1', name: '某处', area: Area.Near, category: '广场', emoji: '⛲️',
+    rarity: Rarity.Common, why: '', task: '', hints: [], mapPoint: { x: 0.5, y: 0.5 },
+    radiusMeters: 800, coordinate: { latitude: 31.231, longitude: 121.474 }, source: 'osm'
+  };
+  store.startQuestWithPlace(place, { latitude: 31.23, longitude: 121.47 });
+  store.arriveNow();
+  const collected = store.collectCurrentPlace();
+  assert.ok(collected !== undefined, '到达到后应能收录');
+
+  store.attachCardPhoto(place.id, '/sandbox/photo-1.jpg');
+  const firstPhoto = store.cardPhoto(place.id);
+  if (firstPhoto === undefined) throw new Error('照片没挂上');
+  assert.equal(firstPhoto.local, '/sandbox/photo-1.jpg');
+
+  // 重拍 + 上传：远端路径也写进卡片
+  store.attachCardPhoto(place.id, '/sandbox/photo-2.jpg', '/api/photos/' + place.id);
+  const secondPhoto = store.cardPhoto(place.id);
+  if (secondPhoto === undefined) throw new Error('照片没挂上');
+  assert.equal(secondPhoto.local, '/sandbox/photo-2.jpg');
+  assert.equal(secondPhoto.remote, '/api/photos/' + place.id);
+
+  // 重启后仍在
+  await initStore(kv);
+  const reloaded = getStore().cardPhoto(place.id);
+  if (reloaded === undefined) throw new Error('重启后照片丢了');
+  assert.equal(reloaded.remote, '/api/photos/' + place.id);
+});
+
+test('远端惊喜：只接受服务端给的字段（不含照片/正文），带设备标识与 Cookie', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  let seenHeader: Record<string, string> = {};
+  let seenUrl: string = '';
+  const client: HttpClient = {
+    request: async (request: HttpRequest): Promise<HttpResponse> => {
+      seenHeader = request.headers === undefined ? {} : request.headers;
+      seenUrl = request.url;
+      return {
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          items: [{
+            id: 'remote-1',
+            authorEmoji: '🐱',
+            areaLabel: '静安 · 街角',
+            clues: ['a', 'b', 'c'],
+            location: { lat: 31.232, lon: 121.474 },
+            radiusMeters: 60,
+            createdAt: 1763000000000,
+            photoData: 'data:image/jpeg;base64,xxx',
+            message: '不该出现在列表里'
+          }]
+        }),
+        headers: {}
+      };
+    }
+  };
+  const config: AccountConfig = { baseUrl: 'https://xqlounge.top', cookie: 'wa_uid=abc' };
+  const result = await fetchNearbySurprises(
+    client, config, kv, { latitude: 31.2304, longitude: 121.4737 }, 5000
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.surprises.length, 1);
+  const remote: BuriedSurprise = result.surprises[0];
+  assert.equal(remote.isRemote, true);
+  assert.equal(remote.photoUri, '');
+  assert.equal(remote.message, undefined, '列表接口不返回正文');
+  assert.equal(remote.hints.length, 3);
+  assert.ok(seenUrl.indexOf('/api/surprises?lat=') >= 0);
+  assert.equal(seenHeader['X-WA-Device'] !== undefined, true);
+  assert.equal(seenHeader['Cookie'], 'wa_uid=abc');
+
+  // 设备标识稳定（同一 KV 每次一样，且不含个人信息）
+  const device: string = readDeviceID(kv);
+  assert.equal(readDeviceID(kv), device);
+  assert.equal(device.length, 32);
+});
+
+test('回执接口：只把 status=found 转成回执，其余（waiting）忽略', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  const client: HttpClient = {
+    request: async (request: HttpRequest): Promise<HttpResponse> => {
+      return {
+        status: 200,
+        body: JSON.stringify({
+          ok: true,
+          items: [
+            { id: 'a', status: 'found', finderName: '小满', foundAt: 1763000000000, areaLabel: '鼓楼' },
+            { id: 'b', status: 'waiting', finderName: '', foundAt: 0, areaLabel: '鼓楼' }
+          ]
+        }),
+        headers: {}
+      };
+    }
+  };
+  const receipts = await fetchMySurpriseReceipts(client, { baseUrl: 'https://xqlounge.top' }, kv);
+  assert.equal(receipts.length, 1);
+  assert.equal(receipts[0].id, 'a');
+  assert.equal(receipts[0].finderName, '小满');
+});
+
+test('清除数据：reset 后卡片/成就/惊喜/回执/轨迹全部清空', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  store.burySurprise(buryParams());
+  const before = store.snapshot();
+  assert.ok(before.mySurprises.length > 0);
+  store.reset(Date.now());
+  const after = store.snapshot();
+  assert.equal(after.profile.cards.length, 0);
+  assert.equal(after.mySurprises.length, 0);
+  assert.equal(after.unreadReceiptCount, 0);
+  assert.equal(after.profile.xp, 0);
 });
 
 // ============================================================

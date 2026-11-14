@@ -640,6 +640,100 @@ function checkSurpriseSecrecy() {
 }
 
 // ============================================================
+// 11) 本轮对齐 iOS：时段 / 漫游 / 轨迹 / 回执 / 到达照片 / 我的惊喜
+// ============================================================
+
+/**
+ * 这些是「鸿蒙追平 iOS」的关键能力，任何一条被删掉都要能被静态检查拦住：
+ * 逻辑层在 core/ 里有真实实现，UI 层有入口，常量为三端同值。
+ */
+function checkIosParity() {
+  const moment = coreText('moment.ts');
+  if (moment.length === 0) {
+    fail('iOS 对齐', '缺少 core/moment.ts（环境性盲盒的时段）');
+  } else {
+    expectIn('iOS 对齐', 'core/moment.ts', moment, [
+      'export function momentBoxTitle',
+      'export function momentLine',
+      'export function momentAffinity',
+      '城市刚醒，去有晨雾和早摊的地方走走。',
+      '天要暗下来，往有水和有光的地方走。',
+      '夜里的城市只剩灯，去灯最好看的地方。'
+    ]);
+  }
+
+  const track = coreText('track.ts');
+  if (track.length === 0) {
+    fail('iOS 对齐', '缺少 core/track.ts（个人城市地图的数据层）');
+  } else {
+    expectIn('iOS 对齐', 'core/track.ts', track, [
+      'MIN_SPACING_METERS: number = 25',
+      'CELL_METERS: number = 200',
+      'MAX_TRACK_POINTS: number = 12000',
+      'simplifyPoints',
+      'trackOpacity'
+    ]);
+  }
+
+  const receipts = coreText('receipts.ts');
+  if (receipts.length === 0) {
+    fail('iOS 对齐', '缺少 core/receipts.ts（埋惊喜被找到的回执）');
+  } else {
+    expectIn('iOS 对齐', 'core/receipts.ts', receipts, [
+      'walkaholic.surprise.receipts.v1',
+      'merge(',
+      'markAllRead('
+    ]);
+  }
+
+  const remote = coreText('surpriseRemote.ts');
+  if (remote.length === 0) {
+    fail('iOS 对齐', '缺少 core/surpriseRemote.ts（惊喜跨用户共享 + 到达照片）');
+  } else {
+    expectIn('iOS 对齐', 'core/surpriseRemote.ts', remote, [
+      '/api/surprises/mine',
+      "'/api/surprises'",
+      '/api/photos',
+      'X-WA-Device',
+      'claimSurprise'
+    ]);
+  }
+
+  // UI 入口：我的城市 / 我的惊喜 / 到达实拍 / 漫游开车段
+  const profile = path.join(ETS_ROOT, 'views', 'ProfileView.ets');
+  const profileText = fs.existsSync(profile) ? fs.readFileSync(profile, 'utf8') : '';
+  if (!profileText.includes('onOpenCityMap') || !profileText.includes('onOpenMySurprises')) {
+    fail('iOS 对齐', 'ProfileView 缺少「个人城市地图」/「我的惊喜」入口');
+  }
+  const cityMap = path.join(ETS_ROOT, 'views', 'CityMapView.ets');
+  if (!fs.existsSync(cityMap)) {
+    fail('iOS 对齐', '缺少 views/CityMapView.ets（个人城市地图）');
+  }
+  const surprises = path.join(ETS_ROOT, 'components', 'SurprisesPanel.ets');
+  if (!fs.existsSync(surprises)) {
+    fail('iOS 对齐', '缺少 components/SurprisesPanel.ets（我的惊喜）');
+  }
+  const reveal = path.join(ETS_ROOT, 'views', 'RevealView.ets');
+  const revealText = fs.existsSync(reveal) ? fs.readFileSync(reveal, 'utf8') : '';
+  if (!revealText.includes('checkInPhotoSection') || !revealText.includes('uploadCheckInPhoto')) {
+    fail('iOS 对齐', 'RevealView 缺少到达实拍（拍一张 / 从相册选 / 上传账号）');
+  }
+  const journey = path.join(ETS_ROOT, 'views', 'JourneyView.ets');
+  const journeyText = fs.existsSync(journey) ? fs.readFileSync(journey, 'utf8') : '';
+  if (!journeyText.includes('driveSection') || !journeyText.includes('markParked')) {
+    fail('iOS 对齐', 'JourneyView 缺少远程漫游的开车段（开车段不给线索 + 已停车）');
+  }
+  const setup = path.join(ETS_ROOT, 'views', 'SetupSheet.ets');
+  const setupText = fs.existsSync(setup) ? fs.readFileSync(setup, 'utf8') : '';
+  if (!setupText.includes('ExploreScope.Roam') || !setupText.includes('momentSection')) {
+    fail('iOS 对齐', 'SetupSheet 缺少「怎么去：走路去 / 远程漫游」或时段卡');
+  }
+  if (setupText.includes('momentSection') && setupText.includes('scopeSection')) {
+    pass('iOS 对齐', '时段 / 漫游 / 轨迹 / 回执 / 到达照片 / 我的惊喜 入口齐全');
+  }
+}
+
+// ============================================================
 // 输出
 // ============================================================
 
@@ -653,7 +747,8 @@ const sections = [
   ['工程契约', checkStoreContract],
   ['功能对齐', checkParity],
   ['反虚构兜底', checkNoFakeFallback],
-  ['附近惊喜保密', checkSurpriseSecrecy]
+  ['附近惊喜保密', checkSurpriseSecrecy],
+  ['iOS 对齐', checkIosParity]
 ];
 
 console.log('═══ 步迷 Walkaholic · HarmonyOS ArkTS 静态自检 ═══');

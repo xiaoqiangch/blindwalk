@@ -14,7 +14,8 @@
  */
 
 import { AppSnapshot } from '../core/contract';
-import { Area, Place, PlaceCard, Rarity } from '../core/types';
+import { Area, GeoPoint, Place, PlaceCard, Rarity } from '../core/types';
+import { distance as distanceBetween } from '../core/geo';
 import {
   HINT_EMPTY_CTA,
   HINT_FOOTER,
@@ -278,7 +279,7 @@ export struct CardsView {
   @Builder
   header() {
     Row() {
-      Text('回忆册')
+      Text('图鉴')
         .fontSize(WAFont.hero)
         .fontWeight(FontWeight.Bold)
         .fontColor(WAColor.ink)
@@ -300,6 +301,132 @@ export struct CardsView {
       })
     }
     .width('100%')
+  }
+
+  /** 未解锁的地点（收藏进度卡用） */
+  private remainingPlaces(): Place[] {
+    const result: Place[] = [];
+    for (let i = 0; i < this.snapshot.places.length; i += 1) {
+      const place: Place = this.snapshot.places[i];
+      if (this.cardFor(place.id) === undefined) result.push(place);
+    }
+    return result;
+  }
+
+  /** 最近的未解锁地点（有定位才有） */
+  private nearestRemaining(): Place | undefined {
+    const remaining: Place[] = this.remainingPlaces();
+    const origin: GeoPoint | undefined = this.snapshot.lastKnownOrigin;
+    if (origin === undefined) return undefined;
+    let best: Place | undefined = undefined;
+    let bestMeters: number = -1;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const coordinate = remaining[i].coordinate;
+      if (coordinate === undefined) continue;
+      const meters: number = distanceBetween(origin, coordinate);
+      if (bestMeters < 0 || meters < bestMeters) {
+        bestMeters = meters;
+        best = remaining[i];
+      }
+    }
+    return best;
+  }
+
+  private distanceCopy(place: Place): string {
+    const origin: GeoPoint | undefined = this.snapshot.lastKnownOrigin;
+    if (origin === undefined || place.coordinate === undefined) return '位置未知';
+    const meters: number = Math.round(distanceBetween(origin, place.coordinate));
+    if (meters >= 1000) return (meters / 1000).toFixed(1) + ' 公里';
+    return String(meters) + ' 米';
+  }
+
+  /** 「只差一张」标题：把收集进度写成一句人话（与 iOS headlineForRemaining 一致） */
+  private almostThereHeadline(remaining: number): string {
+    if (remaining === 1) return '只差一张';
+    if (remaining <= 3) return '还差 ' + String(remaining) + ' 张就集齐';
+    return '这一带还有 ' + String(remaining) + ' 个没去过';
+  }
+
+  /**
+   * 收集进度卡：只差一张 / 还差 N 张，并给最近的未解锁地点一个「现在就走」。
+   * 未解锁的地点不显示地名（保密），只给距离。
+   */
+  @Builder
+  almostThereCard() {
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        Text(this.almostThereHeadline(this.remainingPlaces().length))
+          .fontSize(WAFont.caption)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(WAColor.ink)
+          .layoutWeight(1)
+        Text(String(this.snapshot.profile.cards.length) + '/' + String(this.snapshot.places.length))
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink2)
+      }
+      .width('100%')
+
+      Stack({ alignContent: Alignment.Start }) {
+        Row()
+          .width('100%')
+          .height(4)
+          .backgroundColor(WAColor.line)
+          .borderRadius(2)
+        Row()
+          .width(this.collectionProgressPercent() + '%')
+          .height(4)
+          .backgroundColor(WAColor.amber)
+          .borderRadius(2)
+      }
+      .width('100%')
+
+      if (this.remainingPlaces().length === 0) {
+        Text('这一带的真实地点都被你走过了。换个城市，或者去远处漫游一次。')
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink2)
+          .lineHeight(17)
+          .width('100%')
+      } else if (this.nearestRemaining() !== undefined) {
+        Row({ space: 6 }) {
+          SymbolGlyph($r('sys.symbol.figure_walk'))
+            .fontSize(WAFont.caption)
+            .fontColor([WAColor.amber])
+            .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          Text('最近的一张：' + this.distanceCopy(this.nearestRemaining() as Place) + ' · 现在就走')
+            .fontSize(WAFont.captionSm)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(WAColor.amber)
+            .layoutWeight(1)
+          Text('→')
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.amber)
+        }
+        .width('100%')
+        .onClick(() => {
+          const target: Place | undefined = this.nearestRemaining();
+          if (target !== undefined) this.onExplorePlace(target.id);
+        })
+      } else {
+        Text('开一个盲盒，路上遇到的都会收进来。')
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink2)
+          .layoutWeight(1)
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(14)
+    .backgroundColor(WAColor.amberSoft)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.amberBorder, radius: WASize.cardRadius })
+  }
+
+  private collectionProgressPercent(): number {
+    const total: number = this.snapshot.places.length;
+    if (total <= 0) return 0;
+    const collected: number = this.snapshot.profile.cards.length;
+    const value: number = Math.min(100, (collected / total) * 100);
+    return Math.max(3, value);
   }
 
   @Builder
@@ -606,7 +733,7 @@ export struct CardsView {
   }
 
   @Builder
-  lockedCell() {
+  lockedCell(place: Place) {
     Stack({ alignContent: Alignment.Center }) {
       Column()
         .width('100%')
@@ -625,9 +752,13 @@ export struct CardsView {
           .fontSize(26)
           .fontWeight(FontWeight.Bold)
           .fontColor('#B3A69C8C')
-        Text('未解锁')
+        // 未解锁：只给类别，不给地名（走过去才知道是哪）
+        Text('是个「' + place.category + '」')
           .fontSize(WAFont.microSm)
           .fontColor(WAColor.ink3)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .padding({ left: 6, right: 6 })
       }
     }
     .width('100%')
@@ -683,7 +814,7 @@ export struct CardsView {
       if (this.cardFor(place.id) !== undefined) {
         this.collectedCell(place, this.cardFor(place.id) as PlaceCard)
       } else {
-        this.lockedCell()
+        this.lockedCell(place)
       }
     }
     .width(this.cardWidth())
@@ -814,6 +945,11 @@ export struct CardsView {
       this.statsLine()
 
       Column() {
+        this.almostThereCard()
+      }
+      .margin({ top: 12 })
+
+      Column() {
         this.nearbyHintsSection()
       }
       .margin({ top: 12 })
@@ -878,6 +1014,12 @@ export struct CardsView {
                 this.statsLine()
               }
               .margin({ top: 8 })
+
+              // 收集进度：只差一张 / 还差 N 张（点击最近的一张直接出发）
+              Column() {
+                this.almostThereCard()
+              }
+              .margin({ top: 12 })
 
               // 附近的惊喜：隐晦提示（点一下开始探寻）
               Column() {

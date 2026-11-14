@@ -16,17 +16,25 @@
  * 权限被拒 / 超时 / 定位关闭 → 降级 store.setDemoMode(true)，并在 UI 明确标「演示」。
  */
 
-import { getStore } from '../core/store';
+import { common } from '@kit.AbilityKit';
+import { getStore, getStoreInstance } from '../core/store';
 import { AppSnapshot, RoutePolyline } from '../core/contract';
 import {
+  DRIVE_RESUME_METERS,
+  ExploreScope,
   GeoPoint,
   HINT_THRESHOLDS,
+  PARKING_RADIUS_METERS,
+  PARKING_TOLERANCE_METERS,
   Place,
   QuestEvent,
   QuestEventType,
   QuestPhase,
-  QuestSession
+  QuestSession,
+  isRoamJourney
 } from '../core/types';
+import { SeededGenerator } from '../core/engine';
+import { offset as offsetPoint } from '../core/geo';
 import {
   WaIconButton,
   WaMicroLabel,
@@ -81,10 +89,16 @@ export struct JourneyView {
   @State private fogCaption: string = '正在规划路径…';
   @State private fixLat: number = 0;
   @State private fixLon: number = 0;
+  /** 用户手动确认「已停车」：GPS 在停车场里经常漂几百米，不能只靠距离自动切换 */
+  @State private parkedOverride: boolean = false;
+  /** 还离很远就点「已停车」→ 先确认一次 */
+  @State private confirmParkedFar: boolean = false;
 
   private timerId: number = -1;
   private watcher: GeoWatcher | undefined = undefined;
   private compass: CompassWatcher | undefined = undefined;
+  /** 上次看到的会话 id（换了一趟旅程要清掉「已停车」标记） */
+  private lastSessionID: string = '';
   @State private heading: number = -1;
   @StorageLink('mapFollowsHeading') private mapFollowsHeading: boolean = true;
   @State private compassHeading: number = -1;
@@ -132,6 +146,14 @@ export struct JourneyView {
 
   private load(): void {
     this.snapshot = readSnapshot(this.snapshot);
+    // 换了另一趟旅程：手动停车标记不应该带过去（与 iOS onChange(of: session?.id) 一致）
+    const session: QuestSession | undefined = this.session();
+    const currentID: string = session === undefined ? '' : session.id;
+    if (this.lastSessionID.length > 0 && currentID !== this.lastSessionID) {
+      this.parkedOverride = false;
+      this.confirmParkedFar = false;
+    }
+    this.lastSessionID = currentID;
   }
 
   private session(): QuestSession | undefined {
@@ -237,6 +259,14 @@ export struct JourneyView {
     }
     const store = getStore();
     store.setLastKnownOrigin(point);
+    // 个人城市地图的轨迹：只在步行段记（开车段记进去，城市地图就成了行车记录）
+    if (!this.isDriveSegment()) {
+      try {
+        getStoreInstance().track().append(point, Date.now());
+      } catch (err) {
+        // 轨迹失败不影响导航
+      }
+    }
     const events: QuestEvent[] = store.updateGeoLocation(point);
     this.load();
     this.onChanged();
@@ -394,6 +424,234 @@ export struct JourneyView {
       return false;
     }
     return session.phase === QuestPhase.Arrived;
+  }
+
+  // ============================================================
+  // 远程漫游（开车段 / 步行段）
+  // ============================================================
+
+  /** 这一趟是不是「远程漫游」：优先看会话自己记的范围，旧会话按里程兜底 */
+  private isRoamQuest(): boolean {
+    const session: QuestSession | undefined = this.session();
+    if (session === undefined) return false;
+    if (session.scope === ExploreScope.Roam) return true;
+    return isRoamJourney(session.totalMeters);
+  }
+
+  /** 已进入停车圈（目的地 1 公里内）—— 从这里开始才算真正的步行探索 */
+  private inParkingZone(): boolean {
+    return this.remainingMeters() <= PARKING_RADIUS_METERS;
+  }
+
+  /**
+   * 漫游旅程当前处于「开车段」——开车段不给线索、不画迷雾路径。
+   * 判定顺序：进了停车圈 → 步行段；手动点过「已停车」→ 步行段，
+   * 但之后又把车开出去（超过 3.5 公里）→ 自动退回开车段。
+   */
+  private isDriveSegment(): boolean {
+    if (!this.isRoamQuest()) return false;
+    if (this.inParkingZone()) return false;
+    if (this.parkedOverride) return this.remainingMeters() > DRIVE_RESUME_METERS;
+    return true;
+  }
+
+  /** 允许手动标记「已停车」的距离上限：停车圈 1 公里 + 停车场误差 */
+  private canMarkParked(): boolean {
+    if (!this.isRoamQuest() || this.parkedOverride) return false;
+    return this.remainingMeters() <= PARKING_TOLERANCE_METERS;
+  }
+
+  /** 距离文案：漫游里 1 公里以上一律读「X.X 公里」 */
+  private distanceCopy(meters: number): string {
+    if (meters >= 1000) {
+      return (meters / 1000).toFixed(1) + ' 公里';
+    }
+    return String(Math.round(meters)) + ' 米';
+  }
+
+  /** 用户说「已停车」：只切换「段」，不动距离（不篡改 GPS，线索仍按真实距离解锁） */
+  private markParked(): void {
+    if (!this.canMarkParked()) {
+      this.confirmParkedFar = true;
+      return;
+    }
+    this.parkedOverride = true;
+    this.load();
+    this.onChanged();
+  }
+
+  private confirmParkedAnyway(): void {
+    this.parkedOverride = true;
+    this.confirmParkedFar = false;
+    this.load();
+    this.onChanged();
+  }
+
+  /** 开车段的导航点：目的地 1 公里、方向随机的落点（不泄露终点） */
+  private parkingPoint(): GeoPoint | undefined {
+    const session: QuestSession | undefined = this.session();
+    if (session === undefined || session.target === undefined) return undefined;
+    let seedText: number = 0;
+    for (let i = 0; i < session.id.length; i += 1) {
+      seedText = (seedText * 31 + session.id.charCodeAt(i)) % 2147483647;
+    }
+    const generator: SeededGenerator = new SeededGenerator(seedText);
+    const bearing: number = generator.nextInt(360);
+    return offsetPoint(session.target, PARKING_RADIUS_METERS * 0.9, bearing);
+  }
+
+  /** 开车段面板：只有「还有多远 / 怎么过去 / 到哪停车」，不给线索也不画路 */
+  @Builder
+  driveSection() {
+    Column({ space: 14 }) {
+      Row({ space: 8 }) {
+        SymbolGlyph($r('sys.symbol.car_fill'))
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.ink])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        Text('远程漫游 · 先开车过去')
+          .fontSize(WAFont.bodySm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(WAColor.ink)
+        Blank()
+        Text('目的地保密')
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
+      }
+      .width('100%')
+
+      Row({ space: 6 }) {
+        Text(this.distanceCopy(this.remainingMeters()))
+          .fontSize(38)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(WAColor.ink)
+        Text('到停车圈')
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink2)
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Bottom)
+
+      Text('开到目的地 1 公里内找个地方停车，剩下的路再走过去。不会告诉你终点具体在哪。')
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink2)
+        .lineHeight(19)
+        .width('100%')
+
+      if (!this.canMarkParked()) {
+        Text('还有 ' + this.distanceCopy(this.remainingMeters()) +
+          '，进到 2 公里内就能点「已停车」；GPS 飘了也可以手动确认。')
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink3)
+          .lineHeight(17)
+          .width('100%')
+      }
+
+      Row({ space: 10 }) {
+        Button() {
+          Text('导航到附近')
+            .fontSize(WAFont.caption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(WAColor.iconOnBrand)
+        }
+        .type(ButtonType.Capsule)
+        .height(40)
+        .layoutWeight(1)
+        .backgroundColor(WAColor.amber)
+        .onClick(() => {
+          this.openParkingNavigation();
+        })
+
+        Button() {
+          Text('已停车')
+            .fontSize(WAFont.caption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(WAColor.ink2)
+        }
+        .type(ButtonType.Capsule)
+        .height(40)
+        .layoutWeight(1)
+        .backgroundColor(WAColor.paper2)
+        .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
+        .onClick(() => {
+          this.markParked();
+        })
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(16)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+    .margin({ left: WASize.pagePadding, right: WASize.pagePadding })
+  }
+
+  /** 用系统地图导航到「停车点」（目的地 1 公里外的随机落点，不泄露终点） */
+  private openParkingNavigation(): void {
+    const point: GeoPoint | undefined = this.parkingPoint();
+    if (point === undefined) return;
+    try {
+      const context = getContext() as common.UIAbilityContext;
+      if (context.startAbility !== undefined) {
+        const want = {
+          action: 'ohos.want.action.viewData',
+          entities: ['entity.system.browsable'],
+          uri: 'geo:' + point.latitude.toFixed(6) + ',' + point.longitude.toFixed(6) +
+            '?q=目的地附近&driving=1'
+        };
+        context.startAbility(want).catch(() => {
+          // 没有地图应用时静默失败（不影响旅程）
+        });
+      }
+    } catch (err) {
+      // 同上
+    }
+  }
+
+  /** 进停车圈后的提示条 */
+  @Builder
+  roamParkedBanner() {
+    Row({ space: 6 }) {
+      SymbolGlyph($r('sys.symbol.' + (this.inParkingZone() ? 'figure_walk' : 'parkingsign')))
+        .fontSize(WAFont.caption)
+        .fontColor([WAColor.teal])
+        .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      Text(this.inParkingZone()
+        ? '已进入停车圈 · 开始步行探索，线索按距离解锁'
+        : '已按「已停车」处理 · 还有 ' + this.distanceCopy(this.remainingMeters()) + ' 走到停车圈')
+        .fontSize(WAFont.microSm)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(WAColor.teal)
+        .layoutWeight(1)
+        .maxLines(2)
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor(WAColor.tealSoft)
+    .borderRadius(WASize.cardRadiusSm)
+  }
+
+  /** 开车段不显示线索：给一个说明，而不是空着 */
+  @Builder
+  lockedCluePlaceholder() {
+    Column({ space: 6 }) {
+      Text('线索')
+        .fontSize(WAFont.titleMd)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(WAColor.ink)
+      Text('进入停车圈后才会解锁。现在看线索，你也找不准。')
+        .fontSize(WAFont.captionSm)
+        .fontColor(WAColor.ink2)
+        .lineHeight(19)
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(14)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
   }
 
   // ============================================================
@@ -793,9 +1051,22 @@ export struct JourneyView {
     Column({ space: 0 }) {
       this.topBar()
       this.statusRow()
-      this.pathSection()
-      this.distanceSection()
-      this.clueSection()
+
+      if (this.isDriveSegment()) {
+        // 开车段：先开车过去（不给线索、不画迷雾路径）
+        this.driveSection()
+      } else {
+        if (this.isRoamQuest()) {
+          Column() {
+            this.roamParkedBanner()
+          }
+          .padding({ left: WASize.pagePadding, right: WASize.pagePadding, bottom: 10 })
+        }
+        this.pathSection()
+        this.distanceSection()
+        this.clueSection()
+      }
+
       this.actionSection()
     }
     .width('100%')
@@ -868,6 +1139,69 @@ export struct JourneyView {
         .justifyContent(FlexAlign.Center)
         .backgroundColor(WAColor.stage)
         .opacity(this.flashOpacity)
+      }
+
+      // 「还没到停车圈，确定已经停好车了吗？」确认弹层
+      if (this.confirmParkedFar) {
+        Stack({ alignContent: Alignment.Center }) {
+          Column()
+            .width('100%')
+            .height('100%')
+            .backgroundColor(WAColor.scrim)
+            .onClick(() => {
+              this.confirmParkedFar = false;
+            })
+
+          Column({ space: 12 }) {
+            Text('还没到停车圈，确定已经停好车了吗？')
+              .fontSize(WAFont.titleSm)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(WAColor.ink)
+              .width('100%')
+
+            Text('现在离目的地还有 ' + this.distanceCopy(this.remainingMeters()) +
+              '。按步行段继续后，线索仍按真实距离解锁。')
+              .fontSize(WAFont.caption)
+              .fontColor(WAColor.ink2)
+              .lineHeight(20)
+              .width('100%')
+
+            Button() {
+              Text('已经停好车，按步行段继续')
+                .fontSize(WAFont.caption)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(WAColor.iconOnBrand)
+            }
+            .type(ButtonType.Capsule)
+            .height(42)
+            .width('100%')
+            .backgroundColor(WAColor.amber)
+            .onClick(() => {
+              this.confirmParkedAnyway();
+            })
+
+            Button() {
+              Text('再开一会儿')
+                .fontSize(WAFont.caption)
+                .fontColor(WAColor.ink2)
+            }
+            .type(ButtonType.Capsule)
+            .height(40)
+            .width('100%')
+            .backgroundColor(WAColor.paper2)
+            .onClick(() => {
+              this.confirmParkedFar = false;
+            })
+          }
+          .width('100%')
+          .constraintSize({ maxWidth: 380 })
+          .padding(18)
+          .backgroundColor(WAColor.paper)
+          .borderRadius(WASize.cardRadius)
+          .margin({ left: WASize.pagePadding, right: WASize.pagePadding })
+        }
+        .width('100%')
+        .height('100%')
       }
     }
     .width('100%')

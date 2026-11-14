@@ -18,6 +18,7 @@ import {
   Achievement,
   Area,
   BuriedSurprise,
+  ExploreScope,
   FeedPost,
   GeoPoint,
   Mood,
@@ -31,16 +32,20 @@ import {
   ReactionKey,
   Rarity,
   SurpriseFindResult,
+  SurpriseReceipt,
   WalkDuration,
+  WalkPoint,
   XP_AUTHOR,
   XP_BURY,
   XP_CONSOLATION,
-  XP_SEEKER
+  XP_SEEKER,
+  isRoamJourney
 } from './types';
 import {
   AppSnapshot,
   WalkaholicStoreApi,
   BuryParams,
+  CardPhoto,
   CollectResult,
   DataSourceStatus,
   DrawResult,
@@ -111,6 +116,8 @@ import {
   saveSurprises,
   surprisesFromJson
 } from './persistence';
+import { SurpriseReceiptStore } from './receipts';
+import { WalkTrackStore } from './track';
 
 const DAY_MS: number = 86400000;
 /** 附近可探索惊喜的最大半径（米） */
@@ -136,6 +143,8 @@ function cloneCard(card: PlaceCard): PlaceCard {
     collectedAt: card.collectedAt,
     taskDone: card.taskDone
   };
+  if (card.photoName !== undefined) copy.photoName = card.photoName;
+  if (card.photoRemotePath !== undefined) copy.photoRemotePath = card.photoRemotePath;
   return copy;
 }
 
@@ -202,6 +211,10 @@ export class WalkaholicStore implements WalkaholicStoreApi {
   private profile: Profile;
   private extras: StoreExtras;
   private knownPlaces: Place[];
+  /** 埋下的惊喜（作者与寻者的双向社区）
+   *
+   * 与 iOS 一致：远端条目、上传标记、被找到回执都挂在同一份列表上。
+   */
   private surprises: BuriedSurprise[];
   private feed: FeedPost[];
 
@@ -212,6 +225,8 @@ export class WalkaholicStore implements WalkaholicStoreApi {
   private selectedMoodValue: Mood;
   private selectedDurationValue: WalkDuration;
   private selectedAreaValue: Area | undefined;
+  /** 抽盒范围：走路去 / 远程漫游（持久化，下次打开抽盒页保持选择） */
+  private selectedScopeValue: ExploreScope;
   private lastKnownOriginValue: GeoPoint | undefined;
   private demoModeValue: boolean;
   private routeValue: RoutePolyline | undefined;
@@ -220,12 +235,17 @@ export class WalkaholicStore implements WalkaholicStoreApi {
   private drawCounter: number;
   private surpriseCounter: number;
   private seedSurprisesRebased: boolean;
+  /** 「被找到」回执（埋惊喜的社交闭环） */
+  private receiptStore: SurpriseReceiptStore;
+  /** 走路轨迹（个人城市地图的数据层） */
+  private trackStore: WalkTrackStore;
 
   constructor(kv: KeyValueStore) {
     this.kv = kv;
     this.selectedMoodValue = Mood.Drift;
     this.selectedDurationValue = WalkDuration.M30;
     this.selectedAreaValue = undefined;
+    this.selectedScopeValue = ExploreScope.Walk;
     this.demoModeValue = true;
     this.routeValue = undefined;
     this.dataSourceValue = emptyDataSourceStatus();
@@ -238,6 +258,8 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     this.currentCardValue = undefined;
     this.revealSerialValue = undefined;
     this.currentPlaceValue = undefined;
+    this.receiptStore = new SurpriseReceiptStore(kv);
+    this.trackStore = new WalkTrackStore(kv);
 
     const now: number = Date.now();
     const loaded: LoadedProfile | undefined = loadProfile(kv);
@@ -252,6 +274,7 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       this.currentPlaceValue = loaded.extras.currentPlace;
       this.revealSerialValue = loaded.extras.revealSerial;
       this.currentCardValue = loaded.extras.currentCard;
+      this.selectedScopeValue = loaded.extras.selectedScope;
     } else {
       this.profile = demo.profile;
       this.extras = demo.extras;
@@ -327,6 +350,7 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     this.extras.currentCard = this.currentCardValue === undefined
       ? undefined
       : cloneCard(this.currentCardValue);
+    this.extras.selectedScope = this.selectedScopeValue;
     saveProfile(this.kv, this.profile, this.extras);
     saveSurprises(this.kv, this.surprises);
   }
@@ -343,6 +367,18 @@ export class WalkaholicStore implements WalkaholicStoreApi {
 
   setArea(area?: Area): void {
     this.selectedAreaValue = area;
+  }
+
+  /** 抽盒范围：走路去 / 远程漫游（落盘，下次打开保持） */
+  setScope(scope: ExploreScope): void {
+    if (this.selectedScopeValue === scope) return;
+    this.selectedScopeValue = scope;
+    this.persist(Date.now());
+  }
+
+  /** 当前抽盒范围 */
+  selectedScope(): ExploreScope {
+    return this.selectedScopeValue;
   }
 
   // ---------- 抽盒 ----------
@@ -397,7 +433,7 @@ export class WalkaholicStore implements WalkaholicStoreApi {
    * 校验：必须有真实来源 + 真实坐标 —— 这正是「绝不虚构兜底」的闸门。
    * 返回 undefined 表示上游给了不合规的地点（调用方应显示失败面板，而不是继续走）。
    */
-  startQuestWithPlace(place: Place, origin: GeoPoint): DrawResult | undefined {
+  startQuestWithPlace(place: Place, origin: GeoPoint, scope?: ExploreScope): DrawResult | undefined {
     if (!isRealPlaceSource(place.source)) return undefined;
     if (place.coordinate === undefined) return undefined;
     if (!isFinite(origin.latitude) || !isFinite(origin.longitude)) return undefined;
@@ -407,9 +443,14 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     let meters: number = distanceBetween(origin, place.coordinate);
     if (meters < 120) meters = 120;
     const bearingDegrees: number = bearingBetween(origin, place.coordinate);
+    // 范围：调用方没指定时按「这次抽盒选的范围」，旧调用按里程兜底
+    let resolvedScope: ExploreScope = scope === undefined ? this.selectedScopeValue : scope;
+    if (scope === undefined && isRoamJourney(Math.round(meters))) {
+      resolvedScope = ExploreScope.Roam;
+    }
 
     const session: QuestSession = createSession(
-      place.id, now, Math.round(meters), place.coordinate, bearingDegrees
+      place.id, now, Math.round(meters), place.coordinate, bearingDegrees, resolvedScope
     );
     this.sessionValue = session;
     this.currentPlaceValue = clonePlace(place);
@@ -472,7 +513,8 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       togetherCount: this.extras.togetherCount,
       feed: this.extras.feed.slice(),
       realPlaces: this.extras.realPlaces.slice(),
-      consolationPaid: this.extras.consolationPaid.slice()
+      consolationPaid: this.extras.consolationPaid.slice(),
+      selectedScope: this.extras.selectedScope
     };
     if (this.extras.lastWalkAt !== undefined) copy.lastWalkAt = this.extras.lastWalkAt;
     return copy;
@@ -602,7 +644,17 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       collectedAt: now,
       taskDone: false
     };
-    this.profile.cards.push(card);
+    // 同一个地方只收一次：重复收录会让「图鉴已收集」数字虚高
+    let alreadyCollected: boolean = false;
+    for (let i = 0; i < this.profile.cards.length; i += 1) {
+      if (this.profile.cards[i].placeID === place.id) {
+        alreadyCollected = true;
+        break;
+      }
+    }
+    if (!alreadyCollected) this.profile.cards.push(card);
+    // 收录时把这个真实地点记进目录并落盘：否则下次打开图鉴就查不到这个 id
+    this.rememberPlaceInternal(place);
     this.profile.xp += 40 + rarityXpBonus(place.rarity);
     this.extras.boxesOpened += 1;
     this.extras.totalKm = Math.round((this.extras.totalKm + session.totalMeters / 1000) * 10) / 10;
@@ -636,6 +688,70 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     this.persist(Date.now());
   }
 
+  /** 记下一个真实地点（收录 / 抽盒 / 探秘时调用），并持久化 */
+  private rememberPlaceInternal(place: Place): void {
+    if (place.coordinate === undefined) return;
+    let exists: boolean = false;
+    for (let i = 0; i < this.knownPlaces.length; i += 1) {
+      if (this.knownPlaces[i].id === place.id) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) this.knownPlaces.push(clonePlace(place));
+    if (place.source === 'catalog') return;
+    let persisted: boolean = false;
+    for (let i = 0; i < this.extras.realPlaces.length; i += 1) {
+      if (this.extras.realPlaces[i].id === place.id) {
+        persisted = true;
+        break;
+      }
+    }
+    if (!persisted) this.extras.realPlaces.push(clonePlace(place));
+  }
+
+  /**
+   * 清除本机数据（「清除演示数据」）。
+   * 与 iOS `WalkaholicStore.reset()` 一致：卡片、成就、动态、惊喜、回执、轨迹全部清空。
+   */
+  reset(now?: number): void {
+    const timestamp: number = now === undefined ? Date.now() : now;
+    const emptyProfile: Profile = {
+      name: '阿澈',
+      avatarEmoji: '🫥',
+      xp: 0,
+      streakDays: 0,
+      cards: [],
+      achievements: [],
+      weeklySurprise: 0,
+      weeklyWindowStart: timestamp
+    };
+    const emptyExtras: StoreExtras = {
+      totalKm: 0,
+      boxesOpened: 0,
+      walkArrivalTimes: [],
+      togetherCount: 0,
+      feed: [],
+      realPlaces: [],
+      consolationPaid: [],
+      selectedScope: ExploreScope.Walk
+    };
+    this.profile = emptyProfile;
+    this.extras = emptyExtras;
+    this.feed = [];
+    this.surprises = [];
+    this.sessionValue = undefined;
+    this.currentPlaceValue = undefined;
+    this.currentCardValue = undefined;
+    this.revealSerialValue = undefined;
+    this.routeValue = undefined;
+    this.nearbyPlacesValue = [];
+    this.knownPlaces = PLACES.map((place: Place): Place => clonePlace(place));
+    this.receiptStore.removeAll();
+    this.trackStore.clear();
+    this.persist(timestamp);
+  }
+
   // ---------- 埋惊喜 / 寻惊喜 ----------
 
   burySurprise(params: BuryParams): BuriedSurprise | undefined {
@@ -647,6 +763,7 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       ? params.authorEmoji
       : this.profile.avatarEmoji;
     const hints: string[] = params.hints.length > 0 ? params.hints.slice() : makeClues(undefined);
+    const message: string = params.message === undefined ? '' : params.message;
     const surprise: BuriedSurprise = {
       id: 'surprise-' + String(now) + '-' + String(this.surpriseCounter),
       authorName: authorName,
@@ -657,13 +774,160 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       photoHash: params.photoHash,
       photoUri: params.photoUri,
       buriedAt: now,
-      found: false
+      found: false,
+      message: message,
+      radiusMeters: params.radiusMeters === undefined ? 60 : params.radiusMeters,
+      seekerPoints: XP_SEEKER,
+      authorPoints: XP_AUTHOR,
+      isMine: true,
+      isUploaded: false,
+      isRemote: false
     };
     this.surprises.unshift(surprise);
     this.profile.xp += XP_BURY;
     syncAchievements(this.achievementContext(), now);
     this.persist(now);
     return cloneSurprise(surprise);
+  }
+
+  // ---------- 到达实拍（卡片照片） ----------
+
+  /**
+   * 把到达时拍的照片挂到卡片上。
+   * 「先拍照再收进图鉴」和「先收进图鉴再补拍」都会走这里。
+   */
+  attachCardPhoto(placeID: string, photoName?: string, remotePath?: string): void {
+    let index: number = -1;
+    for (let i = 0; i < this.profile.cards.length; i += 1) {
+      if (this.profile.cards[i].placeID === placeID) {
+        index = i;
+        break;
+      }
+    }
+    if (index < 0) return;
+    if (photoName !== undefined && photoName.length > 0) {
+      this.profile.cards[index].photoName = photoName;
+    }
+    if (remotePath !== undefined && remotePath.length > 0) {
+      this.profile.cards[index].photoRemotePath = remotePath;
+    }
+    this.persist(Date.now());
+  }
+
+  /** 这张卡到达时拍的照片（本地文件名 / 远端路径）；都没有返回 undefined */
+  cardPhoto(placeID: string): CardPhoto | undefined {
+    for (let i = 0; i < this.profile.cards.length; i += 1) {
+      const card: PlaceCard = this.profile.cards[i];
+      if (card.placeID !== placeID) continue;
+      if (card.photoName === undefined && card.photoRemotePath === undefined) return undefined;
+      const photo: CardPhoto = {
+        local: card.photoName,
+        remote: card.photoRemotePath
+      };
+      return photo;
+    }
+    return undefined;
+  }
+
+  // ---------- 远端惊喜（跨用户共享） ----------
+
+  /**
+   * 服务端回来的「附近惊喜」合并进本机：
+   * - 远端条目替换掉上一次的远端条目（保留本机自己埋的、和已经被找到的）
+   * - 已经找到的远端惊喜不会因为服务端还在 waiting 而复活
+   */
+  mergeRemoteSurprises(remote: BuriedSurprise[]): void {
+    const kept: BuriedSurprise[] = [];
+    for (let i = 0; i < this.surprises.length; i += 1) {
+      if (this.surprises[i].isRemote !== true) kept.push(this.surprises[i]);
+    }
+    const known: Set<string> = new Set<string>();
+    for (let i = 0; i < kept.length; i += 1) known.add(kept[i].id);
+    let added: boolean = false;
+    for (let i = 0; i < remote.length; i += 1) {
+      const incoming: BuriedSurprise = remote[i];
+      if (known.has(incoming.id)) continue;
+      kept.push(incoming);
+      known.add(incoming.id);
+      added = true;
+    }
+    this.surprises = kept;
+    if (added) saveSurprises(this.kv, this.surprises);
+  }
+
+  /** 待上传（本机刚埋、还没成功传到服务端的） */
+  pendingUploadSurprises(): BuriedSurprise[] {
+    const list: BuriedSurprise[] = [];
+    for (let i = 0; i < this.surprises.length; i += 1) {
+      const item: BuriedSurprise = this.surprises[i];
+      if (item.isMine === true && !item.found && item.isUploaded !== true && item.isRemote !== true) {
+        list.push(cloneSurprise(item));
+      }
+    }
+    return list;
+  }
+
+  /** 标记本机某条惊喜已上传到账号服务 */
+  markSurpriseUploaded(surpriseID: string): void {
+    for (let i = 0; i < this.surprises.length; i += 1) {
+      if (this.surprises[i].id === surpriseID) {
+        this.surprises[i].isUploaded = true;
+        saveSurprises(this.kv, this.surprises);
+        return;
+      }
+    }
+  }
+
+  /**
+   * 服务端回来的「被找到」回执：更新本机记录 + 维护入口红点。
+   * 返回是否出现了新的未读回执。
+   */
+  applyReceipts(remote: SurpriseReceipt[]): boolean {
+    if (remote.length === 0) return false;
+    // 本机的惊喜同步成「已被找到」：作者在自己的列表里能看到寻者与时间
+    let changed: boolean = false;
+    for (let i = 0; i < remote.length; i += 1) {
+      const receipt: SurpriseReceipt = remote[i];
+      for (let j = 0; j < this.surprises.length; j += 1) {
+        const item: BuriedSurprise = this.surprises[j];
+        if (item.id !== receipt.id) continue;
+        if (!item.found || item.finderName !== receipt.finderName) {
+          item.found = true;
+          item.finderName = receipt.finderName;
+          item.foundAt = receipt.foundAt;
+          changed = true;
+        }
+        break;
+      }
+    }
+    if (changed) saveSurprises(this.kv, this.surprises);
+    const merged = this.receiptStore.merge(remote);
+    return merged.hasNew;
+  }
+
+  /** 用户看过了「我的惊喜」：红点熄灭 */
+  markReceiptsRead(now?: number): void {
+    this.receiptStore.markAllRead(now === undefined ? Date.now() : now);
+  }
+
+  /** 全部回执（按被找到时间倒序） */
+  receipts(): SurpriseReceipt[] {
+    return this.receiptStore.all();
+  }
+
+  /** 未读回执数（首页入口红点 / 数字用） */
+  unreadReceiptCount(): number {
+    return this.receiptStore.unreadCount();
+  }
+
+  /** 最近一条未读回执（卡片上写「被谁找到了」） */
+  latestUnreadReceipt(): SurpriseReceipt | undefined {
+    return this.receiptStore.latestUnread();
+  }
+
+  /** 走路轨迹仓库（个人城市地图 / 旅程页记录用） */
+  track(): WalkTrackStore {
+    return this.trackStore;
   }
 
   compareSurprise(surpriseId: string, seekerHash: string): SurpriseCompareResult | undefined {
@@ -731,6 +995,31 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     return undefined;
   }
 
+  /** 发布动态到圈子（本人置顶；与 iOS WalkaholicStore.share 一致） */
+  share(caption: string, now?: number): FeedPost | undefined {
+    const place: Place | undefined = this.currentPlaceValue;
+    if (place === undefined) return undefined;
+    const timestamp: number = now === undefined ? Date.now() : now;
+    const post: FeedPost = {
+      id: 'post-' + String(timestamp) + '-' + String(this.drawCounter),
+      authorName: this.profile.name,
+      authorEmoji: this.profile.avatarEmoji,
+      placeName: place.name,
+      categoryEmoji: place.emoji,
+      rarity: place.rarity,
+      caption: caption,
+      createdAt: timestamp,
+      reactions: { eyes: 0, heart: 0, next: 0 },
+      reacted: { eyes: false, heart: false, next: false },
+      isMine: true
+    };
+    this.feed.unshift(post);
+    this.profile.xp += 5;
+    syncAchievements(this.achievementContext(), timestamp);
+    this.persist(timestamp);
+    return clonePost(post);
+  }
+
   // ---------- 圈子 ----------
 
   reactToPost(postID: string, reaction: ReactionKey): void {
@@ -791,15 +1080,21 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       togetherCode: DEMO_TOGETHER_CODE,
       selectedMood: this.selectedMoodValue,
       selectedDuration: this.selectedDurationValue,
+      selectedScope: this.selectedScopeValue,
       explorableSurprises: this.explorableSurpriseList(),
       mySurprises: this.mySurpriseList(),
+      foundSurprises: this.foundSurpriseList(),
       nearbyPlaces: this.nearbyPlaceList(),
       feed: this.snapshotFeed(walking, place, destinationCollected),
       leaderboard: leaderboard(this.profile).map(
         (entry: LeaderboardEntry): LeaderboardEntry => cloneLeaderboardEntry(entry)
       ),
       demoMode: this.demoModeValue,
-      dataSource: cloneDataSourceStatus(this.dataSourceValue)
+      dataSource: cloneDataSourceStatus(this.dataSourceValue),
+      receipts: this.receiptStore.all(),
+      unreadReceiptCount: this.receiptStore.unreadCount(),
+      totalKm: this.extras.totalKm,
+      boxesOpened: this.extras.boxesOpened
     };
 
     if (session !== undefined) snapshot.session = cloneSession(session);
@@ -858,6 +1153,19 @@ export class WalkaholicStore implements WalkaholicStoreApi {
       if (isMySurprise(this.surprises[i], this.profile.name)) {
         list.push(cloneSurprise(this.surprises[i]));
       }
+    }
+    return list;
+  }
+
+  /** 我找到的别人的惊喜（已找到 + 寻者是我） */
+  private foundSurpriseList(): BuriedSurprise[] {
+    const list: BuriedSurprise[] = [];
+    for (let i = 0; i < this.surprises.length; i += 1) {
+      const item: BuriedSurprise = this.surprises[i];
+      if (!item.found) continue;
+      if (isMySurprise(item, this.profile.name)) continue;
+      if (item.finderName === undefined || item.finderName !== this.profile.name) continue;
+      list.push(cloneSurprise(item));
     }
     return list;
   }

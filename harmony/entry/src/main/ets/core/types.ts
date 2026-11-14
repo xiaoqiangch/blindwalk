@@ -32,6 +32,34 @@ export enum Mood {
   Lively = 'lively',
 }
 
+/**
+ * 抽盒范围：走路去，还是先开车到附近再走（对应 iOS ExploreScope）
+ *
+ * 「远程漫游」解决的问题：城市里真正有意思的地方往往不在你楼下。
+ * 但直接抽 20 公里外的点，用户没法走过去 ——
+ * 所以漫游模式的规则是：**先开车到目的地 1 公里内停车，剩下的路才开始步行探索**。
+ */
+export enum ExploreScope {
+  Walk = 'walk',
+  Roam = 'roam',
+}
+
+/** 远程漫游下限（米）：低于它就不该用漫游 */
+export const ROAM_MIN_METERS: number = 10000;
+/** 远程漫游上限（米）：再远就不适合一日往返 */
+export const ROAM_MAX_METERS: number = 45000;
+/** 停车圈（米）：进入这个半径才开始步行探索，也是线索开始解锁的地方 */
+export const PARKING_RADIUS_METERS: number = 1000;
+/** 手动「已停车」的容忍半径（米）：停车场 GPS 常飘，给到 2.2 公里 */
+export const PARKING_TOLERANCE_METERS: number = 2200;
+/** 反过来：手动标记后又把车开走，离开这个半径就自动退回开车段 */
+export const DRIVE_RESUME_METERS: number = 3500;
+
+/** 抽到的总里程是否属于「需要先开车」的漫游旅程（旧数据兜底用） */
+export function isRoamJourney(totalMeters: number): boolean {
+  return totalMeters >= ROAM_MIN_METERS * 0.6;
+}
+
 /** 时长：15 / 30 / 60 分钟 */
 export enum WalkDuration {
   M15 = 15,
@@ -120,6 +148,13 @@ export interface PlaceCard {
   serial: string;
   collectedAt: number; // 毫秒时间戳
   taskDone: boolean;
+  /**
+   * 到达时用户自己拍的那张照片（沙箱内绝对路径）。
+   * 与埋惊喜的照片同一套存储策略：只留路径，不留二进制。
+   */
+  photoName?: string;
+  /** 同一张照片上传到账号后的路径（如 /api/photos/<placeID>），换机登录也能取回 */
+  photoRemotePath?: string;
 }
 
 // ============================================================
@@ -152,6 +187,14 @@ export interface QuestSession {
   target?: GeoPoint;
   /** 最近一次定位算出的方位角（度，0 = 正北） */
   currentBearing?: number;
+  /**
+   * 这一趟是「走路去」还是「远程漫游」。
+   *
+   * 为什么要存进会话，而不是每次按 `totalMeters` 推断：
+   * 漫游放宽后可能抽到 6–8 公里的点，按里程推断会把它当成普通散步，
+   * 于是「先开车过去」的整段提示与停车圈判定全部消失 —— 用户会以为自己要走过去。
+   */
+  scope: ExploreScope;
 }
 
 // ============================================================
@@ -242,6 +285,52 @@ export interface BuriedSurprise {
   myPhotoUri?: string;
   /** 匹配相似度 0…1 */
   similarity?: number;
+
+  // ---------- 与 iOS BuriedSurprise 对齐的扩展字段（都可选，老存档容错） ----------
+  /** 作者写的一句话：为什么埋在这里 */
+  message?: string;
+  /** 找到半径（米），默认 60 */
+  radiusMeters?: number;
+  /** 寻者得分（默认 80） */
+  seekerPoints?: number;
+  /** 作者得分（默认 40） */
+  authorPoints?: number;
+  /** 被谁找到 */
+  finderName?: string;
+  /** 被找到的时间戳 */
+  foundAt?: number;
+  /** 寻者拍的复刻照片 */
+  finderPhotoUri?: string;
+  /** 本机用户自己埋的（改名后也认得出来） */
+  isMine?: boolean;
+  /** 已经成功上传到账号服务 */
+  isUploaded?: boolean;
+  /** 来自账号服务（别人埋的，本机没有原图） */
+  isRemote?: boolean;
+}
+
+/**
+ * 埋惊喜的「被找到」回执。
+ *
+ * 埋惊喜是「给予」，但之前给完就断了：别人找到你的照片，你永远不知道。
+ * 这一层把「被找到」变成一条回执，并在入口上点一个红点。
+ * 数据来源：GET /api/surprises/mine（登录用户或匿名设备标识都能查自己的）。
+ */
+export interface SurpriseReceipt {
+  /** 惊喜 id（= BuriedSurprise.id） */
+  id: string;
+  areaLabel: string;
+  finderName: string;
+  foundAt: number;
+  /** 用户看过这条回执的时间；undefined = 未读（入口红点看它） */
+  readAt?: number;
+}
+
+/** 走路轨迹点（个人城市地图的数据层） */
+export interface WalkPoint {
+  latitude: number;
+  longitude: number;
+  time: number;
 }
 
 /** 一次「寻到」的结算结果 */

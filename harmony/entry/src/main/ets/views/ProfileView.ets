@@ -17,6 +17,7 @@ import {
   StatItem
 } from '../components/Common';
 import { achievementsOf, emptySnapshot, readSnapshot } from '../components/StoreBridge';
+import { getStore, getStoreInstance } from '../core/store';
 import {
   WAColor,
   WAFont,
@@ -38,6 +39,12 @@ export struct ProfileView {
   };
   /** 由 Index 注入：打开数据源状态面板 */
   onOpenDataSource: () => void = () => {
+  };
+  /** 由 Index 注入：打开「我的城市」地图 */
+  onOpenCityMap: () => void = () => {
+  };
+  /** 由 Index 注入：打开「我的惊喜」（回执 / 我埋的 / 我找到的） */
+  onOpenMySurprises: () => void = () => {
   };
   /** 账号状态文案（由 Index 注入，避免本页直接依赖 account.ts 的存储） */
   @Prop accountLabel: string = '未登录';
@@ -70,20 +77,20 @@ export struct ProfileView {
 
   private statsItems(): StatItem[] {
     const items: StatItem[] = [];
-    const weekly: StatItem = {
-      value: String(this.snapshot.profile.weeklySurprise),
-      label: '本周惊喜值'
+    const km: StatItem = {
+      value: this.snapshot.totalKm.toFixed(1),
+      label: '累计里程'
     };
-    const cards: StatItem = {
-      value: String(this.snapshot.profile.cards.length),
-      label: '收集卡片'
+    const boxes: StatItem = {
+      value: String(this.snapshot.boxesOpened),
+      label: '开盒'
     };
     const streak: StatItem = {
       value: String(this.snapshot.profile.streakDays),
       label: '连续天数'
     };
-    items.push(weekly);
-    items.push(cards);
+    items.push(km);
+    items.push(boxes);
     items.push(streak);
     return items;
   }
@@ -96,8 +103,14 @@ export struct ProfileView {
   }
 
   private clearDemoData(): void {
-    // 契约里没有 reset API：不假装清空，温柔地兜底。
-    this.showToast('这一版先留着这些回忆。');
+    try {
+      getStore().reset(Date.now());
+      this.load();
+      this.onChanged();
+      this.showToast('演示数据已清除');
+    } catch (err) {
+      this.showToast('清除失败，再试一次。');
+    }
   }
 
   // ============================================================
@@ -114,6 +127,26 @@ export struct ProfileView {
 
       Blank()
 
+      if (this.snapshot.unreadReceiptCount > 0) {
+        Row({ space: 4 }) {
+          Circle()
+            .width(6)
+            .height(6)
+            .fill(WAColor.ember)
+          Text(String(this.snapshot.unreadReceiptCount))
+            .fontSize(WAFont.micro)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(WAColor.iconOnBrand)
+        }
+        .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+        .backgroundColor(WAColor.ember)
+        .borderRadius(WASize.chipRadius)
+        .margin({ right: 8 })
+        .onClick(() => {
+          this.onOpenMySurprises();
+        })
+      }
+
       Text(this.snapshot.profile.avatarEmoji)
         .fontSize(22)
         .textAlign(TextAlign.Center)
@@ -124,6 +157,111 @@ export struct ProfileView {
         .border({ width: 1, color: WAColor.line, radius: 22 })
     }
     .width('100%')
+  }
+
+  /** 我的城市（个人城市地图）入口 */
+  @Builder
+  cityMapRow() {
+    Row({ space: 12 }) {
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.map'))
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.amber])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(26)
+
+      Column({ space: 2 }) {
+        Text('个人城市地图')
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
+        Text(this.cityMapCaption())
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink2)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Text('›')
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .onClick(() => {
+      this.onOpenCityMap();
+    })
+  }
+
+  /** 城市地图副文案（与 iOS ProfileView.cityMapCaption 一致） */
+  private cityMapCaption(): string {
+    try {
+      const stats = getStoreInstance().track().stats();
+      if (stats.isEmpty) return '走完第一个盲盒，这里会长出你的路';
+      return String(stats.walkedDayCount) + ' 天 · ' +
+        (stats.totalMeters / 1000).toFixed(1) + ' 公里 · ' +
+        String(stats.exploredCellCount) + ' 个街区';
+    } catch (err) {
+      return '走完第一个盲盒，这里会长出你的路';
+    }
+  }
+
+  /** 我的惊喜（回执 / 我埋的 / 我找到的）入口 */
+  @Builder
+  mySurprisesRow() {
+    Row({ space: 12 }) {
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.gift_fill'))
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.amber])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(26)
+
+      Column({ space: 2 }) {
+        Text('我的惊喜')
+          .fontSize(WAFont.bodySm)
+          .fontColor(WAColor.ink)
+        Text('我埋了 ' + String(this.snapshot.mySurprises.length) +
+          ' · 被找到 ' + String(this.foundByOthersCount()) +
+          ' · 我找到的 ' + String(this.snapshot.foundSurprises.length))
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ink2)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      if (this.snapshot.unreadReceiptCount > 0) {
+        Text('新')
+          .fontSize(WAFont.micro)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(WAColor.iconOnBrand)
+          .padding({ left: 6, right: 6, top: 1, bottom: 1 })
+          .backgroundColor(WAColor.ember)
+          .borderRadius(WASize.chipRadius)
+      }
+
+      Text('›')
+        .fontSize(WAFont.caption)
+        .fontColor(WAColor.ink3)
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .onClick(() => {
+      this.onOpenMySurprises();
+    })
+  }
+
+  private foundByOthersCount(): number {
+    let count: number = 0;
+    for (let i = 0; i < this.snapshot.mySurprises.length; i += 1) {
+      if (this.snapshot.mySurprises[i].found) count += 1;
+    }
+    return count;
   }
 
   @Builder
@@ -382,6 +520,14 @@ export struct ProfileView {
       .onClick(() => {
         this.onOpenDataSource();
       })
+
+      Divider().strokeWidth(1).color(WAColor.line)
+
+      this.cityMapRow()
+
+      Divider().strokeWidth(1).color(WAColor.line)
+
+      this.mySurprisesRow()
 
       Divider().strokeWidth(1).color(WAColor.line)
 

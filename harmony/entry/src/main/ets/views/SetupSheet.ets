@@ -18,7 +18,8 @@
 import { common } from '@kit.AbilityKit';
 import { getStore } from '../core/store';
 import { AppSnapshot, DataSourceStatus, KeyValueStore } from '../core/contract';
-import { Area, GeoPoint, Mood, Place, WalkDuration } from '../core/types';
+import { Area, ExploreScope, GeoPoint, Mood, Place, WalkDuration } from '../core/types';
+import { DayMoment, currentMoment, momentBoxTitle, momentLine, momentSymbol } from '../core/moment';
 import { SourceReport } from '../core/http';
 import { HttpClient } from '../core/http';
 import {
@@ -103,6 +104,26 @@ const AREAS: AreaOption[] = [
   new AreaOption(Area.OldTown, '老城区')
 ];
 
+class ScopeOption {
+  scope: ExploreScope;
+  title: string;
+  subtitle: string;
+  symbol: string;
+
+  constructor(scope: ExploreScope, title: string, subtitle: string, symbol: string) {
+    this.scope = scope;
+    this.title = title;
+    this.subtitle = subtitle;
+    this.symbol = symbol;
+  }
+}
+
+/** 怎么去（与 iOS BoxSetupSheet.scopeSection 逐字一致） */
+const SCOPES: ScopeOption[] = [
+  new ScopeOption(ExploreScope.Walk, '走路去', '3 公里内，抬脚就走', 'figure_walk'),
+  new ScopeOption(ExploreScope.Roam, '远程漫游', '10–45 公里 · 先开车到附近停车，再走过去', 'car_fill')
+];
+
 @Component
 export struct SetupSheet {
   @Prop winWidth: number = 400;
@@ -172,6 +193,22 @@ export struct SetupSheet {
     return this.snapshot.selectedArea === area;
   }
 
+  private selectedScope(): ExploreScope {
+    return this.snapshot.selectedScope;
+  }
+
+  private isScopeSelected(scope: ExploreScope): boolean {
+    return this.snapshot.selectedScope === scope;
+  }
+
+  private selectScope(scope: ExploreScope): void {
+    if (this.busy || this.snapshot.selectedScope === scope) return;
+    getStore().setScope(scope);
+    this.searchFailedReason = '';
+    this.load();
+    this.onChanged();
+  }
+
   // ============================================================
   // 交互
   // ============================================================
@@ -205,6 +242,15 @@ export struct SetupSheet {
     }
     this.load();
     this.onChanged();
+  }
+
+  /** 已经收录过的地点 id（抽盒避开，与 iOS excluding 一致） */
+  private collectedPlaceIDs(): string[] {
+    const list: string[] = [];
+    for (let i = 0; i < this.snapshot.profile.cards.length; i += 1) {
+      list.push(this.snapshot.profile.cards[i].placeID);
+    }
+    return list;
   }
 
   /** 组装平台依赖（http / kv 由 Index 注入） */
@@ -264,7 +310,9 @@ export struct SetupSheet {
     store.setDemoMode(false);
 
     // ---------- 2. 摇盒动画（600ms，与设计稿一致） ----------
-    this.statusText = '正在看附近有什么…';
+    this.statusText = this.snapshot.selectedScope === ExploreScope.Roam
+      ? '正在 10–45 公里内找值得开过去的地方…'
+      : '正在看附近有什么…';
     this.isShaking = true;
     animateTo({
       duration: 100,
@@ -284,7 +332,10 @@ export struct SetupSheet {
           origin: origin,
           mood: this.snapshot.selectedMood,
           duration: this.snapshot.selectedDuration,
-          startTier: this.searchTier >= 2 ? 2 : 0
+          startTier: this.searchTier >= 2 ? 2 : 0,
+          scope: this.snapshot.selectedScope,
+          excludedPlaceIDs: this.collectedPlaceIDs(),
+          moment: currentMoment()
         }, Math.random());
       } catch (err) {
         result = undefined;
@@ -321,7 +372,7 @@ export struct SetupSheet {
 
     // ---------- 5. 成功：用真实地点开始旅程 ----------
     const place: Place = result.place;
-    const started = store.startQuestWithPlace(place, origin);
+    const started = store.startQuestWithPlace(place, origin, this.snapshot.selectedScope);
     if (started === undefined) {
       // store 的闸门拦下了不合规地点（理论上不会发生，兜底也不编造）
       this.searchFailedReason = 'not-real';
@@ -389,6 +440,119 @@ export struct SetupSheet {
   // ============================================================
   // 区块
   // ============================================================
+
+  @Builder
+  momentSection() {
+    Row({ space: 12 }) {
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.' + momentSymbol(currentMoment())))
+          .fontSize(WASize.iconSizeSm)
+          .fontColor([WAColor.amber])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+      }
+      .width(28)
+
+      Column({ space: 3 }) {
+        Text(momentBoxTitle(currentMoment()))
+          .fontSize(WAFont.bodySm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(WAColor.ink)
+          .width('100%')
+        Text(momentLine(currentMoment()))
+          .fontSize(WAFont.caption)
+          .fontColor(WAColor.ink2)
+          .lineHeight(19)
+          .width('100%')
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Top)
+    .padding(14)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+  }
+
+  @Builder
+  scopeSection() {
+    Column({ space: 8 }) {
+      WaMicroLabel({ text: '怎么去' })
+
+      Column({ space: 0 }) {
+        ForEach(SCOPES, (item: ScopeOption, index: number) => {
+          Column({ space: 0 }) {
+            Row({ space: 12 }) {
+              Stack({ alignContent: Alignment.Center }) {
+                SymbolGlyph($r('sys.symbol.' + item.symbol))
+                  .fontSize(WASize.iconSizeSm)
+                  .fontColor([this.isScopeSelected(item.scope) ? WAColor.amber : WAColor.ink2])
+                  .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+              }
+              .width(28)
+
+              Column({ space: 2 }) {
+                Text(item.title)
+                  .fontSize(WAFont.bodySm)
+                  .fontColor(WAColor.ink)
+                  .width('100%')
+                Text(item.subtitle)
+                  .fontSize(WAFont.captionSm)
+                  .fontColor(WAColor.ink2)
+                  .lineHeight(18)
+                  .width('100%')
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+
+              if (this.isScopeSelected(item.scope)) {
+                SymbolGlyph($r('sys.symbol.checkmark'))
+                  .fontSize(WAFont.bodySm)
+                  .fontColor([WAColor.amber])
+                  .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+              }
+            }
+            .width('100%')
+            .padding({ left: 14, right: 14, top: 11, bottom: 11 })
+            .onClick(() => {
+              this.selectScope(item.scope);
+            })
+
+            if (index < SCOPES.length - 1) {
+              Divider()
+                .strokeWidth(1)
+                .color(WAColor.line)
+                .margin({ left: 44 })
+            }
+          }
+        }, (item: ScopeOption) => String(item.scope))
+      }
+      .width('100%')
+      .backgroundColor(WAColor.paper)
+      .borderRadius(WASize.cardRadius)
+      .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+
+      if (this.selectedScope() === ExploreScope.Roam) {
+        Column({ space: 6 }) {
+          Text('超过 10 公里的兴趣点也能刷到：选中后会先带你开车到目的地 1 公里左右停车，剩下的路再步行探索。')
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ink2)
+            .lineHeight(17)
+            .width('100%')
+          Text('开车段不给线索、不画路线；进入停车圈（或点「已停车」）后才开始解锁线索。')
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ink2)
+            .lineHeight(17)
+            .width('100%')
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+  }
 
   @Builder
   durationSection() {
@@ -657,17 +821,34 @@ export struct SetupSheet {
               .width('100%')
               .margin({ top: 4, bottom: 18 })
 
-            this.durationSection()
+            // 环境性盲盒：时段决定文案与抽点权重
+            this.momentSection()
+
+            Column() {
+              this.scopeSection()
+            }
+            .margin({ top: 18 })
+
+            // 「走多久 / 去哪一带」只影响步行半径；漫游的距离由环带决定，
+            // 摆着这两个选择只会让人以为它们有用，所以漫游时收起（与 iOS 一致）。
+            if (this.selectedScope() === ExploreScope.Walk) {
+              Column() {
+                this.durationSection()
+              }
+              .margin({ top: 18 })
+            }
 
             Column() {
               this.moodSection()
             }
             .margin({ top: 15 })
 
-            Column() {
-              this.areaSection()
+            if (this.selectedScope() === ExploreScope.Walk) {
+              Column() {
+                this.areaSection()
+              }
+              .margin({ top: 15 })
             }
-            .margin({ top: 15 })
 
             Column() {
               this.actionSection()

@@ -17,6 +17,7 @@ import {
   Achievement,
   Area,
   BuriedSurprise,
+  ExploreScope,
   FeedPost,
   GeoPoint,
   LeaderboardEntry,
@@ -31,6 +32,7 @@ import {
   Rarity,
   ReactionKey,
   SurpriseFindResult,
+  SurpriseReceipt,
   WalkDuration,
 } from './types';
 
@@ -70,6 +72,8 @@ export interface AppSnapshot {
   /** 抽盒设置 */
   selectedMood: Mood;
   selectedDuration: WalkDuration;
+  /** 抽盒范围：走路去 / 远程漫游 */
+  selectedScope: ExploreScope;
   /** 抽盒区域（可选） */
   selectedArea?: Area;
   /** 最近一次确认位置（抽盒起点 / 真实定位用） */
@@ -78,6 +82,8 @@ export interface AppSnapshot {
   explorableSurprises: BuriedSurprise[];
   /** 我埋下的惊喜 */
   mySurprises: BuriedSurprise[];
+  /** 我找到的别人的惊喜（已找到 + 寻者是我） */
+  foundSurprises: BuriedSurprise[];
   /**
    * 附近的兴趣点（真实数据源；图鉴「附近的兴趣点」区块用）。
    * 未探索的条目在 UI 上显示为「?」+ 类别 + 距离，点击开始探索。
@@ -94,6 +100,14 @@ export interface AppSnapshot {
   route?: RoutePolyline;
   /** 数据源状态（失败面板 / 设置页展示） */
   dataSource?: DataSourceStatus;
+  /** 「被找到」回执（埋惊喜的社交闭环；入口红点看它） */
+  receipts: SurpriseReceipt[];
+  /** 未读回执数 */
+  unreadReceiptCount: number;
+  /** 累计里程（km；「我的」页等级卡用） */
+  totalKm: number;
+  /** 累计开盒数 */
+  boxesOpened: number;
 }
 
 /** 数据源状态（parity.md §1：Key 由后台下发，用户看不到输入框） */
@@ -139,6 +153,10 @@ export interface WalkaholicStoreApi {
   setDuration(duration: WalkDuration): void;
   /** 选择区域：附近 / 河边 / 老城区；不传 = 不限 */
   setArea(area?: Area): void;
+  /** 抽盒范围：走路去 / 远程漫游（落盘，下次打开保持选择） */
+  setScope(scope: ExploreScope): void;
+  /** 当前抽盒范围 */
+  selectedScope(): ExploreScope;
   /**
    * 抽一个盲盒并开始旅程（**演示模式专用**：从内置地点库抽）。
    * 真实模式请用 `startQuestWithPlace(place, origin)`，绝不走这里。
@@ -155,8 +173,9 @@ export interface WalkaholicStoreApi {
    *
    * @param place 真实地点（source ∈ curated/amap/baidu/osm/wiki，必须有 coordinate）
    * @param origin 用户当前位置（算真实距离用）
+   * @param scope 抽盒范围；不传则用这次抽盒选的范围（并按里程兜底推断）
    */
-  startQuestWithPlace(place: Place, origin: GeoPoint): DrawResult | undefined;
+  startQuestWithPlace(place: Place, origin: GeoPoint, scope?: ExploreScope): DrawResult | undefined;
   /** 当前旅程的步行路线（迷雾路径视图用；没有规划到路线时为 undefined） */
   setRoute(route?: RoutePolyline): void;
   /** 读取当前路线（UI 绘制用） */
@@ -199,8 +218,34 @@ export interface WalkaholicStoreApi {
   compareSurprise(surpriseId: string, seekerHash: string): SurpriseCompareResult | undefined;
   /** 圈子：给某条动态加/取消一个反应（乐观 UI 由 UI 层自己做） */
   reactToPost(postID: string, reaction: ReactionKey): void;
+  /** 发布一条动态到圈子（当前地点的名字已经揭晓） */
+  share(caption: string, now?: number): FeedPost | undefined;
   /** 结算一次「寻到」：发放双向探索值、标记已找到 */
   completeSurpriseFind(surpriseId: string, similarity: number): SurpriseFindResult | undefined;
+
+  // ---------- 到达实拍 ----------
+  /** 把到达时拍的照片挂到卡片上（先拍照再收录 / 先收录再补拍都走这里） */
+  attachCardPhoto(placeID: string, photoName?: string, remotePath?: string): void;
+  /** 这张卡到达时拍的照片；没有返回 undefined */
+  cardPhoto(placeID: string): CardPhoto | undefined;
+
+  // ---------- 远端惊喜 / 回执 ----------
+  /** 服务端回来的附近惊喜合并进本机（远端条目整体替换） */
+  mergeRemoteSurprises(remote: BuriedSurprise[]): void;
+  /** 本机埋了但还没上传的惊喜 */
+  pendingUploadSurprises(): BuriedSurprise[];
+  /** 标记某条惊喜已上传 */
+  markSurpriseUploaded(surpriseID: string): void;
+  /** 合并服务端「被找到」回执；返回是否出现新的未读 */
+  applyReceipts(remote: SurpriseReceipt[]): boolean;
+  /** 把回执全部标记已读（红点熄灭） */
+  markReceiptsRead(now?: number): void;
+  /** 全部回执（倒序） */
+  receipts(): SurpriseReceipt[];
+  /** 未读回执数 */
+  unreadReceiptCount(): number;
+  /** 最近一条未读回执 */
+  latestUnreadReceipt(): SurpriseReceipt | undefined;
 
   // ---------- 读状态 ----------
   snapshot(): AppSnapshot;
@@ -210,6 +255,8 @@ export interface WalkaholicStoreApi {
   setLastKnownOrigin(origin: GeoPoint): void;
   /** 设置是否演示模式 */
   setDemoMode(demo: boolean): void;
+  /** 清除本机数据（卡片、成就、动态、惊喜、回执、轨迹） */
+  reset(now?: number): void;
 }
 
 export interface CollectResult {
@@ -217,6 +264,12 @@ export interface CollectResult {
   card: PlaceCard;
   xpGained: number;
   newAchievements: Achievement[];
+}
+
+/** 卡片照片（本地优先，离线也有；远端路径换机后可取回） */
+export interface CardPhoto {
+  local?: string;
+  remote?: string;
 }
 
 export interface BuryParams {
@@ -227,6 +280,10 @@ export interface BuryParams {
   hints: string[];
   photoHash: string;
   photoUri: string;
+  /** 作者写的一句话（为什么埋在这里） */
+  message?: string;
+  /** 找到半径（米），默认 60 */
+  radiusMeters?: number;
 }
 
 export interface SurpriseCompareResult {

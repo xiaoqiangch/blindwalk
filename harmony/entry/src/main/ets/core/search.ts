@@ -15,11 +15,12 @@
  * 三档都没有更好的，才用它（绝不编造）。
  */
 
-import { GeoPoint, Mood, Place, WalkDuration } from './types';
+import { GeoPoint, Mood, Place, ExploreScope, WalkDuration } from './types';
 import { HttpClient, MapKeys, SourceReport, errorText } from './http';
-import { PoiCandidate, isDullCandidate, pickCandidate, tierParams } from './parity';
-import { nearby } from './providers';
+import { PoiCandidate, isDullCandidate, pickCandidate, roamRange, tierParams } from './parity';
+import { nearby, roamNearby } from './providers';
 import { makeRealPlace, realCategoryFromKey } from './catalog';
+import { DayMoment, currentMoment } from './moment';
 
 /** 公网策展数据地址（后台导出 → GitHub Pages；与 Web/iOS 三端同源） */
 export const CURATED_URL: string = 'https://xiaoqiangch.github.io/walkaholic/pois.json';
@@ -221,6 +222,29 @@ interface TierAttempt {
   dull?: Place;
 }
 
+/** 搜索参数（三档放宽 + 漫游 + 时段 + 排除已探索） */
+export interface FindOptions {
+  /** 走路去（默认）/ 远程漫游 */
+  scope?: ExploreScope;
+  /** 已经探索过的地点 id（抽盒避开） */
+  excludedPlaceIDs?: string[];
+  /** 时段（不传按当前时刻） */
+  moment?: DayMoment;
+  /** 候选条数上限（默认按档位 40 / 60） */
+  limit?: number;
+}
+
+/** 远程漫游时撒点用的可复现随机数（8 个 0…1） */
+function roamRandom(seed: number): number[] {
+  const values: number[] = [];
+  let state: number = Math.max(1, Math.floor(seed) % 2147483647);
+  for (let i = 0; i < 8; i += 1) {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    values.push(state / 2147483648);
+  }
+  return values;
+}
+
 /**
  * 跑一档：策展优先 → 多数据源 → 挑一个。
  */
@@ -233,14 +257,22 @@ async function attemptTier(
   duration: WalkDuration,
   relax: number,
   random: number,
-  limit: number
+  limit: number,
+  options: FindOptions
 ): Promise<TierAttempt> {
   const params = tierParams(relax, duration);
   const startMeters: number = walkMeters(duration);
+  const scope: ExploreScope = options.scope === undefined ? ExploreScope.Walk : options.scope;
+  const moment: DayMoment = options.moment === undefined ? currentMoment() : options.moment;
+  const excluded: string[] = options.excludedPlaceIDs === undefined ? [] : options.excludedPlaceIDs;
+  // 漫游的距离窗口来自环带，不来自时长
+  const roam: number[] = roamRange(relax);
+  const minDistance: number = scope === ExploreScope.Roam ? roam[0] : params.minDistance;
+  const maxDistance: number = scope === ExploreScope.Roam ? roam[1] : params.maxDistance;
 
   // ① 策展数据优先（人工审核过的最可靠）
   const curatedPick: CuratedPoi | undefined = pickCurated(
-    curated, origin, mood, relax, params.minDistance, params.maxDistance, random
+    curated, origin, mood, relax, minDistance, maxDistance, random
   );
   if (curatedPick !== undefined) {
     const attempt: TierAttempt = {
@@ -252,27 +284,39 @@ async function attemptTier(
     return attempt;
   }
 
-  // ② 多数据源
-  const result = await nearby(client, keys, {
-    latitude: origin.latitude,
-    longitude: origin.longitude,
-    radiusMeters: params.radius,
-    limit: limit
-  });
+  // ② 多数据源（漫游走环带撒点）
+  let candidates: PoiCandidate[];
+  let reports: SourceReport[];
+  if (scope === ExploreScope.Roam) {
+    const roamResult = await roamNearby(client, keys, origin, relax, 9000, roamRandom(Math.floor(random * 1000000)));
+    candidates = roamResult.candidates;
+    reports = roamResult.reports;
+  } else {
+    const result = await nearby(client, keys, {
+      latitude: origin.latitude,
+      longitude: origin.longitude,
+      radiusMeters: params.radius,
+      limit: limit
+    });
+    candidates = result.candidates;
+    reports = result.reports;
+  }
 
-  const picked = pickCandidate(result.candidates, {
+  const picked = pickCandidate(candidates, {
     origin: origin,
     mood: mood,
     relax: relax,
-    minDistance: params.minDistance,
-    maxDistance: params.maxDistance,
-    random: random
+    minDistance: minDistance,
+    maxDistance: maxDistance,
+    random: random,
+    excludedIDs: excluded,
+    moment: moment
   });
 
   if (picked === undefined) {
     const empty: TierAttempt = {
-      poolSize: result.candidates.length,
-      reports: result.reports,
+      poolSize: candidates.length,
+      reports: reports,
       source: ''
     };
     return empty;
@@ -303,8 +347,8 @@ async function attemptTier(
 
   const attempt: TierAttempt = {
     place: place,
-    poolSize: result.candidates.length,
-    reports: result.reports,
+    poolSize: candidates.length,
+    reports: reports,
     source: candidate.source
   };
   if (isDullCandidate(candidate)) attempt.dull = place;
@@ -321,6 +365,7 @@ function walkMeters(duration: WalkDuration): number {
 /**
  * 主入口：三档放宽地找一个真实地点。
  * @param random 可复现随机数 0…1（测试传固定值）
+ * @param options 漫游 / 时段 / 排除已探索 / 候选上限
  */
 export async function findRealPlace(
   client: HttpClient,
@@ -330,8 +375,10 @@ export async function findRealPlace(
   mood: Mood,
   duration: WalkDuration,
   random: number,
-  limit: number
+  limit: number,
+  options?: FindOptions
 ): Promise<SearchOutcome> {
+  const activeOptions: FindOptions = options === undefined ? {} : options;
   if (!isFinite(origin.latitude) || !isFinite(origin.longitude)) {
     const invalid: SearchOutcome = {
       tier: 0,
@@ -343,15 +390,23 @@ export async function findRealPlace(
     return invalid;
   }
 
+  // 漫游每次要撒 4 个点 × 多个源，代价比附近搜索高，
+  // 只跑两档（45 公里 → 55 公里），第三档收益很小、等待翻倍。
+  // （与苹果版 BoxSetupSheet 的 tierIndices 一致）
+  const roam: boolean = activeOptions.scope === ExploreScope.Roam;
+  const tierCount: number = roam ? 2 : 3;
+
   let dullFallback: Place | undefined = undefined;
   let lastReports: SourceReport[] = [];
   let poolSize: number = 0;
   let networkFailed: boolean = false;
 
-  for (let tier = 0; tier < 3; tier += 1) {
+  for (let tier = 0; tier < tierCount; tier += 1) {
     let attempt: TierAttempt;
     try {
-      attempt = await attemptTier(client, keys, curated, origin, mood, duration, tier, random, limit);
+      attempt = await attemptTier(
+        client, keys, curated, origin, mood, duration, tier, random, limit, activeOptions
+      );
     } catch (error) {
       // 单档网络异常：记下来，继续下一档（范围更大，可能换到能用的源）
       networkFailed = true;
@@ -382,7 +437,7 @@ export async function findRealPlace(
   if (dullFallback !== undefined) {
     const fallback: SearchOutcome = {
       place: dullFallback,
-      tier: 2,
+      tier: tierCount - 1,
       poolSize: poolSize,
       reports: lastReports,
       source: dullFallback.source,
@@ -393,7 +448,7 @@ export async function findRealPlace(
 
   // 明确失败：不虚构
   const failed: SearchOutcome = {
-    tier: 2,
+    tier: tierCount - 1,
     poolSize: poolSize,
     reports: lastReports,
     source: '',

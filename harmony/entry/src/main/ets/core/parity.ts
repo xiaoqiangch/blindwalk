@@ -14,7 +14,8 @@
  */
 
 import { Area, GeoPoint, Mood, Rarity, WalkDuration } from './types';
-import { distance } from './geo';
+import { distance, offset as offsetPoint } from './geo';
+import { DayMoment, currentMoment, momentAffinity } from './moment';
 
 // ============================================================
 // 常量（parity.md §2）
@@ -66,6 +67,47 @@ const RELAX_MAX_SCALE: number[] = [1.7, 2.2, 2.7];
 /** 距离硬帽：min(3500, 3.4 × 时长米)，任何档位都不得突破 */
 export const HARD_MAX_METERS: number = 3500;
 export const HARD_MAX_SCALE: number = 3.4;
+
+// ============================================================
+// 远程漫游（对齐 iOS POISelection.roamRange / roamSearchRadius）
+// ============================================================
+
+/**
+ * 漫游距离窗口（米）：下限固定 10 公里，上限逐档放宽（45 → 55 → 65 公里）。
+ *
+ * 为什么下限不再往下掉：早年为了让「10 公里外一个点都没有」也能出结果，
+ * 第三档会掉到 6 公里 —— 那已经能走过去了，却还按「先开车」的流程展示，
+ * 用户会觉得被耍。宁可明确失败，也不把近距离的点伪装成漫游。
+ */
+export function roamRange(relax: number = 0): Array<number> {
+  const ups: number[] = [45000, 55000, 65000];
+  let index: number = Math.floor(relax);
+  if (index < 0) index = 0;
+  if (index > ups.length - 1) index = ups.length - 1;
+  return [10000, ups[index]];
+}
+
+/** 远程漫游的搜索半径（米）。高德/百度的 around 半径上限是 50000 */
+export function roamSearchRadius(relax: number = 0): number {
+  const range: number[] = roamRange(relax);
+  const radius: number = range[1] * 1.15;
+  return Math.round(Math.min(50000, Math.max(12000, radius)));
+}
+
+/** 漫游环带采样：4 个方向 + ±30° 抖动，返回采样中心 */
+export function roamSampleCenters(origin: GeoPoint, relax: number, random: number[]): GeoPoint[] {
+  const range: number[] = roamRange(relax);
+  const low: number = Math.max(range[0] + 2000, 12000);
+  const high: number = Math.max(low + 1000, Math.min(range[1] - 1200, 43000));
+  const centers: GeoPoint[] = [];
+  for (let index = 0; index < 4; index += 1) {
+    const jitter: number = random.length > index ? random[index] : 0.5;
+    const bearing: number = index * 90 + (jitter * 60 - 30);
+    const meters: number = low + (high - low) * (random.length > index + 4 ? random[index + 4] : 0.5);
+    centers.push(offsetPoint(origin, meters, (bearing + 360) % 360));
+  }
+  return centers;
+}
 
 /** 去重半径（米） */
 export const DEDUPE_METERS: number = 30;
@@ -200,11 +242,16 @@ export function scoreWalkworthy(name: string): Walkworthy {
   return { ok: true, penalty: 1 };
 }
 
-/** 某个候选点的综合权重（心情 + 类别 + 来源 + 照片 + relax 拉平） */
+/**
+ * 某个候选点的综合权重（心情 + 类别 + 来源 + 照片 + 时段 + relax 拉平）
+ *
+ * `moment` 不传时按「当前时刻」算 —— 与苹果版 `weight(..., moment: .now)` 的默认值一致。
+ */
 export function candidateWeight(
   candidate: PoiCandidate,
   mood: Mood,
-  relax: number
+  relax: number,
+  moment?: DayMoment
 ): number {
   let index: number = Math.floor(relax);
   if (index < 0) index = 0;
@@ -227,6 +274,10 @@ export function candidateWeight(
 
   // 软黑名单降权
   weight *= scoreWalkworthy(candidate.name).penalty;
+
+  // 时段偏好：环境性盲盒的核心 —— 黄昏往水边走，夜里避开公园
+  const activeMoment: DayMoment = moment === undefined ? currentMoment() : moment;
+  weight *= momentAffinity(activeMoment, candidate.category);
 
   // 免费源 / 有照片加权
   if (candidate.source === 'wiki' || candidate.source === 'osm') weight *= SOURCE_WEIGHT_FREE;
@@ -455,6 +506,10 @@ export interface PickOptions {
   maxDistance: number;
   /** 可复现随机种子（0…1 之间的小数） */
   random: number;
+  /** 已经探索过的地点 id（真实 POI 的 id 稳定，能跨会话去重） */
+  excludedIDs?: string[];
+  /** 时段（不传按当前时刻；环境性盲盒的核心） */
+  moment?: DayMoment;
 }
 
 /**
@@ -467,15 +522,17 @@ export function pickCandidate(
   options: PickOptions
 ): RankedCandidate | undefined {
   const pool: RankedCandidate[] = [];
+  const excluded: string[] = options.excludedIDs === undefined ? [] : options.excludedIDs;
   for (let i = 0; i < candidates.length; i += 1) {
     const candidate: PoiCandidate = candidates[i];
     if (!isFinite(candidate.latitude) || !isFinite(candidate.longitude)) continue;
+    if (excluded.indexOf(candidate.id) >= 0) continue;
     if (!scoreWalkworthy(candidate.name).ok) continue;
     const meters: number = candidate.distance === undefined
       ? candidateDistance(options.origin, candidate)
       : candidate.distance;
     if (meters < options.minDistance || meters > options.maxDistance) continue;
-    const weight: number = candidateWeight(candidate, options.mood, options.relax);
+    const weight: number = candidateWeight(candidate, options.mood, options.relax, options.moment);
     if (weight <= 0) continue;
     pool.push({ candidate: candidate, weight: weight, distance: meters });
   }

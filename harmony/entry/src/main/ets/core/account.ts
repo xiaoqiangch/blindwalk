@@ -25,6 +25,8 @@ export const ACCOUNT_BASE_DEFAULT: string = 'https://xqlounge.top';
 /** 账号配置 / 会话的存储键 */
 export const ACCOUNT_CONFIG_KEY: string = 'walkaholic.account.v1';
 export const ACCOUNT_SESSION_KEY: string = 'walkaholic.account.session.v1';
+/** 匿名设备标识（惊喜上传/回执用它区分作者；不含任何个人信息） */
+export const DEVICE_ID_KEY: string = 'walkaholic.deviceId.v1';
 
 /** 整包同步上限：服务端 256KB，客户端留一点余量 */
 export const PROFILE_MAX_BYTES: number = 240 * 1024;
@@ -127,6 +129,35 @@ export function writeAccountConfig(kv: KeyValueStore, config: AccountConfig): vo
 /** 是否已登录 */
 export function isLoggedIn(config: AccountConfig): boolean {
   return config.user !== undefined;
+}
+
+/**
+ * 匿名设备标识（随机串，存本机；不含任何个人信息）。
+ * 未登录埋惊喜 / 拉回执时用它区分作者 —— 与 iOS `SurpriseService.deviceID` 同义。
+ *
+ * 用 `config` 里携带的 kv 不方便，所以单独接一个 KeyValueStore。
+ */
+export function readDeviceID(kv: KeyValueStore): string {
+  const existing: string | undefined = kv.getString(DEVICE_ID_KEY);
+  if (existing !== undefined && existing.length > 0) return existing;
+  const fresh: string = randomDeviceID();
+  try {
+    kv.putString(DEVICE_ID_KEY, fresh);
+  } catch (error) {
+    // 写不进去也能用（本次会话内一致）
+  }
+  return fresh;
+}
+
+/** 生成一个 32 位十六进制随机串（不依赖 crypto，够用作设备区分） */
+function randomDeviceID(): string {
+  const digits: string = '0123456789abcdef';
+  let text: string = '';
+  for (let i = 0; i < 32; i += 1) {
+    const index: number = Math.floor(Math.random() * 16);
+    text += digits.charAt(index);
+  }
+  return text;
 }
 
 /** 服务地址是否可以访问（HTTPS 页面不能调 http —— 鸿蒙无此限制，仅提示用） */

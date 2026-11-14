@@ -12,6 +12,7 @@
 
 import {
   Achievement,
+  ExploreScope,
   GeoPoint,
   MapPoint,
   Place,
@@ -22,7 +23,8 @@ import {
   Rarity,
   Area,
   FeedPost,
-  BuriedSurprise
+  BuriedSurprise,
+  isRoamJourney
 } from './types';
 import { KeyValueStore } from './contract';
 
@@ -55,6 +57,8 @@ export interface StoreExtras {
   revealSerial?: string;
   /** 已收录卡片（session 恢复后 UI 可跳图鉴） */
   currentCard?: PlaceCard;
+  /** 抽盒范围：走路去 / 远程漫游（用户选了漫游，下次打开不该又变回步行） */
+  selectedScope: ExploreScope;
 }
 
 /** 读取结果：契约 Profile + 运行时 extras */
@@ -196,6 +200,12 @@ function decodeCard(value: unknown): PlaceCard | undefined {
     collectedAt: readNumber(record, 'collectedAt', 0),
     taskDone: readBoolean(record, 'taskDone', false)
   };
+  const photoName: unknown = record['photoName'];
+  if (typeof photoName === 'string' && photoName.length > 0) card.photoName = photoName;
+  const photoRemotePath: unknown = record['photoRemotePath'];
+  if (typeof photoRemotePath === 'string' && photoRemotePath.length > 0) {
+    card.photoRemotePath = photoRemotePath;
+  }
   return card;
 }
 
@@ -350,6 +360,10 @@ function decodeProfile(record: Record<string, unknown>): Profile {
   return profile;
 }
 
+function decodeScope(value: string): ExploreScope {
+  return value === 'roam' ? ExploreScope.Roam : ExploreScope.Walk;
+}
+
 function decodeSession(value: unknown): QuestSession | undefined {
   const record: Record<string, unknown> | undefined = toRecord(value);
   if (record === undefined) return undefined;
@@ -361,14 +375,17 @@ function decodeSession(value: unknown): QuestSession | undefined {
   else if (phaseText === 'arrived') phase = QuestPhase.Arrived;
   else if (phaseText === 'revealed') phase = QuestPhase.Revealed;
   else if (phaseText === 'collected') phase = QuestPhase.Collected;
+  const totalMeters: number = readNumber(record, 'totalMeters', 0);
   const session: QuestSession = {
     id: readString(record, 'id', 'quest-' + placeID),
     placeID: placeID,
     startedAt: readNumber(record, 'startedAt', 0),
-    totalMeters: readNumber(record, 'totalMeters', 0),
+    totalMeters: totalMeters,
     remainingMeters: readNumber(record, 'remainingMeters', 0),
     phase: phase,
-    unlockedHintCount: readNumber(record, 'unlockedHintCount', 1)
+    unlockedHintCount: readNumber(record, 'unlockedHintCount', 1),
+    // 老存档没有 scope：按里程兜底推断（与苹果版 ExploreScope.isRoamJourney 一致）
+    scope: decodeScope(readString(record, 'scope', isRoamJourney(totalMeters) ? 'roam' : 'walk'))
   };
   const targetRecord: Record<string, unknown> | undefined = toRecord(record['target']);
   if (targetRecord !== undefined) {
@@ -390,7 +407,8 @@ function decodeExtras(record: Record<string, unknown>): StoreExtras {
       togetherCount: 0,
       feed: [],
       realPlaces: [],
-      consolationPaid: []
+      consolationPaid: [],
+      selectedScope: ExploreScope.Walk
     };
     return empty;
   }
@@ -401,7 +419,8 @@ function decodeExtras(record: Record<string, unknown>): StoreExtras {
     togetherCount: readNumber(extrasRecord, 'togetherCount', 0),
     feed: decodeFeed(extrasRecord, 'feed'),
     realPlaces: decodePlaces(extrasRecord, 'realPlaces'),
-    consolationPaid: readStringArray(extrasRecord, 'consolationPaid')
+    consolationPaid: readStringArray(extrasRecord, 'consolationPaid'),
+    selectedScope: decodeScope(readString(extrasRecord, 'selectedScope', 'walk'))
   };
   const lastWalkAt: unknown = extrasRecord['lastWalkAt'];
   if (typeof lastWalkAt === 'number') extras.lastWalkAt = lastWalkAt;
@@ -449,7 +468,8 @@ function serializableExtras(extras: StoreExtras): StoreExtras {
     togetherCount: extras.togetherCount,
     feed: extras.feed,
     realPlaces: extras.realPlaces,
-    consolationPaid: extras.consolationPaid.slice()
+    consolationPaid: extras.consolationPaid.slice(),
+    selectedScope: extras.selectedScope
   };
   if (extras.lastWalkAt !== undefined) copy.lastWalkAt = extras.lastWalkAt;
   if (extras.session !== undefined) copy.session = extras.session;
@@ -508,6 +528,18 @@ function decodeSurprise(value: unknown): BuriedSurprise | undefined {
   if (typeof myPhotoUri === 'string') surprise.myPhotoUri = myPhotoUri;
   const similarity: unknown = record['similarity'];
   if (typeof similarity === 'number') surprise.similarity = similarity;
+  if (typeof record['message'] === 'string') surprise.message = record['message'] as string;
+  if (typeof record['radiusMeters'] === 'number') surprise.radiusMeters = record['radiusMeters'] as number;
+  if (typeof record['seekerPoints'] === 'number') surprise.seekerPoints = record['seekerPoints'] as number;
+  if (typeof record['authorPoints'] === 'number') surprise.authorPoints = record['authorPoints'] as number;
+  if (typeof record['finderName'] === 'string') surprise.finderName = record['finderName'] as string;
+  if (typeof record['foundAt'] === 'number') surprise.foundAt = record['foundAt'] as number;
+  if (typeof record['finderPhotoUri'] === 'string') {
+    surprise.finderPhotoUri = record['finderPhotoUri'] as string;
+  }
+  if (typeof record['isMine'] === 'boolean') surprise.isMine = record['isMine'] as boolean;
+  if (typeof record['isUploaded'] === 'boolean') surprise.isUploaded = record['isUploaded'] as boolean;
+  if (typeof record['isRemote'] === 'boolean') surprise.isRemote = record['isRemote'] as boolean;
   return surprise;
 }
 

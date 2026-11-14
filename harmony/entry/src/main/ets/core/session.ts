@@ -14,6 +14,7 @@
 
 import {
   ARRIVE_THRESHOLD_METERS,
+  ExploreScope,
   GeoPoint,
   HINT_THRESHOLDS,
   QuestEvent,
@@ -38,7 +39,8 @@ export function cloneSession(session: QuestSession): QuestSession {
     totalMeters: session.totalMeters,
     remainingMeters: session.remainingMeters,
     phase: session.phase,
-    unlockedHintCount: session.unlockedHintCount
+    unlockedHintCount: session.unlockedHintCount,
+    scope: session.scope === undefined ? ExploreScope.Walk : session.scope
   };
   if (session.target !== undefined) {
     const target: GeoPoint = { latitude: session.target.latitude, longitude: session.target.longitude };
@@ -56,7 +58,8 @@ export function createSession(
   startedAt: number,
   totalMeters: number,
   target?: GeoPoint,
-  currentBearing?: number
+  currentBearing?: number,
+  scope?: ExploreScope
 ): QuestSession {
   const session: QuestSession = {
     id: 'quest-' + String(startedAt) + '-' + placeID,
@@ -65,7 +68,8 @@ export function createSession(
     totalMeters: totalMeters,
     remainingMeters: totalMeters,
     phase: QuestPhase.Walking,
-    unlockedHintCount: 1
+    unlockedHintCount: 1,
+    scope: scope === undefined ? ExploreScope.Walk : scope
   };
   if (target !== undefined) {
     const point: GeoPoint = { latitude: target.latitude, longitude: target.longitude };

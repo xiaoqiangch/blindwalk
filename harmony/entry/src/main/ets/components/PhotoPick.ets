@@ -10,8 +10,10 @@
  */
 
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { cameraPicker } from '@kit.CameraKit';
 import { image } from '@kit.ImageKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { computeDHash } from '../core/surprise';
@@ -49,6 +51,28 @@ export async function pickPhotoFromAlbum(): Promise<string | undefined> {
       return undefined;
     }
     return result.photoUris[0];
+  } catch (err) {
+    const error = err as BusinessError;
+    return undefined;
+  }
+}
+
+/**
+ * 拉起系统相机拍一张（无需申请相机权限，CameraPicker 是系统级免权限组件）。
+ * 用户取消或失败时返回 undefined（调用方保持原状）。
+ */
+export async function takePhoto(): Promise<string | undefined> {
+  try {
+    const context: common.UIAbilityContext = getContext() as common.UIAbilityContext;
+    const pickerProfile: cameraPicker.PickerProfile = {
+      cameraPosition: cameraPicker.CameraPosition.BACK
+    };
+    const result: cameraPicker.PickerResult = await cameraPicker.pick(
+      context, [cameraPicker.PickerMediaType.PHOTO], pickerProfile
+    );
+    if (result === undefined || result.resultCode !== 0) return undefined;
+    if (result.resultUri === undefined || result.resultUri.length === 0) return undefined;
+    return result.resultUri;
   } catch (err) {
     const error = err as BusinessError;
     return undefined;
@@ -194,4 +218,57 @@ export function photoExists(uri: string): boolean {
   } catch (err) {
     return false;
   }
+}
+
+// ============================================================
+// 相册（reach-in）：photoAccessHelper 的 PhotoViewPicker 是「拉取」模式，
+// 选一张后拿到的是 media URI（只在本次授权内有效），所以 adoptPhoto 必须
+// 立刻解码 + 复制到沙箱。下面是相机/相册两条入口的统一封装。
+// ============================================================
+
+/**
+ * 拍一张照片并落到沙箱（相机 → 解码算 dHash → 复制进沙箱）。
+ * 失败返回 undefined。
+ */
+export async function takeAndAdoptPhoto(context: common.UIAbilityContext): Promise<PickedPhoto | undefined> {
+  const uri: string | undefined = await takePhoto();
+  if (uri === undefined) return undefined;
+  return adoptPhoto(context, uri);
+}
+
+/**
+ * 从相册选一张并落到沙箱。
+ * 失败返回 undefined。
+ */
+export async function pickAndAdoptPhoto(context: common.UIAbilityContext): Promise<PickedPhoto | undefined> {
+  const uri: string | undefined = await pickPhotoFromAlbum();
+  if (uri === undefined) return undefined;
+  return adoptPhoto(context, uri);
+}
+
+/** 读取沙箱图片文件为 base64（上传账号 / data URL 用） */
+export function readPhotoAsBase64(uri: string): string {
+  if (uri.length === 0) return '';
+  try {
+    const file: fs.File = fs.openSync(uri, fs.OpenMode.READ_ONLY);
+    try {
+      const stat: fs.Stat = fs.statSync(file.fd);
+      const buffer: ArrayBuffer = new ArrayBuffer(stat.size);
+      fs.readSync(file.fd, buffer);
+      const bytes: Uint8Array = new Uint8Array(buffer);
+      return util.Base64Helper.encodeToStringSync(bytes);
+    } finally {
+      fs.closeSync(file);
+    }
+  } catch (err) {
+    const error = err as BusinessError;
+    return '';
+  }
+}
+
+/** 沙箱图片 → data URL（JPEG；服务端 image/jpeg 白名单） */
+export function photoDataURL(uri: string): string {
+  const base64: string = readPhotoAsBase64(uri);
+  if (base64.length === 0) return '';
+  return 'data:image/jpeg;base64,' + base64;
 }

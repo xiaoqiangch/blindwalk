@@ -19,6 +19,16 @@ import { WaAccountPanel } from '../components/AccountPanel';
 import { WaDataSourcePanel } from '../components/DataSourcePanel';
 import { WaSeekPanel } from '../components/SeekPanel';
 import { BurySurprisePanel } from '../components/BurySurprisePanel';
+import { SurprisesPanel } from '../components/SurprisesPanel';
+import { CityMapView } from '../views/CityMapView';
+import { AccountConfig, readDeviceID } from '../core/account';
+import {
+  claimSurprise,
+  fetchMySurpriseReceipts,
+  fetchNearbySurprises,
+  uploadSurprise
+} from '../core/surpriseRemote';
+import { BuriedSurprise, GeoPoint as GeoPointType } from '../core/types';
 import { DataSourceStatus } from '../core/contract';
 import { WAColor, WAFont, WASize } from '../theme/Theme';
 import { WaBoxArt } from '../components/BoxArt';
@@ -54,6 +64,8 @@ const OVERLAY_ACCOUNT: string = 'account';
 const OVERLAY_DATASOURCE: string = 'datasource';
 const OVERLAY_SEEK: string = 'seek';
 const OVERLAY_BURY: string = 'bury';
+const OVERLAY_SURPRISES: string = 'surprises';
+const OVERLAY_CITYMAP: string = 'citymap';
 
 @Entry
 @Component
@@ -130,9 +142,85 @@ struct Index {
       this.revision = this.revision + 1;
       // 有定位就顺手把附近兴趣点拉了（进图鉴立刻有内容）
       this.loadNearbyPlaces();
+      // 冷启动：补齐未上传的惊喜 + 同步「被找到」回执（失败静默）
+      this.syncSurprises();
     } catch (err) {
       this.initError = '本地数据没准备好，重新打开试试。';
     }
+  }
+
+  /** 账号配置（远端惊喜 / 回执 / 照片上传都要它） */
+  private accountConfig(): AccountConfig {
+    if (this.kv === undefined) {
+      const fallback: AccountConfig = { baseUrl: 'https://xqlounge.top' };
+      return fallback;
+    }
+    try {
+      return readAccountConfig(this.kv);
+    } catch (err) {
+      const fallback: AccountConfig = { baseUrl: 'https://xqlounge.top' };
+      return fallback;
+    }
+  }
+
+  /**
+   * 惊喜的远端同步（与 iOS SurpriseService 同一套职责）：
+   *   1. 拉附近别人埋的 → 合并进 store
+   *   2. 补传本机还没上传成功的
+   *   3. 拉「被找到」回执 → 点红点
+   *
+   * 任何一步失败都静默（不打扰浏览）。
+   */
+  private async syncSurprises(): Promise<void> {
+    if (this.kv === undefined) return;
+    const config: AccountConfig = this.accountConfig();
+    const origin: GeoPointType | undefined = this.currentFixOrUndefined();
+    if (origin !== undefined) {
+      const result = await fetchNearbySurprises(this.http, config, this.kv, origin, 5000);
+      if (result.ok && result.surprises.length > 0) {
+        getStore().mergeRemoteSurprises(result.surprises);
+        this.refresh();
+      }
+    }
+    // 补传本机埋下的
+    const pending: BuriedSurprise[] = getStore().pendingUploadSurprises();
+    for (let i = 0; i < pending.length; i += 1) {
+      const ok = await uploadSurprise(this.http, config, this.kv, pending[i]);
+      if (ok) getStore().markSurpriseUploaded(pending[i].id);
+    }
+    // 回执
+    const receipts = await fetchMySurpriseReceipts(this.http, config, this.kv);
+    if (receipts.length > 0) {
+      getStore().applyReceipts(receipts);
+      this.refresh();
+    }
+  }
+
+  private currentFixOrUndefined(): GeoPointType | undefined {
+    try {
+      const origin: GeoPointType | undefined = getStore().snapshot().lastKnownOrigin;
+      if (origin === undefined) return undefined;
+      return origin;
+    } catch (err) {
+      return undefined;
+    }
+  }
+
+  /** 埋下后立刻尽力上传这一颗（失败保留 pending，下次冷启动再补） */
+  private async uploadSurpriseByID(surpriseID: string): Promise<void> {
+    if (this.kv === undefined) return;
+    const snapshot = getStore().snapshot();
+    let target: BuriedSurprise | undefined = undefined;
+    for (let i = 0; i < snapshot.mySurprises.length; i += 1) {
+      if (snapshot.mySurprises[i].id === surpriseID) {
+        target = snapshot.mySurprises[i];
+        break;
+      }
+    }
+    if (target === undefined) return;
+    const config: AccountConfig = this.accountConfig();
+    const ok = await uploadSurprise(this.http, config, this.kv, target);
+    if (ok) getStore().markSurpriseUploaded(surpriseID);
   }
 
   /** 任何 store 状态变化后调用：让四个 Tab 页重读 snapshot */
@@ -469,6 +557,14 @@ struct Index {
           onOpenBury: () => {
             this.activeOverlay = OVERLAY_BURY;
             this.refresh();
+          },
+          onOpenMySurprises: () => {
+            this.activeOverlay = OVERLAY_SURPRISES;
+            this.syncSurprises();
+            this.refresh();
+          },
+          onOpenSeek: (surpriseID: string) => {
+            this.openSeek(surpriseID);
           }
         })
       }
@@ -525,6 +621,15 @@ struct Index {
           },
           onOpenDataSource: () => {
             this.activeOverlay = OVERLAY_DATASOURCE;
+            this.refresh();
+          },
+          onOpenCityMap: () => {
+            this.activeOverlay = OVERLAY_CITYMAP;
+            this.refresh();
+          },
+          onOpenMySurprises: () => {
+            this.activeOverlay = OVERLAY_SURPRISES;
+            this.syncSurprises();
             this.refresh();
           },
           onChanged: () => {
@@ -678,9 +783,39 @@ struct Index {
             this.refresh();
           },
           onBuried: (surpriseID: string) => {
+            // 埋下后立刻尽力上传（未登录也能传：服务端按设备标识区分作者）
+            this.uploadSurpriseByID(surpriseID);
             this.refresh();
           },
           onChanged: () => {
+            this.refresh();
+          }
+        })
+      }
+
+      if (this.ready && this.activeOverlay === OVERLAY_SURPRISES) {
+        SurprisesPanel({
+          revision: this.revision,
+          winWidth: this.winWidth,
+          winHeight: this.winHeight,
+          onBack: () => {
+            this.activeOverlay = OVERLAY_NONE;
+            this.refresh();
+          },
+          onOpenBury: () => {
+            this.activeOverlay = OVERLAY_BURY;
+            this.refresh();
+          }
+        })
+      }
+
+      if (this.ready && this.activeOverlay === OVERLAY_CITYMAP) {
+        CityMapView({
+          revision: this.revision,
+          winWidth: this.winWidth,
+          winHeight: this.winHeight,
+          onBack: () => {
+            this.activeOverlay = OVERLAY_NONE;
             this.refresh();
           }
         })
@@ -727,6 +862,8 @@ struct Index {
         RevealView({
           winWidth: this.winWidth,
           winHeight: this.winHeight,
+          http: this.http,
+          kv: this.kv,
           onGoCards: () => {
             this.goCards();
           },

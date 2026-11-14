@@ -9,9 +9,14 @@
  * 保密：只有本页（到达后）才展示 currentPlace.name / address / category。
  */
 
+import { common } from '@kit.AbilityKit';
 import { getStore } from '../core/store';
-import { AppSnapshot, CollectResult } from '../core/contract';
-import { Achievement, Place } from '../core/types';
+import { AppSnapshot, CollectResult, KeyValueStore } from '../core/contract';
+import { Achievement, FeedPost, Place } from '../core/types';
+import { HttpClient } from '../core/http';
+import { AccountConfig, isLoggedIn, readAccountConfig } from '../core/account';
+import { uploadCheckInPhoto } from '../core/surpriseRemote';
+import { PickedPhoto, photoDataURL, pickAndAdoptPhoto, takeAndAdoptPhoto } from '../components/PhotoPick';
 import {
   WaHairline,
   WaMicroLabel,
@@ -49,11 +54,21 @@ export struct RevealView {
   @State private particlesOut: boolean = false;
   @State private particlesFade: boolean = false;
   @State private hasCollected: boolean = false;
+  @State private hasShared: boolean = false;
   @State private collecting: boolean = false;
   @State private taskDone: boolean = false;
   @State private toastText: string = '';
   @State private toastIcon: string = 'star_fill';
   @State private achievementText: string = '';
+
+  /** 平台能力（拍到 / 选到的照片要落本机并尽力上传账号） */
+  http: HttpClient | undefined = undefined;
+  kv: KeyValueStore | undefined = undefined;
+
+  /** 到达实拍：本地优先（离线也有），登录后上传账号（按地点存、可重拍覆盖） */
+  @State private checkInUri: string = '';
+  @State private checkInRemotePath: string = '';
+  @State private uploadingPhoto: boolean = false;
 
   private stageTimers: number[] = [];
   private toastTimer: number = -1;
@@ -76,6 +91,189 @@ export struct RevealView {
 
   private load(): void {
     this.snapshot = readSnapshot(this.snapshot);
+    this.loadExistingCheckInPhoto();
+  }
+
+  // ============================================================
+  // 到达实拍
+  // ============================================================
+
+  private currentPlaceID(): string {
+    const place: Place | undefined = this.snapshot.currentPlace;
+    return place === undefined ? '' : place.id;
+  }
+
+  /** 已经有照片（本机或账号）就显示出来 */
+  private loadExistingCheckInPhoto(): void {
+    const placeID: string = this.currentPlaceID();
+    if (placeID.length === 0 || this.checkInUri.length > 0) return;
+    try {
+      const photo = getStore().cardPhoto(placeID);
+      if (photo === undefined) return;
+      if (photo.local !== undefined && photo.local.length > 0) this.checkInUri = photo.local;
+      if (photo.remote !== undefined) this.checkInRemotePath = photo.remote;
+    } catch (err) {
+      // 没有照片就是没有
+    }
+  }
+
+  private uploadStatusText(): string {
+    if (this.uploadingPhoto) return '上传中…';
+    if (this.checkInRemotePath.length > 0) return '已上传 · 换机可找回';
+    if (this.kv === undefined) return '仅存本机';
+    const config: AccountConfig = readAccountConfig(this.kv);
+    return isLoggedIn(config) ? '仅存本机（稍后可再上传）' : '仅存本机 · 登录后可同步';
+  }
+
+  /** 拍一张 / 换一张：先落本机（离线也有），再尽力上传账号 */
+  private async capturePhoto(fromCamera: boolean): Promise<void> {
+    if (this.uploadingPhoto) return;
+    const context: common.UIAbilityContext = getContext() as common.UIAbilityContext;
+    let picked: PickedPhoto | undefined = undefined;
+    try {
+      picked = fromCamera ? await takeAndAdoptPhoto(context) : await pickAndAdoptPhoto(context);
+    } catch (err) {
+      picked = undefined;
+    }
+    if (picked === undefined) return;
+
+    this.checkInUri = picked.uri;
+    this.checkInRemotePath = '';
+    const placeID: string = this.currentPlaceID();
+    if (placeID.length > 0) {
+      try {
+        getStore().attachCardPhoto(placeID, picked.uri);
+      } catch (err) {
+        // 卡片还没收录时挂不上，等收录后再补
+      }
+    }
+    this.onChanged();
+    this.uploadCheckInPhotoIfPossible(picked.uri, placeID);
+  }
+
+  private async uploadCheckInPhotoIfPossible(uri: string, placeID: string): Promise<void> {
+    if (this.http === undefined || this.kv === undefined || placeID.length === 0) return;
+    const config: AccountConfig = readAccountConfig(this.kv);
+    if (!isLoggedIn(config)) return;
+    const dataUrl: string = photoDataURL(uri);
+    if (dataUrl.length === 0) return;
+    this.uploadingPhoto = true;
+    const path: string | undefined = await uploadCheckInPhoto(
+      this.http, config, this.kv, placeID, dataUrl
+    );
+    this.uploadingPhoto = false;
+    if (path === undefined) {
+      this.showToast('照片已存本机，上传失败（网络或登录状态）', 'info_circle');
+      return;
+    }
+    this.checkInRemotePath = path;
+    try {
+      getStore().attachCardPhoto(placeID, uri, path);
+    } catch (err) {
+      // 同上
+    }
+    this.showToast('照片已上传到账号', 'checkmark_circle');
+    this.onChanged();
+  }
+
+  /** 到达实拍区块（与 iOS RevealView.checkInPhotoSection 同语义） */
+  @Builder
+  checkInPhotoSection() {
+    Column({ space: 6 }) {
+      if (this.checkInUri.length > 0) {
+        Stack({ alignContent: Alignment.TopStart }) {
+          Image(this.checkInUri)
+            .width('100%')
+            .height(168)
+            .objectFit(ImageFit.Cover)
+            .borderRadius(WASize.cardRadiusSm)
+            .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
+            .alt($r('app.media.app_icon'))
+
+          Text('你拍的')
+            .fontSize(WAFont.micro)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(WAColor.iconOnBrand)
+            .padding({ left: 9, right: 9 })
+            .height(22)
+            .backgroundColor('#9E182431')
+            .borderRadius(WASize.chipRadius)
+            .margin(10)
+        }
+        .width('100%')
+
+        Row({ space: 10 }) {
+          Text('重拍')
+            .fontSize(WAFont.captionSm)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(WAColor.ink2)
+            .onClick(() => {
+              this.capturePhoto(true);
+            })
+          Text('换一张')
+            .fontSize(WAFont.captionSm)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(WAColor.ink2)
+            .onClick(() => {
+              this.capturePhoto(false);
+            })
+          Blank()
+          Text(this.uploadStatusText())
+            .fontSize(WAFont.microSm)
+            .fontColor(this.checkInRemotePath.length > 0 ? WAColor.teal : WAColor.ink3)
+            .maxLines(1)
+        }
+        .width('100%')
+      } else {
+        Row({ space: 10 }) {
+          Button() {
+            Row({ space: 6 }) {
+              SymbolGlyph($r('sys.symbol.camera_fill'))
+                .fontSize(WAFont.caption)
+                .fontColor([WAColor.ink])
+                .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+              Text('拍一张 · 记下这一刻')
+                .fontSize(WAFont.caption)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(WAColor.ink)
+            }
+          }
+          .type(ButtonType.Normal)
+          .height(44)
+          .layoutWeight(1)
+          .backgroundColor(WAColor.amberSoft)
+          .borderRadius(WASize.cardRadiusSm)
+          .border({
+            width: 1,
+            color: WAColor.amberBorder,
+            radius: WASize.cardRadiusSm,
+            style: BorderStyle.Dashed
+          })
+          .onClick(() => {
+            this.capturePhoto(true);
+          })
+
+          Button() {
+            SymbolGlyph($r('sys.symbol.photo_on_rectangle'))
+              .fontSize(WAFont.titleSm)
+              .fontColor([WAColor.ink2])
+              .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          }
+          .type(ButtonType.Normal)
+          .width(44)
+          .height(44)
+          .backgroundColor(WAColor.paper2)
+          .borderRadius(WASize.cardRadiusSm)
+          .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
+          .onClick(() => {
+            this.capturePhoto(false);
+          })
+        }
+        .width('100%')
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
   }
 
   private place(): Place | undefined {
@@ -208,6 +406,16 @@ export struct RevealView {
     }
 
     this.hasCollected = true;
+    // 到达实拍：如果先拍了照片、之后再收录，这里补挂到卡片上
+    if (this.checkInUri.length > 0) {
+      const placeID: string = result.card.placeID;
+      try {
+        getStore().attachCardPhoto(placeID, this.checkInUri,
+          this.checkInRemotePath.length > 0 ? this.checkInRemotePath : undefined);
+      } catch (err) {
+        // 照片挂不上不影响收录
+      }
+    }
     this.load();
     this.onChanged();
 
@@ -235,8 +443,19 @@ export struct RevealView {
     if (this.collecting) {
       return;
     }
-    // 契约里没有 share API：不假装已发布，温柔地兜底。
-    this.showToast('这一版先把惊喜留给自己。', 'heart_fill');
+    const place: Place | undefined = this.place();
+    if (place === undefined) {
+      this.showToast('还没有可以分享的地点。', 'info_circle');
+      return;
+    }
+    const post: FeedPost | undefined = getStore().share('走到了「' + place.name + '」。');
+    if (post === undefined) {
+      this.showToast('分享没成功，再试一次。', 'info_circle');
+      return;
+    }
+    this.hasShared = true;
+    this.onChanged();
+    this.showToast('已发布到圈子', 'heart_fill');
   }
 
   private toggleTaskDone(): void {
@@ -490,6 +709,13 @@ export struct RevealView {
 
       WaHairline()
 
+      Column() {
+        this.checkInPhotoSection()
+      }
+      .margin({ top: 12 })
+
+      WaHairline()
+
       Column({ space: 6 }) {
         WaMicroLabel({ text: '为什么是这里：' })
         Text(place.why)
@@ -526,7 +752,7 @@ export struct RevealView {
         })
 
         Button() {
-          Text('分享')
+          Text(this.hasShared ? '已分享' : '分享')
             .fontSize(WAFont.bodySm)
             .fontWeight(FontWeight.Medium)
             .fontColor(WAColor.ink2)
@@ -536,6 +762,8 @@ export struct RevealView {
         .width(96)
         .backgroundColor(Color.Transparent)
         .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
+        .enabled(!this.hasShared)
+        .opacity(this.hasShared ? 0.5 : 1)
         .onClick(() => {
           this.shareToCircle();
         })

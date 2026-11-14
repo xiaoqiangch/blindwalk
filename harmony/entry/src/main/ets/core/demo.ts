@@ -12,6 +12,7 @@
 import {
   Area,
   BuriedSurprise,
+  ExploreScope,
   FeedPost,
   GeoPoint,
   Mood,
@@ -148,7 +149,8 @@ export function demoExtras(now: number): StoreExtras {
     lastWalkAt: arrivals[0],
     feed: demoFeed(now),
     realPlaces: [],
-    consolationPaid: []
+    consolationPaid: [],
+    selectedScope: ExploreScope.Walk
   };
   return extras;
 }
@@ -162,7 +164,8 @@ export function demoSession(now: number): QuestSession {
     totalMeters: 1260,
     remainingMeters: 480,
     phase: QuestPhase.Walking,
-    unlockedHintCount: 1
+    unlockedHintCount: 1,
+    scope: ExploreScope.Walk
   };
   return session;
 }

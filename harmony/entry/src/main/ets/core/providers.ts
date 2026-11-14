@@ -13,10 +13,11 @@
  * 所有对外坐标一律 WGS-84；解析函数是纯函数，方便 Node fixture 测试。
  */
 
-import { Mood, WalkDuration } from './types';
+import { Mood, WalkDuration, GeoPoint } from './types';
 import {
   bd09ToWgs84,
   gcj02ToWgs84,
+  offset as offsetPoint,
   wgs84ToBd09,
   wgs84ToGcj02
 } from './geo';
@@ -36,6 +37,7 @@ import {
   PoiCandidate,
   dedupe,
   landmarkKeywordList,
+  roamRange,
   trimDiverse
 } from './parity';
 
@@ -324,9 +326,11 @@ export async function fetchAmap(
   longitude: number,
   radiusMeters: number,
   limit: number,
-  key: string
+  key: string,
+  lightweight?: boolean
 ): Promise<PoiCandidate[]> {
   const collected: PoiCandidate[] = [];
+  const isLightweight: boolean = lightweight === true;
 
   // ① 地标关键字查询（公园/博物馆/广场…）——先拿到「值得走」的点
   //
@@ -335,8 +339,10 @@ export async function fetchAmap(
   //      所以必须拆成单个词逐个查。
   //   b) 高德有 QPS 上限，短时间连发会返回 CUQPS_HAS_EXCEEDED_THE_LIMIT。
   //      所以只查前几个词，且任何一个失败都直接放弃（普通搜索还兜着）。
+  //   远程漫游每次要撒 4 个点 × 多个源，代价更高，所以再收到 1 个词。
   const keywords: string[] = landmarkKeywordList();
-  const keywordCount: number = Math.min(keywords.length, LANDMARK_KEYWORD_LIMIT);
+  const wanted: number = isLightweight ? 1 : LANDMARK_KEYWORD_LIMIT;
+  const keywordCount: number = Math.min(keywords.length, wanted);
   for (let k = 0; k < keywordCount; k += 1) {
     try {
       const keywordBody: string = await requestText(client, {
@@ -875,6 +881,138 @@ export async function nearby(
 export function providerLabel(id: string): string {
   const label: string | undefined = PROVIDER_LABELS[id];
   return label === undefined ? id : label;
+}
+
+// ============================================================
+// 远程漫游（环带撒点）
+// ============================================================
+
+/**
+ * 远程漫游取点：在 10–45 公里（逐档放宽到 55/65）的环带上撒 4 个采样点，
+ * 每个点用 3.2 公里的半径查一次（高德/百度/维基）。
+ *
+ * 为什么不是直接查「半径 30 公里」：高德 around 半径上限 50000，但大半径返回的
+ * 全是城市地标类 POI，稀释严重且很慢。环带撒点等效于「查到了远程的地标」，
+ * 还能顺便带出实景照片（维基 geosearch）。
+ *
+ * OSM 不参与：Overpass 不支持这么大的半径，失败面板里如实标注。
+ */
+export async function roamNearby(
+  client: HttpClient,
+  keys: MapKeys,
+  origin: GeoPoint,
+  relax: number,
+  deadlineMs: number,
+  random: number[]
+): Promise<NearbyResult> {
+  const range: number[] = roamRange(relax);
+  const low: number = Math.max(range[0] + 2000, 12000);
+  const high: number = Math.max(low + 1000, Math.min(range[1] - 1200, 43000));
+  const centers: GeoPoint[] = [];
+  for (let index = 0; index < 4; index += 1) {
+    const jitter: number = random.length > index ? random[index] : 0.5;
+    const bearing: number = index * 90 + (jitter * 60 - 30);
+    const ratio: number = random.length > index + 4 ? random[index + 4] : 0.5;
+    const meters: number = low + (high - low) * ratio;
+    centers.push(offsetPoint(origin, meters, (bearing + 360) % 360));
+  }
+
+  const reports: SourceReport[] = [];
+  const merged: PoiCandidate[] = [];
+  let amapTotal: number = 0;
+  let baiduTotal: number = 0;
+  let wikiTotal: number = 0;
+  let lastError: string = '';
+
+  if (keys.amap.length === 0) {
+    reports.push({ id: 'amap', label: providerLabel('amap'), ok: false, count: 0, error: '未配置 Key' });
+  }
+  if (keys.baidu.length === 0) {
+    reports.push({ id: 'baidu', label: providerLabel('baidu'), ok: false, count: 0, error: '未配置 Key' });
+  }
+
+  for (let c = 0; c < centers.length; c += 1) {
+    const center: GeoPoint = centers[c];
+    if (keys.amap.length > 0) {
+      try {
+        const list: PoiCandidate[] = await fetchAmap(
+          client, center.latitude, center.longitude, 3200, 20, keys.amap, true
+        );
+        amapTotal += list.length;
+        for (let i = 0; i < list.length; i += 1) merged.push(list[i]);
+      } catch (error) {
+        lastError = errorText(error);
+      }
+    }
+    if (keys.baidu.length > 0) {
+      try {
+        const list: PoiCandidate[] = await fetchBaidu(
+          client, center.latitude, center.longitude, 3200, 20, keys.baidu
+        );
+        baiduTotal += list.length;
+        for (let i = 0; i < list.length; i += 1) merged.push(list[i]);
+      } catch (error) {
+        if (lastError.length === 0) lastError = errorText(error);
+      }
+    }
+    // 维基 geosearch 单次上限 10 公里 —— 采样点本身就在 10 公里外，
+    // 以小半径绕采样点查，等效于查到了远程的地标（还带实景照片）。
+    try {
+      const list: PoiCandidate[] = await fetchWiki(
+        client, center.latitude, center.longitude, 3200, 12
+      );
+      wikiTotal += list.length;
+      for (let i = 0; i < list.length; i += 1) merged.push(list[i]);
+    } catch (error) {
+      if (lastError.length === 0) lastError = errorText(error);
+    }
+  }
+
+  if (keys.amap.length > 0) {
+    reports.push({
+      id: 'amap', label: providerLabel('amap'), ok: amapTotal > 0, count: amapTotal,
+      error: amapTotal > 0 ? '' : (lastError.length > 0 ? lastError : '环带内没搜到地点')
+    });
+  }
+  if (keys.baidu.length > 0) {
+    reports.push({
+      id: 'baidu', label: providerLabel('baidu'), ok: baiduTotal > 0, count: baiduTotal,
+      error: baiduTotal > 0 ? '' : '环带内没搜到地点'
+    });
+  }
+  reports.push({
+    id: 'osm', label: providerLabel('osm'), ok: false, count: 0,
+    error: '远程漫游不支持（半径过大）'
+  });
+  reports.push({
+    id: 'wiki', label: providerLabel('wiki'), ok: wikiTotal > 0, count: wikiTotal,
+    error: wikiTotal > 0 ? '' : '环带内没查到地标词条'
+  });
+
+  const deduped: PoiCandidate[] = dedupe(merged, 120);
+  // 只留真正落在漫游环带里的（采样点 3 公里范围可能有一部分掉到环带外）
+  const inBand: PoiCandidate[] = [];
+  for (let i = 0; i < deduped.length; i += 1) {
+    const meters: number = distanceMeters(origin, deduped[i]);
+    if (meters >= range[0] && meters <= range[1]) inBand.push(deduped[i]);
+  }
+  inBand.sort((a: PoiCandidate, b: PoiCandidate): number => {
+    return distanceMeters(origin, a) - distanceMeters(origin, b);
+  });
+  const limited: PoiCandidate[] = inBand.length > 40 ? inBand.slice(0, 40) : inBand;
+  reports.sort((a: SourceReport, b: SourceReport): number => {
+    return sourceOrder(a.id) - sourceOrder(b.id);
+  });
+  const result: NearbyResult = { candidates: limited, reports: reports };
+  return result;
+}
+
+function sourceOrder(id: string): number {
+  if (id === 'amap') return 0;
+  if (id === 'baidu') return 1;
+  if (id === 'osm') return 2;
+  if (id === 'wiki') return 3;
+  return 9;
 }
 
 async function fetchProvider(

@@ -153,11 +153,26 @@ export function cloneSurprise(surprise: BuriedSurprise): BuriedSurprise {
   };
   if (surprise.myPhotoUri !== undefined) copy.myPhotoUri = surprise.myPhotoUri;
   if (surprise.similarity !== undefined) copy.similarity = surprise.similarity;
+  // 扩展字段（与 iOS BuriedSurprise 对齐）
+  if (surprise.message !== undefined) copy.message = surprise.message;
+  if (surprise.radiusMeters !== undefined) copy.radiusMeters = surprise.radiusMeters;
+  if (surprise.seekerPoints !== undefined) copy.seekerPoints = surprise.seekerPoints;
+  if (surprise.authorPoints !== undefined) copy.authorPoints = surprise.authorPoints;
+  if (surprise.finderName !== undefined) copy.finderName = surprise.finderName;
+  if (surprise.foundAt !== undefined) copy.foundAt = surprise.foundAt;
+  if (surprise.finderPhotoUri !== undefined) copy.finderPhotoUri = surprise.finderPhotoUri;
+  if (surprise.isMine !== undefined) copy.isMine = surprise.isMine;
+  if (surprise.isUploaded !== undefined) copy.isUploaded = surprise.isUploaded;
+  if (surprise.isRemote !== undefined) copy.isRemote = surprise.isRemote;
   return copy;
 }
 
-/** 是否是我埋的（苹果版用 displayName == "阿澈"；这里用当前用户名比较） */
+/**
+ * 是否是我埋的。
+ * 优先看 isMine 标记（改名后也认得出来），没有标记时退回作者名比较（老存档）。
+ */
 export function isMySurprise(surprise: BuriedSurprise, myName: string): boolean {
+  if (surprise.isMine === true) return true;
   return surprise.authorName === myName;
 }
 

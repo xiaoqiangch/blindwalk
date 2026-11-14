@@ -61,8 +61,14 @@ export struct HomeView {
 
   onOpenSetup: () => void = () => {
   };
-  /** 打开埋惊喜面板（首页「埋下一个」/「我的惊喜」） */
+  /** 打开埋惊喜面板（首页「埋下一个」） */
   onOpenBury: () => void = () => {
+  };
+  /** 打开「我的惊喜」（回执 / 我埋的 / 我找到的） */
+  onOpenMySurprises: () => void = () => {
+  };
+  /** 打开探寻面板（从图鉴的「附近的惊喜」进） */
+  onOpenSeek: (surpriseID: string) => void = () => {
   };
   onOpenJourney: () => void = () => {
   };
@@ -174,6 +180,16 @@ export struct HomeView {
   /** 寻宝列表页尚未移植：只有这里还是提示 */
   private showSeekSoon(): void {
     promptAction.showToast({ message: '寻宝列表还在做，先从图鉴的「附近的惊喜」进', duration: 2400 });
+  }
+
+  /** 去寻宝：有附近的惊喜就打开第一个，否则提示去图鉴 */
+  private goSeek(): void {
+    const list = this.snapshot.explorableSurprises;
+    if (list.length === 0) {
+      promptAction.showToast({ message: '附近暂时没有别人埋的惊喜，先埋一个吧', duration: 2400 });
+      return;
+    }
+    this.onOpenSeek(list[0].id);
   }
 
   // ============================================================
@@ -417,7 +433,7 @@ export struct HomeView {
         WaMicroLabel({ text: '惊喜社区' })
         Blank()
         Text('我埋了 ' + mySurpriseCount(this.snapshot) + ' · 被找到 ' +
-          myFoundSurpriseCount(this.snapshot))
+          myFoundSurpriseCount(this.snapshot) + ' · 找到 ' + this.foundByMeCount())
           .fontSize(WAFont.micro)
           .fontColor(WAColor.ink3)
           .maxLines(1)
@@ -463,7 +479,7 @@ export struct HomeView {
         .backgroundColor(WAColor.paper2)
         .border({ width: 1, color: WAColor.line, radius: WASize.chipRadius })
         .onClick(() => {
-          this.showSeekSoon();
+          this.goSeek();
         })
       }
       .width('100%')
@@ -476,11 +492,28 @@ export struct HomeView {
         Text('›')
           .fontSize(WAFont.micro)
           .fontColor(WAColor.ink3)
+        if (this.snapshot.unreadReceiptCount > 0) {
+          Circle()
+            .width(7)
+            .height(7)
+            .fill(WAColor.ember)
+            .margin({ left: 3 })
+        }
       }
       .margin({ top: 10 })
       .onClick(() => {
-        this.onOpenBury();
+        this.onOpenMySurprises();
       })
+
+      // 被找到的回执：入口上的一句话（不显示照片与正文）
+      if (this.latestReceiptLine().length > 0) {
+        Text(this.latestReceiptLine())
+          .fontSize(WAFont.microSm)
+          .fontColor(WAColor.ember)
+          .lineHeight(17)
+          .width('100%')
+          .margin({ top: 8 })
+      }
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -489,6 +522,22 @@ export struct HomeView {
     .borderRadius(WASize.cardRadius)
     .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
     .shadow({ radius: 14, color: WAColor.shadowSoft, offsetX: 0, offsetY: 9 })
+  }
+
+  /** 我找到的别人的惊喜数量 */
+  private foundByMeCount(): number {
+    return this.snapshot.foundSurprises.length;
+  }
+
+  /** 最近一条未读回执的一句话（「小满 找到了你埋在那儿的照片」） */
+  private latestReceiptLine(): string {
+    for (let i = 0; i < this.snapshot.receipts.length; i += 1) {
+      const receipt = this.snapshot.receipts[i];
+      if (receipt.readAt !== undefined) continue;
+      const area: string = receipt.areaLabel.length === 0 ? '那儿的' : '「' + receipt.areaLabel + '」的';
+      return receipt.finderName + ' 找到了你埋在' + area + '照片';
+    }
+    return '';
   }
 
   // ============================================================
