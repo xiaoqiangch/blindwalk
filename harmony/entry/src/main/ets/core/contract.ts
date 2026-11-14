@@ -236,6 +236,10 @@ export interface WalkaholicStoreApi {
   pendingUploadSurprises(): BuriedSurprise[];
   /** 标记某条惊喜已上传 */
   markSurpriseUploaded(surpriseID: string): void;
+  /** 记下寻者拍到的复刻照片（「我找到的」列表里能看到自己拍的那张） */
+  setSurpriseFinderPhoto(surpriseID: string, uri: string): void;
+  /** 取某条惊喜的作者照片哈希（只用于比对，不渲染） */
+  surprisePhotoHash(surpriseID: string): string;
   /** 合并服务端「被找到」回执；返回是否出现新的未读 */
   applyReceipts(remote: SurpriseReceipt[]): boolean;
   /** 把回执全部标记已读（红点熄灭） */

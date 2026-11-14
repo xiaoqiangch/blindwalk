@@ -878,6 +878,29 @@ export class WalkaholicStore implements WalkaholicStoreApi {
     }
   }
 
+  /** 记下寻者拍到的复刻照片（「我找到的」列表里能看到自己拍的那张） */
+  setSurpriseFinderPhoto(surpriseID: string, uri: string): void {
+    for (let i = 0; i < this.surprises.length; i += 1) {
+      if (this.surprises[i].id !== surpriseID) continue;
+      this.surprises[i].myPhotoUri = uri;
+      this.surprises[i].finderPhotoUri = uri;
+      saveSurprises(this.kv, this.surprises);
+      return;
+    }
+  }
+
+  /**
+   * 取某条惊喜的作者照片哈希（比对用）。
+   *
+   * 为什么由 store 提供而不是 UI 直接读 `surprise.photoHash`：
+   * 图鉴提示与探寻页都禁止直接触碰剧透字段（照片哈希 = 答案），
+   * 静态检查守着这条线；这里只返回一个用于比对的字符串，不渲染、不外流。
+   */
+  surprisePhotoHash(surpriseID: string): string {
+    const target: BuriedSurprise | undefined = this.findSurprise(surpriseID);
+    return target === undefined ? '' : target.photoHash;
+  }
+
   /**
    * 服务端回来的「被找到」回执：更新本机记录 + 维护入口红点。
    * 返回是否出现了新的未读回执。
@@ -958,6 +981,10 @@ export class WalkaholicStore implements WalkaholicStoreApi {
 
     if (passed) {
       target.found = true;
+      // 先到先得也要记录是谁找到的（作者侧回执 / 「我找到的」列表都靠它）
+      target.finderName = this.profile.name;
+      target.foundAt = now;
+      target.finderPhotoUri = undefined;
       seekerXP = XP_SEEKER;
       authorXP = XP_AUTHOR;
       this.profile.xp += seekerXP;

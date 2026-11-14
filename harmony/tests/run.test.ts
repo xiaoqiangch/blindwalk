@@ -65,6 +65,7 @@ import {
 } from '../entry/src/main/ets/core/session';
 import {
   computeDHash,
+  demoSimilarity,
   hammingDistance,
   makeClues,
   passes,
@@ -3434,6 +3435,42 @@ test('埋惊喜：一句话与半径落盘，isMine 标记让改名后仍认得�
   assert.equal(reloaded.length, 1);
   assert.equal(reloaded[0].message, '这张是我在等一杯咖啡时拍的。');
   assert.equal(reloaded[0].isMine, true);
+});
+
+test('寻惊喜：先拍后看 —— 本机有作者哈希走真实比对，远端没有则走演示相似度', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  const buried: BuriedSurprise | undefined = store.burySurprise(buryParams());
+  if (buried === undefined) throw new Error('埋惊喜失败');
+  // 本机埋的：store 能给出作者哈希（UI 不直接读剧透字段）
+  const hash: string = store.surprisePhotoHash(buried.id);
+  assert.equal(hash, '6f4b1d2a9c3e8057');
+  // 同一张图比对 = 1.0
+  const same = similarity(hash, '6f4b1d2a9c3e8057');
+  assert.ok(same > 0.99);
+
+  // 远端惊喜：没有作者原图/哈希 → 演示相似度在 0.55…0.92
+  const demo: number = demoSimilarity('a1c07f3e5b2d9944');
+  assert.ok(demo >= 0.55 && demo <= 0.92, '实际 ' + String(demo));
+  assert.ok(demoSimilarity('a1c07f3e5b2d9944') === demo, '同一张图结果稳定');
+  assert.equal(demoSimilarity('a1c07f3e5b2d9944') === demoSimilarity('0000000000000001'), false);
+});
+
+test('寻惊喜：达标结算后可从「我找到的」看到，并记下复刻照片', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  // 演示数据里有别人埋的惊喜（river 一带 320/540/760m）
+  const target: BuriedSurprise = store.snapshot().explorableSurprises[0];
+  const result = store.completeSurpriseFind(target.id, 0.9);
+  if (result === undefined) throw new Error('结算失败');
+  assert.equal(result.passed, true);
+  store.setSurpriseFinderPhoto(target.id, '/sandbox/finder.jpg');
+  const found = store.snapshot().foundSurprises;
+  assert.equal(found.length, 1);
+  assert.equal(found[0].id, target.id);
+  assert.equal(found[0].finderPhotoUri, '/sandbox/finder.jpg');
 });
 
 // ============================================================

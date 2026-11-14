@@ -101,6 +101,8 @@ struct Index {
   @State private seekTargetLat: number = 0;
   @State private seekTargetLon: number = 0;
   @State private seekAuthorEmoji: string = '🎁';
+  /** 正在探寻的惊喜是否来自服务端（认领要通知服务端） */
+  @State private seekIsRemote: boolean = false;
   /** 附近兴趣点检索中（避免重复请求） */
   private nearbyLoading: boolean = false;
   /** 上次附近检索的位置（偏差 300m 以上才重查） */
@@ -373,6 +375,7 @@ struct Index {
     this.seekSurpriseID = found.id;
     this.seekClues = found.hints.slice();
     this.seekAuthorEmoji = found.authorEmoji;
+    this.seekIsRemote = found.isRemote === true;
     this.seekTargetLat = found.location.latitude;
     this.seekTargetLon = found.location.longitude;
     this.activeOverlay = OVERLAY_SEEK;
@@ -753,9 +756,15 @@ struct Index {
           hasOrigin: this.hasOrigin(),
           targetLat: this.seekTargetLat,
           targetLon: this.seekTargetLon,
+          isRemote: this.seekIsRemote,
+          http: this.http,
+          kv: this.kv,
           onBack: () => {
             this.activeOverlay = OVERLAY_NONE;
             this.seekSurpriseID = '';
+            this.refresh();
+          },
+          onChanged: () => {
             this.refresh();
           }
         })
