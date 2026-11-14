@@ -54,7 +54,7 @@ fi
 echo "== 3) 创建 systemd 服务（账号）=="
 ssh "$HOST" "cat > /etc/systemd/system/walkaholic-account.service <<'UNIT'
 [Unit]
-Description=Bumia account service
+Description=Walkaholic account service
 After=network.target
 
 [Service]
@@ -86,7 +86,7 @@ echo "== 3.5) 创建 systemd 服务（后台）=="
 ADMIN_PASS="$(/opt/homebrew/bin/node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))")"
 ssh "$HOST" "cat > /etc/systemd/system/walkaholic-admin.service <<'UNIT'
 [Unit]
-Description=Bumia admin backend
+Description=Walkaholic admin backend
 After=network.target
 
 [Service]
