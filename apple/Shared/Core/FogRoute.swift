@@ -140,7 +140,10 @@ public struct FogFrame: Hashable, Sendable {
 
     public let ahead: Double
     public let behind: Double
+    /// 画布「朝上」的方向（heading-up = 设备朝向；northUp = 0；无罗盘 = 路线切向）
     public let bearing: Double
+    /// 路线在用户处的行进方位角（0 = 正北）。箭头要指向它，而不是指向「你面朝哪」。
+    public let walkBearing: Double
     public let walked: Double
     public let routeRemaining: Double
     public let userLateral: Double
@@ -157,7 +160,7 @@ public struct FogFrame: Hashable, Sendable {
         let up = upBearing ?? progress.bearing
         if progress.remaining < hideBelowMeters || progress.remaining <= 25 {
             return FogFrame(
-                ahead: 0, behind: 0, bearing: up, walked: progress.walked,
+                ahead: 0, behind: 0, bearing: up, walkBearing: progress.bearing, walked: progress.walked,
                 routeRemaining: progress.remaining, userLateral: 0,
                 segments: [], chevrons: [], isHidden: true
             )
@@ -167,7 +170,7 @@ public struct FogFrame: Hashable, Sendable {
         let behind = max(0, min(behindMeters, progress.walked - 5))
         if ahead <= 0 {
             return FogFrame(
-                ahead: 0, behind: 0, bearing: up, walked: progress.walked,
+                ahead: 0, behind: 0, bearing: up, walkBearing: progress.bearing, walked: progress.walked,
                 routeRemaining: progress.remaining, userLateral: 0,
                 segments: [], chevrons: [], isHidden: true
             )
@@ -226,6 +229,7 @@ public struct FogFrame: Hashable, Sendable {
             ahead: ahead,
             behind: behind,
             bearing: up,
+            walkBearing: progress.bearing,
             walked: progress.walked,
             routeRemaining: progress.remaining,
             userLateral: user.lateral,

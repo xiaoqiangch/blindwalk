@@ -58,24 +58,21 @@ struct SeekSurpriseView: View {
 
     // MARK: 位置与列表
 
-    private var origin: GeoPoint { probe.origin ?? store.lastKnownOrigin ?? SurpriseLocation.demoPoint }
+    /// 真实定位；拿不到就是 nil。**不再回退虚构坐标** ——
+    /// 用假坐标算出来的「480 米外」会把人带到完全错误的地方。
+    private var origin: GeoPoint? { probe.origin ?? store.lastKnownOrigin }
 
-    private var hasRealOrigin: Bool { probe.origin != nil || store.lastKnownOrigin != nil }
+    private var hasRealOrigin: Bool { origin != nil }
 
-    /// 列表：真实定位能圈到就用真实的；圈不到（人在另一个城市 / 模拟器没定位）
-    /// 就退回全部待寻惊喜 + 「演示距离」，保证明天在真机上也能走通。
+    /// 列表：只列「真实定位圈到的」。拿不到定位就是空列表，
+    /// 界面上说明「需要定位」，绝不按虚构坐标算距离。
     private var nearbyList: [BuriedSurprise] {
-        if hasRealOrigin {
-            let real = store.explorableSurprises(near: origin, within: 5_000)
-            if !real.isEmpty { return real }
-        }
-        return store.explorableSurprises(near: nil)
+        guard let origin else { return [] }
+        return store.explorableSurprises(near: origin, within: 5_000)
     }
 
-    private var isDemoDistance: Bool {
-        if !hasRealOrigin { return true }
-        return store.explorableSurprises(near: origin, within: 5_000).isEmpty
-    }
+    /// 是否因为没定位而无法算距离（决定界面文案）
+    private var isDemoDistance: Bool { origin == nil }
 
     // MARK: Body
 
@@ -799,12 +796,26 @@ struct SeekSurpriseView: View {
         // 没有再主动取一次，避免每次进页面都等 GPS。
         probe.startIfNeeded(storeOrigin: store.lastKnownOrigin)
         usesDemoDistance = isDemoDistance
-        // 从图鉴提示点进来：直接打开那一个惊喜的线索页
-        if let focusID, selected == nil,
-           let target = nearbyList.first(where: { $0.id == focusID }) ?? store.surprises.first(where: { $0.id == focusID }) {
+        // 先补一次账号服务上别人埋的惊喜，再决定聚焦哪一个
+        Task { @MainActor in
+            // 没有定位就不拉「附近」——服务端按坐标筛，没有坐标拉回来也是无关的
+            if let origin {
+                let remote = await SurpriseService.shared.fetchNearby(origin: origin)
+                if !remote.isEmpty {
+                    store.mergeRemoteSurprises(remote, near: origin)
+                }
+            }
+            focusIfNeeded()
+            applyPreviewRoute()
+        }
+    }
+
+    /// 从图鉴提示点进来：直接打开那一个惊喜的线索页
+    private func focusIfNeeded() {
+        guard let focusID, selected == nil else { return }
+        if let target = nearbyList.first(where: { $0.id == focusID }) ?? store.surprises.first(where: { $0.id == focusID }) {
             openDetail(target)
         }
-        applyPreviewRoute()
     }
 
     /// 真实定位迟到时，进了范围就自动切到拍摄阶段。
@@ -813,7 +824,7 @@ struct SeekSurpriseView: View {
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             guard !Task.isCancelled else { return }
-            guard let surprise = selected, phase == .approach else { continue }
+            guard let surprise = selected, phase == .approach, let origin else { continue }
             if GeoMath.distance(from: origin, to: surprise.location) <= surprise.radiusMeters {
                 withAnimation(WAAnimation.regular) {
                     phase = .shoot
@@ -907,6 +918,20 @@ struct SeekSurpriseView: View {
             }
             WAHaptics.success()
             passedGlow = true
+
+            // 远端惊喜是别人埋的：通知服务端「已被我找到」（先到先得）。
+            // 未登录时服务端不接受认领，本机照样记为找到（只是别人还能再找到），不打扰用户。
+            if surprise.isRemote, AccountService.shared.isLoggedIn {
+                Task { @MainActor in
+                    let ok = await SurpriseService.shared.claim(surpriseID: surprise.id)
+                    if !ok {
+                        appendToast(WAToast(
+                            text: "服务器上这条已被别人抢先找到",
+                            icon: "clock.badge.checkmark"
+                        ))
+                    }
+                }
+            }
         } else {
             // 不达标：同一条惊喜只在第一次给 +10 辛苦分（反复重拍不该刷分），
             // 惊喜继续等别人 —— 所以这里不落盘 finderPhotoName。
@@ -944,11 +969,12 @@ struct SeekSurpriseView: View {
     // MARK: 距离 / 线索
 
     private func distance(for surprise: BuriedSurprise) -> Double {
-        let from = isDemoDistance ? SurpriseLocation.demoPoint : origin
-        return GeoMath.distance(from: from, to: surprise.location)
+        guard let origin else { return .greatestFiniteMagnitude }
+        return GeoMath.distance(from: origin, to: surprise.location)
     }
 
     private func distanceText(_ surprise: BuriedSurprise) -> String {
+        guard origin != nil else { return "位置未知" }
         let meters = Int(distance(for: surprise).rounded())
         // 设计稿口径是「480 m」，1 公里内不换算成 km，免得 320m 显示成 0.3km 丢精度
         if meters < 1000 {

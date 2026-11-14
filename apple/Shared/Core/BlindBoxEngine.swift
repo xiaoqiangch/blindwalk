@@ -37,8 +37,10 @@ public struct BlindBoxEngine {
     /// 最近 7 天去过的地点，抽盒时避开
     public let recentPlaceIDs: Set<String>
 
-    public init(catalog: [Place] = PlaceCatalog.all, recentPlaceIDs: Set<String> = []) {
-        self.catalog = catalog
+    /// 默认从「真实地点目录」取候选：没有坐标的地点一律不进候选。
+    /// （早期版本默认用内置虚构目录，那些地点没有真实经纬度，用户走到哪都对不上。）
+    public init(catalog: [Place]? = nil, recentPlaceIDs: Set<String> = []) {
+        self.catalog = (catalog ?? PlaceDirectory.shared.all).filter { $0.coordinate != nil }
         self.recentPlaceIDs = recentPlaceIDs
     }
 
@@ -59,22 +61,32 @@ public struct BlindBoxEngine {
         return DrawResult(place: picked, startMeters: meters, seed: seed)
     }
 
-    /// 权重候选：区域匹配 > 近 7 天没去过 > 时长半径 > 稀有度可用。
+    /// 权重候选：区域匹配 > 时长半径 > 稀有度可用，且**排除已探索过的地点**。
+    /// 只有当「所有可用地点都去过了」时才会退回已去过的（否则用户永远抽不到新地方，
+    /// 因为候选池会一直被拒绝到空）。
     private func eligibleCandidates(mood: Mood, duration: WalkDuration, area: Area?, seed: UInt64) -> [Place] {
-        func filter(area: Area?, excludeRecent: Bool) -> [Place] {
+        func filter(area: Area?, excludeVisited: Bool) -> [Place] {
             catalog.filter { place in
                 guard place.rarity.isAvailable(in: duration) else { return false }
                 guard place.radiusMeters <= duration.radiusMeters else { return false }
                 if let area, place.area != area { return false }
-                if excludeRecent, recentPlaceIDs.contains(place.id) { return false }
+                if excludeVisited, recentPlaceIDs.contains(place.id) { return false }
                 return true
             }
         }
 
-        var result = filter(area: area, excludeRecent: true)
-        if result.isEmpty { result = filter(area: area, excludeRecent: false) }
-        if result.isEmpty { result = filter(area: nil, excludeRecent: false) }
+        // 首选：区域内 + 没去过 → 任意区域 + 没去过 → （都去过了才）放宽到已去过的
+        var result = filter(area: area, excludeVisited: true)
+        if result.isEmpty { result = filter(area: nil, excludeVisited: true) }
+        if result.isEmpty { result = filter(area: area, excludeVisited: false) }
+        if result.isEmpty { result = filter(area: nil, excludeVisited: false) }
         return result
+    }
+
+    /// 还有没有「没去过」的地点可抽（UI 用来在抽完时给一句实话）
+    public func hasUnvisited(mood: Mood, duration: WalkDuration, area: Area? = nil) -> Bool {
+        eligibleCandidates(mood: mood, duration: duration, area: area, seed: 0)
+            .contains { !recentPlaceIDs.contains($0.id) }
     }
 
     private func weight(for place: Place, mood: Mood) -> Int {

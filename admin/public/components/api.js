@@ -108,6 +108,34 @@
     putMapKeys: function (keys) { return request('PUT', '/api/mapkeys', { keys: keys }); },
     testMapKey: function (provider) {
       return request('POST', '/api/mapkeys/test', { provider: provider });
-    }
+    },
+
+    // 4.9 用户惊喜审核（读账号服务的 surprises 表）
+    surprises: function (params) {
+      const query = buildQuery({
+        status: params && params.status === 'all' ? '' : (params ? params.status : ''),
+        q: params ? params.q : '',
+        limit: params ? params.limit : 50,
+        offset: params ? params.offset : 0
+      });
+      return request('GET', '/api/surprises' + query);
+    },
+    surpriseStatus: function () { return request('GET', '/api/surprises/status'); },
+    setSurpriseStatus: function (id, status) {
+      return request('PUT', '/api/surprises/' + encodeURIComponent(id), { status: status });
+    },
+    removeSurprise: function (id) {
+      return request('DELETE', '/api/surprises/' + encodeURIComponent(id));
+    },
+    surprisePhotoUrl: function (id) {
+      return PREFIX + '/api/surprises/' + encodeURIComponent(id) + '/photo';
+    },
+
+    // 4.10 服务端设置（AI 模型 / 微信登录）
+    llmSettings: function () { return request('GET', '/api/llm/settings'); },
+    putLlmSettings: function (settings) { return request('PUT', '/api/llm/settings', { settings: settings }); },
+    testLlm: function () { return request('POST', '/api/llm/test'); },
+    accountSettings: function () { return request('GET', '/api/account/settings'); },
+    putAccountSettings: function (settings) { return request('PUT', '/api/account/settings', { settings: settings }); }
   };
 })();

@@ -31,25 +31,23 @@ struct SurpriseHubCard: View {
     private var foundCount: Int { store.profile.surprisesSeeked }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("惊喜社区")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(WATheme.ink)
+                    .font(.headline)
                 Spacer(minLength: 8)
                 Text("我埋了 \(buriedCount) · 找到 \(foundCount)")
-                    .font(WAType.caption(12))
-                    .foregroundStyle(WATheme.ink3)
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
 
             Text("留一张照片给陌生人，或者去找到别人的。")
-                .font(WAType.body(13.5))
+                .font(.subheadline)
                 .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
 
             HStack(spacing: 8) {
                 hubButton(
@@ -59,37 +57,47 @@ struct SurpriseHubCard: View {
                     action: { destination = .bury }
                 )
                 hubButton(
-                    title: waitingCount > 0 ? "去寻宝 · \(waitingCount) 个在等你" : "去寻宝",
+                    title: waitingCount > 0 ? "去寻宝 · \(waitingCount)" : "去寻宝",
                     systemName: "magnifyingglass",
                     emphasized: false,
                     action: { destination = .seek }
                 )
             }
-            .padding(.top, 14)
 
             Button {
                 destination = .mine
             } label: {
-                HStack(spacing: 3) {
+                HStack(spacing: 2) {
                     Text("我的惊喜")
-                        .font(.system(size: 12.5))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.caption.weight(.semibold))
+                    if store.unreadReceiptCount > 0 {
+                        Circle()
+                            .fill(WATheme.ember)
+                            .frame(width: 7, height: 7)
+                            .padding(.leading, 3)
+                            .accessibilityHidden(true)
+                    }
                 }
-                .foregroundStyle(WATheme.ink3)
+                .font(.subheadline)
+                .foregroundStyle(WATheme.amber)
             }
-            .buttonStyle(WAPressEffectStyle())
-            .padding(.top, 12)
-            .accessibilityLabel("查看我埋的和我找到的惊喜")
+            .buttonStyle(.plain)
+            .accessibilityLabel(store.unreadReceiptCount > 0
+                                ? "查看我埋的和我找到的惊喜，有 \(store.unreadReceiptCount) 条新回执"
+                                : "查看我埋的和我找到的惊喜")
+
+            if let receipt = store.latestUnreadReceipt {
+                Text("\(receipt.finderName) 找到了你埋在\(receipt.areaLabel.isEmpty ? "那儿的" : "「\(receipt.areaLabel)」的")照片")
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ember)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                .stroke(WATheme.line, lineWidth: 1)
-        )
         .fullScreenCover(item: $destination) { destination in
             switch destination {
             case .bury:
@@ -116,29 +124,24 @@ struct SurpriseHubCard: View {
             }
         }
         .onAppear(perform: applyPreviewRoute)
+        .task {
+            // 每次看到入口卡都轻量拉一次「被找到」回执；失败静默（不打扰浏览）
+            await SurpriseService.shared.syncMine(store: store)
+        }
     }
 
     private func hubButton(title: String, systemName: String, emphasized: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: systemName)
-                    .font(.system(size: 13, weight: .medium))
-                Text(title)
-                    .font(.system(size: 13.5, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            .foregroundStyle(emphasized ? WATheme.amberDeep : WATheme.ink)
-            .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .background(emphasized ? WATheme.amberSoft : WATheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(emphasized ? WATheme.amber.opacity(0.26) : WATheme.line, lineWidth: 1)
-            )
+            Label(title, systemImage: systemName)
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(maxWidth: .infinity)
         }
-        .buttonStyle(WAPressEffectStyle())
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(emphasized ? WATheme.amber : Color(.tertiarySystemFill))
+        .foregroundStyle(emphasized ? Color.white : WATheme.amber)
         .accessibilityLabel(title)
     }
 
@@ -183,6 +186,9 @@ struct SurprisesView: View {
     private var foundByMe: [BuriedSurprise] {
         store.surprises.filter { $0.status == .found && $0.finderName == store.profile.displayName }
     }
+    private var unreadReceipts: [SurpriseReceipt] {
+        store.receipts.filter(\.isUnread)
+    }
 
     var body: some View {
         ZStack {
@@ -201,6 +207,12 @@ struct SurprisesView: View {
                         .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 16)
 
+                    if !unreadReceipts.isEmpty {
+                        receiptBanner
+                            .padding(.horizontal, WATheme.pagePadding)
+                            .padding(.top, 12)
+                    }
+
                     buriedSection
                         .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 26)
@@ -209,10 +221,12 @@ struct SurprisesView: View {
                         .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 26)
 
-                    Text("照片只留在你自己的手机里。")
+                    Text("登录后埋下的惊喜会共享到服务器，附近的步迷才能找到；未登录时只存在本机。")
                         .font(WAType.caption(10.5))
                         .foregroundStyle(WATheme.ink3)
+                        .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
+                        .padding(.horizontal, WATheme.pagePadding)
                         .padding(.top, 22)
                         .padding(.bottom, 30)
                 }
@@ -221,6 +235,11 @@ struct SurprisesView: View {
         }
         .waTypeBounds()
         .onAppear(perform: seedPreviewDataIfNeeded)
+        .task {
+            // 进「我的惊喜」时补一次：登录后之前没传上去的，这里会自动传上去
+            await SurpriseService.shared.flushPending(store: store)
+            await SurpriseService.shared.syncMine(store: store)
+        }
     }
 
     /// 截图 / 走查专用：`SIMCTL_CHILD_WA_PREVIEW=surprises-filled`
@@ -267,6 +286,46 @@ struct SurprisesView: View {
 
     // MARK: 统计
 
+    /// 被找到的回执：这是作者唯一的「我留下的东西被人看见」的反馈
+    private var receiptBanner: some View {
+        WACard(padding: 14, background: WATheme.ember.opacity(0.08)) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(WATheme.ember)
+                    Text(unreadReceipts.count == 1 ? "有人找到了你埋的照片" : "有 \(unreadReceipts.count) 条新回执")
+                        .font(WAType.rowTitle(13))
+                        .foregroundStyle(WATheme.ink)
+                    Spacer(minLength: 0)
+                    Button("知道了") {
+                        store.markReceiptsRead()
+                        WAHaptics.light()
+                    }
+                    .font(WAType.caption(12))
+                    .foregroundStyle(WATheme.ember)
+                    .buttonStyle(.plain)
+                }
+
+                ForEach(unreadReceipts.prefix(3)) { receipt in
+                    HStack(spacing: 6) {
+                        Text("·")
+                            .foregroundStyle(WATheme.ember)
+                        Text(receiptLine(receipt))
+                            .font(WAType.caption(12))
+                            .foregroundStyle(WATheme.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func receiptLine(_ receipt: SurpriseReceipt) -> String {
+        let area = receipt.areaLabel.isEmpty ? "你埋的地方" : receipt.areaLabel
+        return "\(receipt.finderName) 在「\(area)」拍到了同款 · \(WAFormat.relative(receipt.foundAt))"
+    }
+
     private var statsCard: some View {
         WACard(padding: 16, background: WATheme.paper) {
             WAStatsRow(items: [
@@ -310,6 +369,10 @@ struct SurprisesView: View {
         }
     }
 
+    private func hasUnreadReceipt(_ surprise: BuriedSurprise) -> Bool {
+        store.receipts.contains { $0.id == surprise.id && $0.isUnread }
+    }
+
     private func buriedRow(_ surprise: BuriedSurprise) -> some View {
         WACard(padding: 14) {
             VStack(alignment: .leading, spacing: 10) {
@@ -328,6 +391,15 @@ struct SurprisesView: View {
                                 .foregroundStyle(WATheme.ink)
                                 .lineLimit(1)
                             Spacer(minLength: 0)
+                            if hasUnreadReceipt(surprise) {
+                                Text("新")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(WATheme.ember)
+                                    .clipShape(Capsule())
+                            }
                             SurpriseStatusBadge(status: surprise.status)
                         }
 
@@ -337,9 +409,20 @@ struct SurprisesView: View {
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Text("埋于 \(WAFormat.relative(surprise.createdAt))")
-                            .font(WAType.caption(10.5))
-                            .foregroundStyle(WATheme.ink3)
+                        HStack(spacing: 5) {
+                            Text("埋于 \(WAFormat.relative(surprise.createdAt))")
+                                .font(WAType.caption(10.5))
+                                .foregroundStyle(WATheme.ink3)
+                            if surprise.isUploaded {
+                                Label("已共享", systemImage: "checkmark.icloud")
+                                    .font(WAType.caption(10.5))
+                                    .foregroundStyle(WATheme.teal)
+                            } else if surprise.isMine {
+                                Label("仅本机", systemImage: "iphone")
+                                    .font(WAType.caption(10.5))
+                                    .foregroundStyle(WATheme.ink3)
+                            }
+                        }
                     }
                 }
 

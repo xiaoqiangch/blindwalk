@@ -28,7 +28,7 @@ final class WatchBridge: NSObject {
 
     override init() {
         self.wcSession = WCSession.isSupported() ? WCSession.default : nil
-        self.summary = WatchSessionSummary.demo()
+        self.summary = WatchSessionSummary.disconnected()
         super.init()
     }
 

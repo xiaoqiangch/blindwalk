@@ -22,7 +22,15 @@ import {
 import { completeSafety, scoreSafety } from './safety.mjs';
 
 export const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1';
-export const DEFAULT_MODEL = 'deepseek-chat';
+export 
+/** WA_ 前缀优先，BW_ 兜底（线上早期部署用 BW_） */
+function envFirst(env, name) {
+  const primary = env['WA_' + name];
+  if (primary !== undefined && String(primary).trim() !== '') return primary;
+  return env['BW_' + name];
+}
+
+const DEFAULT_MODEL = 'deepseek-chat';
 export const LLM_TIMEOUT_MS = 30000;
 export const LLM_RETRIES = 1;
 const HINT_TAIL = '就在前面。抬手机，慢慢看。';
@@ -30,9 +38,9 @@ const OFFLINE_MODEL = 'offline-rules';
 
 /** 读取环境变量配置（测试可传入 env） */
 export function resolveConfig(env = process.env) {
-  const baseUrl = String(env.WA_LLM_BASE_URL || DEFAULT_BASE_URL).trim().replace(/\/+$/, '');
-  const apiKey = String(env.WA_LLM_API_KEY || '').trim();
-  const model = String(env.WA_LLM_MODEL || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
+  const baseUrl = String(envFirst(env, 'LLM_BASE_URL') || DEFAULT_BASE_URL).trim().replace(/\/+$/, '');
+  const apiKey = String(envFirst(env, 'LLM_API_KEY') || '').trim();
+  const model = String(envFirst(env, 'LLM_MODEL') || DEFAULT_MODEL).trim() || DEFAULT_MODEL;
   return { baseUrl, apiKey, model };
 }
 

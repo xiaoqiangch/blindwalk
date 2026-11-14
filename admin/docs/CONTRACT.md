@@ -212,6 +212,40 @@ GET /api/stats
     "byCategory": { "museum": 5, … }, "withPhoto": 22, "withHints": 18 }
 ```
 
+### 4.8 用户惊喜审核（读账号服务的 surprises 表）
+
+惊喜存在**账号服务**的 SQLite（`<data>/account/blindwalk-users.db` 或 `walkaholic-users.db`），
+不是后台自己的库。后台通过 `admin/server/surprises.mjs` 直接打开该库读写，
+数据库路径优先级：`BW_ACCOUNT_DB` / `WA_ACCOUNT_DB` > `<admin data 的上级>/account/*.db` > `./account/data/*.db` > `/var/lib/blindwalk|walkaholic/account/*.db`。
+
+`status` 语义：`waiting`（待寻，列表可见）/ `found`（已被找到）/ `hidden`（后台下架，列表不可见）。
+账号服务的 `/api/surprises` 只查 `status='waiting'`，所以下架立刻生效，无需重启账号服务。
+
+```
+GET    /api/surprises/status
+→ { "available": true, "dbPath": "/var/lib/blindwalk/account/blindwalk-users.db", "error": "" }
+
+GET    /api/surprises?status=waiting|found|hidden|all&q=&limit=50&offset=0
+→ { "items": [ {
+      "id": "surprise-…", "authorName": "burier9424", "authorEmoji": "🐱",
+      "areaLabel": "鼓楼 · 金银街", "message": "来找我", "clues": ["…","…"],
+      "lat": 32.05975, "lon": 118.7713, "radiusMeters": 60,
+      "status": "waiting", "finderName": null, "foundAt": null, "createdAt": 1794379424787,
+      "hasPhoto": true, "photoBytes": 152340
+    } ],
+    "total": 1, "counts": { "waiting": 1, "found": 0, "hidden": 0 }, "limit": 50, "offset": 0 }
+  # 注意：这里**会**返回 message 和照片是否存在（审核要看内容），
+  # 与账号服务面向客户端的列表刻意隐藏 message/photo 的约束不同。
+
+GET    /api/surprises/:id       → 同上单条
+GET    /api/surprises/:id/photo → image/jpeg 二进制（作者原图；无图 404 NO_PHOTO）
+PUT    /api/surprises/:id  { "status": "hidden" | "waiting" }
+→ 更新后的单条。`found` 不允许手动改（409 ALREADY_FOUND）。
+DELETE /api/surprises/:id       → { "ok": true }（彻底删除，不可恢复）
+
+错误：`SURPRISES_UNAVAILABLE`（503，账号库不存在/无 surprises 表）/ `NOT_FOUND` / `NO_PHOTO` / `BAD_REQUEST`
+```
+
 ---
 
 ## 5. 前端（管理界面）要求
@@ -301,3 +335,26 @@ PORT=8802
 | 离线规则模式 | ✅ normalize/analyze 可用，edit 明确 400 |
 | 导出 → App | ✅ `prototype/web/pois.json`，App 端 `source: "curated"` |
 | 真实大模型调用 | ⏳ 待用户配置 `WA_LLM_API_KEY` |
+
+### 4.9 服务端设置（AI 模型 / 微信登录）
+
+后台顶部「设置」按钮打开。**保存后立即生效，不需要重启任何服务**。
+实现方式：设置写数据库，服务端每次请求现读（AI 走后台自己的 `app_keys`，微信走账号库的 `settings`）。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/llm/settings` | `{ settings: { 'llm.apiKey': {configured, value(掩码)}, 'llm.baseUrl', 'llm.model' }, llmEnabled, source }` |
+| PUT | `/api/llm/settings` | body `{ settings: { ... } }`；空串 = 清除该项；未出现的项保持不动 |
+| POST | `/api/llm/test` | 真的打一次模型（`max_tokens: 1`），返回 `{ ok, model }` 或 `{ ok:false, error }`；错误信息里的 Key 会换成掩码 |
+| GET | `/api/account/settings` | 微信：`{ settings: { 'wechat.appid', 'wechat.secret'(掩码), 'wechat.universalLink' }, wechatEnabled, missing[], dbPath }` |
+| PUT | `/api/account/settings` | 同上；直连账号库写入，账号服务下次请求即读到 |
+| GET | `/api/account/settings/status` | `{ available, dbPath, error }`——账号库没建好时给明确原因 |
+
+优先级：**数据库 > 环境变量 > 默认值**。所以老部署继续只靠 `BW_*` / `WA_*` 环境变量也能跑，
+装了后台之后可以在线改，不用登服务器。
+
+安全：
+- 所有读接口只回掩码（前 4 + 后 4），绝不下发明文 Key / Secret
+- `llm.test` 的失败信息会把 Key 替换成掩码（DeepSeek 的 401 会把 Key 后半段回显）
+- 账号库没有 `settings` 表时返回 503 `SETTINGS_UNAVAILABLE` 并说明「重启一次账号服务」，
+  **不会在这个进程里偷偷建表**（避免两处 schema 分叉）

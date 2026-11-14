@@ -69,7 +69,7 @@ export class MapKeysService {
     this.now = options.now || (() => Date.now());
     this.logger = options.logger || console;
     this.fetchImpl = options.fetchImpl || globalThis.fetch;
-    this.originPatterns = compileOriginPatterns(this.env.WA_MAPKEYS_ORIGINS);
+    this.originPatterns = compileOriginPatterns(this.env.WA_MAPKEYS_ORIGINS || this.env.BW_MAPKEYS_ORIGINS);
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS app_keys (' +
         'key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER' +

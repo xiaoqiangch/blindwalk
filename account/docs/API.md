@@ -54,6 +54,33 @@ Set-Cookie: wa_uid=<64 位 hex>; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000
 | PUT | `/api/me/profile` | body `{ profile: object }`（整包同步，上限 256KB）；→ `{ ok:true, savedAt: ms, bytes:n }` |
 | DELETE | `/api/me` | body `{password}` 二次确认；删除账号、profile、全部会话 → `{ ok:true }` |
 
+### 3.1 微信登录
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/auth/wechat/config` | `{ ok:true, wechat:{ enabled, appid, universalLink, missing[] } }`。**永远不下发 secret**；未配置时 `enabled:false` + 缺哪几个环境变量 |
+| POST | `/api/auth/wechat` | body `{ code }`。服务端用 code 换 openid → 找绑定用户（没有就建号）→ Set-Cookie 会话 |
+
+服务端环境变量（AppSecret 只在服务端）：
+
+| 变量 | 说明 |
+|---|---|
+| `WA_WECHAT_APPID` | 微信开放平台应用 AppID（「网站应用」或「移动应用」） |
+| `WA_WECHAT_SECRET` | 同一应用的 AppSecret |
+| `WA_WECHAT_UNIVERSAL_LINK` | 可选，iOS 移动应用接 WeChatOpenSDK 时的 Universal Link |
+
+错误码：
+
+| code | 状态 | 含义 |
+|---|---|---|
+| `WECHAT_NOT_CONFIGURED` | 503 | 服务端缺 AppID / Secret |
+| `WECHAT_CODE_INVALID` | 400 | code 已用/过期（errcode 40029 / 40163），客户端应重新授权 |
+| `WECHAT_UNREACHABLE` | 502 | 连不上 api.weixin.qq.com |
+| `WECHAT_FAILED` | 502 | 其它微信侧失败 |
+
+绑定关系存在 `identities(provider, external_id, user_id, ...)` 表：同一 openid 反复登录始终落到同一个本地账号；
+微信用户没有可用密码（服务端写入随机串），只能用微信登录。
+
 ### 错误结构
 
 ```json
@@ -142,3 +169,130 @@ curl -s -i -X OPTIONS localhost:8803/api/auth/register \
 | `WA_ALLOWED_ORIGINS` | 空（回显任意 Origin） | CORS 白名单，逗号分隔 |
 | `WA_COOKIE_SECURE` | `0` | HTTPS 部署时设 `1` |
 | `WA_TRUST_PROXY` | `0` | 反向代理后设 `1`，限流取 `X-Forwarded-For` |
+
+### 3.2 后台设置接口（微信 AppID / Secret）
+
+> 这是给**管理后台**用的，不是给客户端。需要 `X-WA-Admin-Token` 请求头。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/admin/settings` | `{ settings: { 'wechat.appid', 'wechat.secret'(掩码), 'wechat.universalLink' }, wechatEnabled, adminTokenConfigured }` |
+| PUT | `/api/admin/settings` | body `{ settings: { ... } }`；空串 = 清除 |
+
+鉴权：请求头 `X-WA-Admin-Token` 必须等于服务端环境变量 `WA_ADMIN_TOKEN`（或 `BW_ADMIN_TOKEN`）。
+**没配令牌时一律拒绝（503 `ADMIN_TOKEN_MISSING`）**，绝不因为「没配」就放行。
+
+配置优先级：`settings` 表 > 环境变量（`WA_WECHAT_APPID` / `WA_WECHAT_SECRET`）。
+保存后 `/api/auth/wechat/config` 与 `/api/auth/wechat` 立即读到新值，无需重启。
+
+线上实际使用时，浏览器走的是后台的 `/admin/api/account/settings`（后台服务直连账号库），
+这样管理令牌不必发到前端。上面这两个接口用于脚本 / 运维。
+
+### 3.3 Sign in with Apple
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/auth/apple` | body `{ identityToken, nonce, fullName? }` → 验签、建号/登录、Set-Cookie |
+
+服务端**自己验 RS256 签名**（`https://appleid.apple.com/auth/keys`），不做「只解 base64 就信」那种错事。校验项：
+
+| 项 | 规则 |
+|---|---|
+| 签名 | RSA-SHA256，按 JWT header 的 `kid` 取公钥；公钥缓存 1 小时，验签失败会强制刷新一次（处理 Apple 轮换） |
+| `iss` | 必须 `https://appleid.apple.com` |
+| `aud` | 必须等于 `WA_APPLE_CLIENT_ID`（默认 `com.walkaholic.app`） |
+| `exp` | 未过期（允许 60 秒时钟偏差） |
+| `iat` | 不能在未来（允许 60 秒） |
+| `nonce` | 若客户端传了，必须等于 `SHA256(原始 nonce)` |
+
+错误码：`APPLE_NOT_CONFIGURED`(503) / `APPLE_BAD_TOKEN` / `APPLE_BAD_SIGNATURE` / `APPLE_BAD_ISSUER` / `APPLE_BAD_AUDIENCE` / `APPLE_EXPIRED` / `APPLE_BAD_NONCE` / `APPLE_JWKS_FAILED`(502)
+
+账号绑定存在 `identities(provider='apple', external_id=sub)`，同一 Apple 账号反复登录始终同一本地账号。
+
+### 3.4 短信验证码登录
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/auth/sms/send` | body `{ phone }` → `{ ok, ttlSeconds, devMode }` |
+| POST | `/api/auth/sms/verify` | body `{ phone, code }` → 建号/登录 + Set-Cookie |
+
+| 项 | 值 |
+|---|---|
+| 验证码 | 6 位数字，`crypto.randomInt`，只存 SHA256 |
+| 有效期 | 5 分钟，一次性（验过即删） |
+| 发送限流 | 同一手机号 10 分钟内 5 次；同一 IP 10 分钟内 20 次 |
+| 试错限流 | 同一验证码最多试 5 次，超过作废 |
+| 存储 | `sms_codes` 表（重启不丢） |
+
+服务商：阿里云短信 `SendSms`（RPC v1 签名，`HMAC-SHA1`）。环境变量：
+
+| 变量 | 说明 |
+|---|---|
+| `WA_SMS_ACCESS_KEY_ID` | 阿里云 AccessKeyId |
+| `WA_SMS_ACCESS_KEY_SECRET` | 阿里云 AccessKeySecret |
+| `WA_SMS_SIGN_NAME` | 短信签名（需备案过的签名） |
+| `WA_SMS_TEMPLATE_CODE` | 验证码模板号，模板里写 `${code}` |
+| `WA_SMS_DEV_MODE=1` | 开发模式：不发真短信，验证码打到日志 |
+
+未配置时 `/api/auth/sms/send` 返回 503 `SMS_NOT_CONFIGURED` 并列出缺哪几个变量。
+
+错误码：`BAD_PHONE` / `SMS_NOT_CONFIGURED`(503) / `SMS_TOO_MANY_SENDS`(429) / `SMS_SEND_FAILED`(502) /
+`SMS_NO_CODE` / `SMS_EXPIRED` / `SMS_WRONG_CODE` / `SMS_TOO_MANY_ATTEMPTS`(429)
+
+### 3.5 登录方式可用性
+
+```
+GET /api/auth/providers
+→ { ok:true, providers: {
+     password: { enabled: true },
+     apple:    { enabled: true, clientId: "com.walkaholic.app" },
+     sms:      { enabled: false, missing: ["WA_SMS_ACCESS_KEY_ID", ...] },
+     wechat:   { enabled: false, appid: null, missing: [...] }
+   } }
+```
+客户端启动时问一次，用于决定「哪些登录按钮显示、哪些显示为不可用并说明原因」。**绝不下发任何 secret。**
+
+---
+
+## 4. 惊喜（跨用户共享）
+
+保密约定：列表接口**不返回**照片正文、dHash、作者 id；坐标只用于本机算距离。
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| GET | `/api/surprises?lat&lon&radius` | 可选 | 附近待寻惊喜（登录后自动排除自己埋的），只回 id / emoji / 区域 / 线索 / 半径 / 距离 |
+| POST | `/api/surprises` | 登录或 `X-WA-Device` | 埋下一个（照片以 data URL 上传，超 220KB 只保留哈希） |
+| GET | `/api/surprises/mine` | 登录或 `X-WA-Device` | **我埋的**：状态 / 寻者名 / 找到时间 —— 作者侧「回执」的数据源 |
+| POST | `/api/surprises/:id/find` | 登录 | 认领（先到先得；不能找自己埋的） |
+
+`GET /api/surprises/mine` 的鉴权规则：
+
+- 已登录 → 按账号 id 查；
+- 未登录 → 必须带 `X-WA-Device`（客户端自动生成并持久化的随机串），按 `anon-<device>` 查；
+- 两者都没有 → 401 `UNAUTHENTICATED`。
+
+响应示例：
+
+```json
+{ "ok": true, "items": [
+  { "id": "surprise-...", "areaLabel": "鼓楼 · 巷口", "status": "found",
+    "finderName": "小满", "foundAt": 1763000000000, "createdAt": 1762900000000, "radiusMeters": 60 }
+] }
+```
+
+客户端只在 `status == "found"` 时生成一条未读回执；入口红点在用户点「知道了」或打开「我的惊喜」后清除。
+
+---
+
+## 5. 到达照片（check-in photo）
+
+到达揭晓页用户拍的那张照片，按「用户 + 地点」存一张；不进 profile 同步包（256KB 上限），
+只把远端路径写进卡片的 `photoRemotePath`（一个短字符串），所以同步不会变重。
+
+| 方法 | 路径 | 鉴权 | 说明 |
+|---|---|---|---|
+| POST | `/api/photos` | 必须登录 | body：`{ placeId, dataUrl }`；dataUrl 仅接受 `image/jpeg` / `image/png` 的 base64；上限 600KB（`PHOTO_TOO_LARGE` 413） |
+| GET | `/api/photos/:placeId` | 必须登录 | 直接返回图片字节（`image/jpeg` / `image/png`），只能取自己的 |
+
+- 同一 `(user, placeId)` 再次上传 = 覆盖（重拍 / 换一张）。
+- 未登录时客户端只保存到本机，不调用这两个接口。

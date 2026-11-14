@@ -43,10 +43,13 @@ final class POIProviderService: @unchecked Sendable {
         startMeters: Int,
         relax: Int,
         mood: Mood,
-        deadline: TimeInterval = 4.5
+        deadline: TimeInterval = 4.5,
+        scope: ExploreScope = .walk
     ) async -> ProviderFetchResult {
         let keys = await MapKeysService.shared.load()
-        let radius = POISelection.searchRadius(startMeters: startMeters, relax: relax)
+        let radius = scope == .roam
+            ? POISelection.roamSearchRadius(relax: relax)
+            : POISelection.searchRadius(startMeters: startMeters, relax: relax)
         let limit = relax >= 1 ? 60 : 40
 
         var reports: [POISourceReport] = []
@@ -119,19 +122,141 @@ final class POIProviderService: @unchecked Sendable {
         return ProviderFetchResult(candidates: limited, reports: reports)
     }
 
+    // MARK: - 远程漫游（10–45 公里环带）
+
+    /// 远程漫游的取点方式与「附近搜索」不同，原因很实际：
+    ///
+    /// 高德 / 百度的 around 接口**按距离升序返回**，在 50 公里半径下第一页永远是最里面的
+    /// 几百米 —— 想拿到 10–45 公里的点得翻 30 页，不现实。
+    ///
+    /// 所以改成「在环带上撒几个点，每个点做一次 3 公里的小范围搜索」：
+    /// 命中率够高、只要 4–6 次请求，而且天然覆盖各个方向。
+    func fetchRoamNearby(
+        origin: GeoPoint,
+        relax: Int,
+        mood: Mood,
+        deadline: TimeInterval = 9,
+        seed: UInt64 = UInt64(Date().timeIntervalSince1970)
+    ) async -> ProviderFetchResult {
+        let keys = await MapKeysService.shared.load()
+        var reports: [POISourceReport] = []
+
+        // 没有地图 Key 也能漫游：维基 geosearch 是公开接口（带实景照片），
+        // 只是地标密度不如高德/百度。缺 Key 的源在失败面板里如实标注。
+        if keys.amap.isEmpty {
+            reports.append(POISourceReport(id: "amap", label: "高德地图", ok: false, count: 0, error: "未配置 Key"))
+        }
+        if keys.baidu.isEmpty {
+            reports.append(POISourceReport(id: "baidu", label: "百度地图", ok: false, count: 0, error: "未配置 Key"))
+        }
+
+        // 环带采样：4 个方向，落点让「采样圆」正好盖住整个环带
+        // （圆心离下限 2 公里 → 覆盖 8 公里起；离上限 1.2 公里 → 45 公里也在圆内）
+        let band = POISelection.roamRange(relax: relax)
+        let low = max(band.lowerBound + 2_000, 12_000)
+        let high = max(low + 1_000, min(band.upperBound - 1_200, 43_000))
+        var generator = SeededGenerator(seed: seed &+ 0x5EED)
+        var centers: [GeoPoint] = []
+        for index in 0..<4 {
+            // 四个方向各撒一个点，再用 ±30° 抖动打破「正东南西北」的机械感
+            let bearing = Double(index) * 90 + Double(Int.random(in: -30...30, using: &generator))
+            let meters = low + (high - low) * Double(Int.random(in: 15...85, using: &generator)) / 100
+            centers.append(GeoMath.offset(
+                from: origin,
+                meters: meters,
+                bearingDegrees: (bearing + 360).truncatingRemainder(dividingBy: 360)
+            ))
+        }
+
+        var merged: [POICandidate] = []
+        var amapTotal = 0
+        var baiduTotal = 0
+        var wikiTotal = 0
+        var lastError = ""
+
+        for center in centers {
+            if !keys.amap.isEmpty {
+                do {
+                    let list = try await withTimeout(deadline) {
+                        try await self.fetchAmap(
+                            origin: center, radius: 3_200, limit: 20, key: keys.amap, lightweight: true
+                        )
+                    }
+                    amapTotal += list.count
+                    merged.append(contentsOf: list)
+                } catch {
+                    lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
+            if !keys.baidu.isEmpty {
+                do {
+                    let list = try await withTimeout(deadline) {
+                        try await self.fetchBaidu(origin: center, radius: 3_200, limit: 20, key: keys.baidu)
+                    }
+                    baiduTotal += list.count
+                    merged.append(contentsOf: list)
+                } catch {
+                    lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
+            // 维基 geosearch 单次上限 10 公里 —— 但采样点本身就在 10 公里外，
+            // 以小半径绕采样点查，等效于查到了远程的地标（还带实景照片）。
+            do {
+                let list = try await withTimeout(deadline) {
+                    try await self.fetchWiki(origin: center, radius: 3_200, limit: 12)
+                }
+                wikiTotal += list.count
+                merged.append(contentsOf: list)
+            } catch {
+                if lastError.isEmpty {
+                    lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
+        }
+
+        if !keys.amap.isEmpty {
+            reports.append(POISourceReport(id: "amap", label: "高德地图", ok: amapTotal > 0, count: amapTotal,
+                                           error: amapTotal > 0 ? "" : (lastError.isEmpty ? "环带内没搜到地点" : lastError)))
+        }
+        if !keys.baidu.isEmpty {
+            reports.append(POISourceReport(id: "baidu", label: "百度地图", ok: baiduTotal > 0, count: baiduTotal, error: ""))
+        }
+        reports.append(POISourceReport(id: "osm", label: "OpenStreetMap", ok: false, count: 0, error: "远程漫游不支持（半径过大）"))
+        reports.append(POISourceReport(
+            id: "wiki", label: "中文维基百科", ok: wikiTotal > 0, count: wikiTotal,
+            error: wikiTotal > 0 ? "" : "环带内没查到地标词条"
+        ))
+
+        let deduped = POISelection.dedupe(merged, thresholdMeters: 120)
+        // 只留真正落在漫游环带里的（采样点 3 公里范围可能有一部分掉到环带外）
+        let inBand = deduped.filter { band.contains(GeoMath.distance(from: origin, to: $0.coordinate)) }
+        let sorted = inBand.sorted {
+            GeoMath.distance(from: origin, to: $0.coordinate) < GeoMath.distance(from: origin, to: $1.coordinate)
+        }
+        reports.sort { Self.sourceOrder($0.id) < Self.sourceOrder($1.id) }
+        return ProviderFetchResult(candidates: Array(sorted.prefix(40)), reports: reports)
+    }
+
     // MARK: - 高德
 
-    private func fetchAmap(origin: GeoPoint, radius: Int, limit: Int, key: String) async throws -> [POICandidate] {
+    private func fetchAmap(
+        origin: GeoPoint,
+        radius: Int,
+        limit: Int,
+        key: String,
+        lightweight: Bool = false
+    ) async throws -> [POICandidate] {
         let gcj = ChinaCoordinate.wgs84ToGcj02(origin)
         var collected: [POICandidate] = []
 
         // 地标关键字：高德不接受 "公园|博物馆|…" 整串（会返回 status=1 但 count=0 的静默空结果），
-        // 必须逐词查；为控制 QPS，只查前 3 个，每次间隔 120ms。
+        // 必须逐词查；为控制 QPS，只查前 3 个（远程漫游再收到 1 个），每次间隔 120ms。
+        let keywordLimit = lightweight ? 1 : 3
         let keywordList = POISelection.landmarkKeywords
             .split(separator: "|")
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-            .prefix(3)
+            .prefix(keywordLimit)
         for (index, kw) in keywordList.enumerated() {
             if index > 0 { try? await Task.sleep(nanoseconds: 120_000_000) }
             if let list = try? await amapPage(
@@ -141,8 +266,8 @@ final class POIProviderService: @unchecked Sendable {
             }
         }
 
-        // 有关键字时只翻 2 页，减少总调用数（QPS 限制）
-        let pages = min(keywordList.isEmpty ? 3 : 2, max(1, Int(ceil(Double(limit) / 25.0))))
+        // 有关键字时只翻 2 页，减少总调用数（QPS 限制）；远程漫游只取第 1 页
+        let pages = lightweight ? 1 : min(keywordList.isEmpty ? 3 : 2, max(1, Int(ceil(Double(limit) / 25.0))))
         for page in 1...pages {
             do {
                 let list = try await amapPage(gcj: gcj, radius: radius, key: key, page: page, keywords: nil)

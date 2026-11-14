@@ -49,6 +49,8 @@ struct LocationReading: Equatable {
     var bearingDegrees: Double?
     /// 手机朝向（度，0 = 正北）；只有真机才有
     var headingDegrees: Double?
+    /// 朝向精度（度，越小越准；负数 = 无效，需要用户做 8 字校准）
+    var headingAccuracy: Double?
     /// 水平精度（米，越小越好；负数表示无效）
     var horizontalAccuracy: Double?
 }
@@ -196,6 +198,8 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
     private(set) var remainingMeters: Int?
     private(set) var bearingDegrees: Double?
     private(set) var headingDegrees: Double?
+    /// 罗盘精度（度）。>25 时基本不可用：室内 / 未校准，导航里不能拿它转地图。
+    private(set) var headingAccuracy: Double?
     private var fixWatchdog: Timer?
     private var lastFixAt = Date()
     /// 用连续两个定位点推算的行进方向（真机没罗盘/罗盘未就绪时用）
@@ -364,6 +368,7 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
             remainingMeters: remainingMeters.map(Double.init),
             bearingDegrees: bearingDegrees,
             headingDegrees: upHeading,
+            headingAccuracy: headingAccuracy,
             horizontalAccuracy: horizontalAccuracy
         )
 
@@ -429,9 +434,22 @@ final class LiveLocationService: NSObject, LocationProviding, CLLocationManagerD
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         guard newHeading.headingAccuracy >= 0 else { return }
-        headingDegrees = newHeading.trueHeading >= 0
+        let raw = newHeading.trueHeading >= 0
             ? newHeading.trueHeading
             : newHeading.magneticHeading
+
+        // 罗盘噪声低通：0.25 的系数在 5° headingFilter 下体感跟手，但不会让箭头抖个不停
+        // （站着不动时磁力计会来回跳 3–8°，不滤波的话圆点箭头会像在乱转）
+        if let current = headingDegrees {
+            let delta = ((raw - current + 540).truncatingRemainder(dividingBy: 360)) - 180
+            // 转动很快时（>25°/次）直接跟，不要被滤波拖住
+            headingDegrees = abs(delta) > 25
+                ? raw
+                : (current + delta * 0.25 + 360).truncatingRemainder(dividingBy: 360)
+        } else {
+            headingDegrees = raw
+        }
+        headingAccuracy = newHeading.headingAccuracy
         publish()
     }
 

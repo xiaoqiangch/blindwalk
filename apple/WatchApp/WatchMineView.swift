@@ -28,7 +28,7 @@ struct WatchMineView: View {
         guard let card = store.profile.cards.max(by: { $0.collectedAt < $1.collectedAt }) else {
             return nil
         }
-        return PlaceCatalog.place(id: card.placeID)
+        return PlaceDirectory.shared.place(id: card.placeID)
     }
 
     private var syncNote: String {

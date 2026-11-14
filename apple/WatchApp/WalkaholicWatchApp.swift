@@ -8,8 +8,7 @@ import SwiftUI
 /// 数据来源（两选一，运行时自动回退）：
 /// 1. iPhone 通过 WatchConnectivity 的 `applicationContext` 推送 `WatchSessionSummary`
 ///    （见 WatchBridge.swift；到达前不下发地点名，避免提前泄露目的地）；
-/// 2. 无连接（模拟器 / 未配对 / 纯演示）时回退 Shared/Core 的本地演示数据：
-///    `WalkaholicStore.demo()` + `DemoData.demoWatchSession()`。
+/// 2. 无连接（未配对 / 手机没开）时显示**空状态**：不编造地点，也不假装有进度。
 ///
 /// 4 个页面（`TabView` 竖滑翻页）：进度 → 线索 → 揭晓 → 我的。
 @main
@@ -19,9 +18,10 @@ struct WalkaholicWatchApp: App {
     /// `WalkaholicStore` 是 Shared/Core 里的 `@Observable @MainActor` 类，
     /// 而 SwiftUI 总在主线程创建 App；整个 App 标 `@MainActor` 让这层隔离保持一致，
     /// 不依赖各版本 watchOS SDK 对 `App.init` 是否标注主 actor。
-    @State private var store: WalkaholicStore = WalkaholicStore.demo()
+    /// 手表自己不再构造演示档案：没有 iPhone 数据时显示空状态（见 WatchSessionSummary.disconnected）
+    @State private var store: WalkaholicStore = WalkaholicStore()
 
-    /// WCSession 摘要；未连接时内部回退 `DemoData.demoWatchSession()`。
+    /// WCSession 摘要；未连接时回退空状态（见 WatchSessionSummary.disconnected）。
     @State private var bridge = WatchBridge()
 
     var body: some Scene {
@@ -108,7 +108,7 @@ struct WatchRootView: View {
     private func syncFromPhoneIfNeeded() {
         guard bridge.source == .phone else { return }
         let summary = bridge.summary
-        guard let place = PlaceCatalog.place(id: summary.placeID) else { return }
+        guard let place = PlaceDirectory.shared.place(id: summary.placeID) else { return }
 
         let phase = QuestPhase(rawValue: summary.phase) ?? .walking
         store.currentPlace = place

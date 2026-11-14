@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import PhotosUI
 
 // MARK: - 揭晓 Reveal（design-system §5.4，全屏覆盖；视觉基准：web 原型 #/reveal）
 //
@@ -36,6 +37,14 @@ struct RevealView: View {
     @State private var lastCollectedResult: CollectResult?
     @State private var toasts: [WAToast] = []
 
+    // 到达时的实拍：拍完先存本机，登录后再上传到账号（按地点存，换机也能取回）
+    @State private var showCamera = false
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var checkInImage: UIImage?
+    @State private var checkInPhotoName: String?
+    @State private var checkInRemotePath: String?
+    @State private var isUploadingPhoto = false
+
     private var place: Place? {
         store.reveal?.place ?? store.currentPlace
     }
@@ -71,6 +80,26 @@ struct RevealView: View {
         .animation(WAAnimation.slow, value: showCard)
         .interactiveDismissDisabled(true)
         .onAppear(perform: startOpening)
+        .onAppear { loadExistingCheckInPhoto() }
+        .sheet(isPresented: $showCamera) {
+            CameraPhotoPicker(
+                onPicked: { image in
+                    showCamera = false
+                    handleCheckInPhoto(image)
+                },
+                onCancel: { showCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        .onChange(of: pickerItem) { _, item in
+            guard let item else { return }
+            Task { @MainActor in
+                if let image = await PhotoLibraryService.loadImage(from: item) {
+                    handleCheckInPhoto(image)
+                }
+                pickerItem = nil
+            }
+        }
         .onAppear {
             // 仅用于截图/演示：`WA_PREVIEW_TOAST=1` 自动点一次「收进图鉴」，验证 toast 层级
             guard ProcessInfo.processInfo.environment["WA_PREVIEW_TOAST"] == "1" else { return }
@@ -278,6 +307,10 @@ struct RevealView: View {
                 curatedPhoto(url: url, credit: info.photoCredit)
                     .padding(.bottom, 12)
             }
+
+            // 到达时的实拍：这是「我真的来过」的证据，也是这张卡最私人化的一层
+            checkInPhotoSection(place)
+                .padding(.bottom, 12)
 
             VStack(spacing: 7) {
                 if curatedInfo?.photoURL == nil {
@@ -496,6 +529,147 @@ struct RevealView: View {
         }
     }
 
+    // MARK: - 到达实拍（拍照上传）
+
+    @ViewBuilder
+    private func checkInPhotoSection(_ place: Place) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let image = checkInImage {
+                ZStack(alignment: .topLeading) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 168)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(WATheme.line, lineWidth: 1)
+                        )
+
+                    Text("你拍的")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 9)
+                        .frame(height: 22)
+                        .background(WATheme.ink.opacity(0.62))
+                        .clipShape(Capsule())
+                        .padding(10)
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("重拍", systemImage: "camera.fill")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(WATheme.ink2)
+                    }
+                    .buttonStyle(.plain)
+
+                    PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                        Label("换一张", systemImage: "photo.on.rectangle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(WATheme.ink2)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Text(uploadStatusText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(checkInRemotePath != nil ? WATheme.teal : WATheme.ink3)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("拍一张 · 记下这一刻")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundStyle(WATheme.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(WATheme.amberSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(WATheme.amber.opacity(0.35),
+                                              style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        )
+                    }
+                    .buttonStyle(WAPressEffectStyle())
+
+                    PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(WATheme.ink2)
+                            .frame(width: 44, height: 44)
+                            .background(WATheme.paper2)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(WATheme.line, lineWidth: 1)
+                            )
+                    }
+                    .accessibilityLabel("从相册选择照片")
+                }
+            }
+        }
+    }
+
+    private var uploadStatusText: String {
+        if isUploadingPhoto { return "上传中…" }
+        if checkInRemotePath != nil { return "已上传 · 换机可找回" }
+        return AccountService.shared.isLoggedIn ? "仅存本机（稍后可再上传）" : "仅存本机 · 登录后可同步"
+    }
+
+    private func loadExistingCheckInPhoto() {
+        guard let place, checkInImage == nil else { return }
+        guard let photo = store.cardPhoto(for: place.id) else { return }
+        checkInPhotoName = photo.local
+        checkInRemotePath = photo.remote
+        if let name = photo.local {
+            checkInImage = PhotoLibraryService.load(named: name)
+        }
+    }
+
+    /// 拍完 / 选完：先落本机（离线也有），再尽力上传账号
+    private func handleCheckInPhoto(_ image: UIImage) {
+        checkInImage = image
+        if let name = try? PhotoLibraryService.save(image) {
+            checkInPhotoName = name
+        }
+        if let place {
+            store.attachCardPhoto(placeID: place.id, photoName: checkInPhotoName, remotePath: nil)
+        }
+        WAHaptics.light()
+        uploadCheckInPhotoIfPossible(image)
+    }
+
+    private func uploadCheckInPhotoIfPossible(_ image: UIImage) {
+        guard let place else { return }
+        guard AccountService.shared.isLoggedIn else { return }
+        guard let dataURL = PhotoLibraryService.checkInDataURL(image) else { return }
+        isUploadingPhoto = true
+        Task { @MainActor in
+            let path = await AccountService.shared.uploadCheckInPhoto(placeID: place.id, dataURL: dataURL)
+            isUploadingPhoto = false
+            guard let path else {
+                appendToast(WAToast(text: "照片已存本机，上传失败（网络或登录状态）", icon: "icloud.slash", tint: WATheme.ember))
+                return
+            }
+            checkInRemotePath = path
+            store.attachCardPhoto(placeID: place.id, photoName: checkInPhotoName, remotePath: path)
+            appendToast(WAToast(text: "照片已上传到账号", icon: "checkmark.icloud", tint: WATheme.teal))
+        }
+    }
+
     // MARK: - Toast（贴底堆叠；成就 toast 用琥珀变体）
 
     private var toastLayer: some View {
@@ -589,6 +763,11 @@ struct RevealView: View {
 
         hasCollected = true
         WAHaptics.success()
+
+        // 把到达实拍挂到这张卡上（先拍后收 / 先收后拍都覆盖得到）
+        if let place, checkInPhotoName != nil || checkInRemotePath != nil {
+            store.attachCardPhoto(placeID: place.id, photoName: checkInPhotoName, remotePath: checkInRemotePath)
+        }
 
         // 卡片缩小飞向 Tab 图鉴，飞完再落回原位（web 同款：卡片留在原地并显示「它现在是你的了」）
         withAnimation(WAAnimation.openBox) {

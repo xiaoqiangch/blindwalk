@@ -19,29 +19,26 @@ struct BoxSetupSheet: View {
     @State private var failureReports: [POISourceReport] = []
     @State private var showLocationPicker = false
     @State private var oneShotLocation: OneShotLocationService?
+    /// 定位失败的具体原因（权限被拒 / 超时 / 服务未开），写进失败面板
+    @State private var locationIssue: String?
+    @State private var isLocating = false
 
     var body: some View {
-        ZStack {
-            WATheme.paper.ignoresSafeArea()
-
-            ScrollViewReader { proxy in
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                    Text("这次的盲盒")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(WATheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text("选完就出发，目的地保密。")
-                        .font(.system(size: 13.5))
-                        .foregroundStyle(WATheme.ink3)
-                        .padding(.top, 4)
-                        .padding(.bottom, 20)
-
-                    durationSection
-                    moodSection.padding(.top, 15)
-                    areaSection.padding(.top, 15)
-                    actionSection.padding(.top, 17)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    momentCard
+                    scopeSection
+                    // 「走多久 / 去哪一带」只影响步行半径；漫游的距离由环带决定，
+                    // 摆着这两个选择只会让人以为它们有用，所以漫游时收起。
+                    if store.selectedScope == .walk {
+                        durationSection
+                    }
+                    moodSection
+                    if store.selectedScope == .walk {
+                        areaSection
+                    }
+                    actionSection
 
                     if failureReason != nil {
                         BoxFailureView(
@@ -49,28 +46,29 @@ struct BoxSetupSheet: View {
                             reports: failureReports,
                             onExpand: { search(extraWide: true) },
                             onRelocate: { showLocationPicker = true },
-                            onDemo: { startDemo() }
+                            diagnostic: locationIssue,
+                            onRetryLocation: { locateThenSearch() },
+                            onOpenSettings: openLocationSettings,
+                            scope: store.selectedScope
                         )
-                        .padding(.top, 14)
-                        .id("failurePanel")
                     }
-                    }
-                    .padding(.horizontal, WATheme.pagePadding)
-                    .padding(.top, 10)
-                    .padding(.bottom, 22)
                 }
-                .onChange(of: failureReason) { _, reason in
-                    guard reason != nil else { return }
-                    withAnimation(WAAnimation.regular) {
-                        proxy.scrollTo("failurePanel", anchor: .bottom)
-                    }
+                .padding(.horizontal, WATheme.pagePadding)
+                .padding(.top, 8)
+                .padding(.bottom, 22)
+            }
+            .background(WATheme.cream)
+            .navigationTitle("这次的盲盒")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消", action: onCancel)
                 }
             }
         }
         .presentationDetents([.fraction(0.92)])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(WATheme.panelRadius)
-        .presentationBackground(WATheme.paper)
+        .presentationBackground(WATheme.cream)
         .waTypeBounds()
         .onAppear(perform: handleAppear)
         .sheet(isPresented: $showLocationPicker) {
@@ -82,54 +80,126 @@ struct BoxSetupSheet: View {
         }
     }
 
+    // MARK: 现在（环境性盲盒：时段决定去哪一类地方）
+
+    private var momentCard: some View {
+        let moment = DayMoment.now
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: moment.symbol)
+                .font(.title3)
+                .foregroundStyle(WATheme.amber)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(moment.boxTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(WATheme.ink)
+                Text(moment.line)
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: 怎么去（走路 / 远程漫游）
+
+    private var scopeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WAMicroLabel("怎么去")
+
+            VStack(spacing: 0) {
+                ForEach(Array(ExploreScope.allCases.enumerated()), id: \.element) { index, scope in
+                    scopeRow(scope)
+                    if index < ExploreScope.allCases.count - 1 {
+                        Divider().padding(.leading, 44)
+                    }
+                }
+            }
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+
+            if store.selectedScope == .roam {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("超过 10 公里的兴趣点也能刷到：选中后会先带你开车到目的地 1 公里左右停车，剩下的路再步行探索。", systemImage: "car")
+                        .fixedSize(horizontal: false, vertical: true)
+                    Label("开车段不给线索、不画路线；进入停车圈（或点「已停车」）后才开始解锁线索。", systemImage: "lock")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.caption)
+                .foregroundStyle(WATheme.ink2)
+            }
+        }
+    }
+
+    private func scopeRow(_ scope: ExploreScope) -> some View {
+        let selected = store.selectedScope == scope
+        return Button {
+            guard store.selectedScope != scope else { return }
+            store.selectedScope = scope
+            failureReason = nil
+            WAHaptics.light()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: scope.symbol)
+                    .font(.body)
+                    .foregroundStyle(selected ? WATheme.amber : WATheme.ink2)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(scope.title)
+                        .font(.body)
+                        .foregroundStyle(WATheme.ink)
+                    Text(scope.subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 8)
+
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(WATheme.amber)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(scope.title)：\(scope.subtitle)")
+    }
+
     // MARK: 时长 3 选 1（web .segmented：纸色凹槽 + 白纸浮起块）
 
     private var durationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            WAMicroLabel("时长")
+            WAMicroLabel("走多久")
 
-            HStack(spacing: 4) {
+            Picker("走多久", selection: Binding(
+                get: { store.selectedDuration },
+                set: { selectDuration($0) }
+            )) {
                 ForEach(WalkDuration.allCases) { duration in
-                    durationButton(duration)
+                    Text("\(duration.rawValue) 分钟").tag(duration)
                 }
             }
-            .padding(4)
-            .background(WATheme.paper2)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-    }
+            .pickerStyle(.segmented)
 
-    private func durationButton(_ duration: WalkDuration) -> some View {
-        let selected = store.selectedDuration == duration
-        return Button {
-            selectDuration(duration)
-        } label: {
-            VStack(spacing: 2) {
-                Text("\(duration.rawValue) 分钟")
-                    .font(.system(size: 14, weight: selected ? .medium : .regular))
-                    .foregroundStyle(selected ? WATheme.ink : WATheme.ink2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(durationCaption(duration))
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink3)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background {
-                if selected {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(WATheme.paper)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(WATheme.amber.opacity(0.35), lineWidth: 1)
-                        )
-                }
-            }
+            Text(durationCaption(store.selectedDuration))
+                .font(.footnote)
+                .foregroundStyle(WATheme.ink2)
         }
-        .buttonStyle(WAPressEffectStyle())
-        .accessibilityLabel(duration.title)
     }
 
     private func durationCaption(_ duration: WalkDuration) -> String {
@@ -146,11 +216,16 @@ struct BoxSetupSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             WAMicroLabel("心情")
 
-            VStack(spacing: 7) {
-                ForEach(Mood.allCases) { mood in
+            VStack(spacing: 0) {
+                ForEach(Array(Mood.allCases.enumerated()), id: \.element) { index, mood in
                     moodRow(mood)
+                    if index < Mood.allCases.count - 1 {
+                        Divider().padding(.leading, 44)
+                    }
                 }
             }
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         }
     }
 
@@ -161,42 +236,34 @@ struct BoxSetupSheet: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: mood.symbol)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink2)
-                    .frame(width: 34, height: 34)
-                    .background(selected ? WATheme.amberSoft : WATheme.paper2)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .font(.body)
+                    .foregroundStyle(selected ? WATheme.amber : WATheme.ink2)
+                    .frame(width: 28)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(mood.title)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.body)
                         .foregroundStyle(WATheme.ink)
                     Text(mood.subtitle)
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(WATheme.ink3)
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                 }
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
 
                 if selected {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(WATheme.amberDeep)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(WATheme.amber)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(WATheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous)
-                    .stroke(selected ? WATheme.amber.opacity(0.45) : WATheme.line, lineWidth: 1)
-            )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(WAPressEffectStyle())
+        .buttonStyle(.plain)
         .accessibilityLabel("\(mood.title)：\(mood.subtitle)")
     }
 
@@ -204,19 +271,18 @@ struct BoxSetupSheet: View {
 
     private var areaSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            WAMicroLabel("区域")
+            WAMicroLabel("去哪一带")
 
-            HStack(spacing: 8) {
-                areaChip(title: "附近", isSelected: store.selectedArea == nil) {
-                    store.selectedArea = nil
-                }
+            Picker("区域", selection: Binding(
+                get: { store.selectedArea },
+                set: { store.selectedArea = $0 }
+            )) {
+                Text("附近").tag(Area?.none)
                 ForEach([Area.river, Area.oldtown], id: \.self) { area in
-                    areaChip(title: area.label, isSelected: store.selectedArea == area) {
-                        store.selectedArea = (store.selectedArea == area ? nil : area)
-                    }
+                    Text(area.label).tag(Area?.some(area))
                 }
-                Spacer(minLength: 0)
             }
+            .pickerStyle(.segmented)
         }
     }
 
@@ -227,7 +293,7 @@ struct BoxSetupSheet: View {
     // MARK: 按钮
 
     private var actionSection: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 10) {
             WAPrimaryButton(
                 title: "摇一个盲盒",
                 action: shakeAndStart
@@ -236,30 +302,27 @@ struct BoxSetupSheet: View {
             .disabled(isShaking)
             .opacity(isShaking ? 0.7 : 1)
 
-            Button(action: onCancel) {
-                Text("今天不想出门")
-                    .font(.system(size: 14.5, weight: .medium))
-                    .foregroundStyle(WATheme.ink2)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 42)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            Button("今天不想出门", action: onCancel)
+                .buttonStyle(.plain)
+                .font(.body)
+                .foregroundStyle(WATheme.amber)
 
             if isLookingUp {
                 HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.mini)
-                    Text(searchHint ?? "正在找附近真实存在的地点…")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(WATheme.ink3)
+                    ProgressView().controlSize(.small)
+                    Text(searchHint ?? (store.selectedScope == .roam
+                                        ? "正在 10–45 公里内找值得开过去的地方…"
+                                        : "正在找附近真实存在的地点…"))
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity)
             }
 
             if startFailed {
                 Text("这一次没抽到，再试一次。")
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(WATheme.ember)
                     .frame(maxWidth: .infinity)
             }
@@ -319,7 +382,8 @@ struct BoxSetupSheet: View {
         searchHint = nil
 
         guard let origin = store.lastKnownOrigin else {
-            fail(reason: "location", reports: [])
+            // 没位置就现场再要一次，而不是直接判失败
+            locateThenSearch()
             return
         }
 
@@ -336,8 +400,10 @@ struct BoxSetupSheet: View {
 
         isLookingUp = true
         let mood = store.selectedMood
+        let scope = store.selectedScope
         let startMeters = store.selectedDuration.startMeters
         let seed = UInt64(Date().timeIntervalSince1970)
+        let moment = DayMoment.now
 
         Task { @MainActor in
             // Key 由后台下发（bundle → Pages → 后台端点，缓存 12h）
@@ -347,7 +413,10 @@ struct BoxSetupSheet: View {
             let skipCurated = ProcessInfo.processInfo.environment["WA_SKIP_CURATED"] == "1"
             await AdminPOIService.shared.prepare()
             if !skipCurated, let curated = AdminPOIService.shared.pickCuratedPlace(
-                origin: origin, mood: mood, startMeters: startMeters, seed: seed
+                origin: origin, mood: mood, startMeters: startMeters, seed: seed,
+                excluding: store.profile.collectedPlaceIDs,
+                scope: scope,
+                moment: moment
             ) {
                 debugLog("curated pick name=\(curated.name) id=\(curated.id) source=\(curated.source)")
                 _ = finish(place: curated, origin: origin)
@@ -358,17 +427,24 @@ struct BoxSetupSheet: View {
             // ② 三档放宽：每档都用真实数据，只是"挑哪个"逐步放宽
             var reports: [POISourceReport] = []
             var dullFallback: POICandidate?
-            let tierStart = extraWide ? 2 : 0
-            for tier in tierStart..<POISelection.tiers.count {
+            // 漫游每次要撒 4 个点 × 多个源，代价比附近搜索高，
+            // 只跑两档（45 公里 → 55 公里），第三档收益很小、等待翻倍。
+            let tierIndices: [Int] = scope == .roam
+                ? (extraWide ? [1] : [0, 1])
+                : Array((extraWide ? 2 : 0)..<POISelection.tiers.count)
+            for (offset, tier) in tierIndices.enumerated() {
                 guard isLookingUp else { return }
                 let config = POISelection.tiers[tier]
-                searchHint = tier > 0 ? Self.tierHint(tier) : nil
-                let result = await POIProviderService.shared.fetchNearby(
-                    origin: origin,
-                    startMeters: startMeters,
-                    relax: config.relax,
-                    mood: mood
-                )
+                searchHint = offset > 0 ? Self.tierHint(tier, scope: scope) : nil
+                // 漫游走「环带撒点」取点，普通模式走「附近搜索」
+                let result = scope == .roam
+                    ? await POIProviderService.shared.fetchRoamNearby(
+                        origin: origin, relax: config.relax, mood: mood, deadline: 6
+                    )
+                    : await POIProviderService.shared.fetchNearby(
+                        origin: origin, startMeters: startMeters, relax: config.relax,
+                        mood: mood, scope: scope
+                    )
                 reports = result.reports
                 if let picked = POISelection.pick(
                     from: result.candidates,
@@ -376,7 +452,10 @@ struct BoxSetupSheet: View {
                     mood: mood,
                     startMeters: startMeters,
                     relax: config.relax,
-                    seed: seed &+ UInt64(tier)
+                    seed: seed &+ UInt64(tier),
+                    excluding: store.profile.collectedPlaceIDs,
+                    scope: scope,
+                    moment: moment
                 ) {
                     if POISelection.isDull(picked) {
                         if dullFallback == nil { dullFallback = picked }
@@ -400,7 +479,13 @@ struct BoxSetupSheet: View {
         }
     }
 
-    private static func tierHint(_ tier: Int) -> String {
+    private static func tierHint(_ tier: Int, scope: ExploreScope = .walk) -> String {
+        if scope == .roam {
+            switch tier {
+            case 1: return "10 公里外点少，把环带放宽到 55 公里再找…"
+            default: return "再往外扩一圈，看看更远的地方…"
+            }
+        }
         switch tier {
         case 1: return "附近点少，扩大范围再找…"
         default: return "再放宽一次，把附近能走到的真实地点都算上…"
@@ -432,7 +517,9 @@ struct BoxSetupSheet: View {
             fail(reason: "no-real-place", reports: failureReports)
             return false
         }
-        guard store.startQuest(origin: origin) != nil else {
+        // 这里的地点来自真实 POI 服务，不需要再从目录里抽一次。
+        // 用 beginQuest 建空会话，随后 adopt 覆盖成真实目的地。
+        guard store.beginQuest(origin: origin, startMeters: store.selectedDuration.startMeters) else {
             fail(reason: "no-real-place", reports: failureReports)
             return false
         }
@@ -443,17 +530,6 @@ struct BoxSetupSheet: View {
         return true
     }
 
-    /// 用户显式选择演示模式（虚构地点）——只有这个按钮会走内置目录
-    private func startDemo() {
-        guard store.startQuest() != nil else {
-            startFailed = true
-            return
-        }
-        debugLog("demo mode chosen by user")
-        isLookingUp = false
-        WAHaptics.medium()
-        onStart()
-    }
 
     private func fail(reason: String, reports: [POISourceReport]) {
         isLookingUp = false
@@ -477,14 +553,18 @@ struct BoxSetupSheet: View {
 
         let session = QuestSession(
             id: current.id,
-            placeID: current.placeID,
+            // 用真实地点的 id：会话的 placeID 必须和 currentPlace 一致，
+            // 否则手表摘要 / 历史记录会拿到一个对不上的 id
+            placeID: place.id,
             startedAt: current.startedAt,
             totalMeters: total,
             remainingMeters: total,
             phase: .walking,
             unlockedHintCount: 1,
             target: coordinate,
-            currentBearing: bearing
+            currentBearing: bearing,
+            // 保留抽盒时选的范围：漫游旅程必须继续按「先开车再走」的规则走
+            scope: current.scope
         )
         store.session = session
         store.currentPlace = place
@@ -501,14 +581,7 @@ struct BoxSetupSheet: View {
         let env = ProcessInfo.processInfo.environment
         // 真实模式下用户可能第一次打开 App：先拿一次定位，别让「没有起点」把抽盒卡死
         if env["WA_PREVIEW"] == nil, store.lastKnownOrigin == nil {
-            let service = OneShotLocationService()
-            oneShotLocation = service
-            Task { @MainActor in
-                if let point = await service.request() {
-                    store.lastKnownOrigin = point
-                    debugLog("one-shot origin acquired")
-                }
-            }
+            locateThenSearch()
         }
         guard env["WA_AUTO_START"] == "1" else { return }
         if let raw = env["WA_PREVIEW_ORIGIN"], let parsed = Self.parseOrigin(raw) {
@@ -517,6 +590,44 @@ struct BoxSetupSheet: View {
             store.lastKnownOrigin = GeoPoint(latitude: 31.2304, longitude: 121.4737)
         }
         waAfter(0.9) { startQuest() }
+    }
+
+    /// 取一次定位；成功就继续抽盒，失败就把**具体原因**留在面板上。
+    private func locateThenSearch() {
+        guard !isLocating else { return }
+        isLocating = true
+        locationIssue = nil
+        let service = OneShotLocationService()
+        oneShotLocation = service
+        Task { @MainActor in
+            let statusBefore = service.authorizationStatus
+            let point = await service.request(timeout: 10)
+            isLocating = false
+            if let point {
+                store.lastKnownOrigin = point
+                debugLog("one-shot origin acquired")
+                if failureReason == "location" { failureReason = nil }
+                search(extraWide: false)
+                return
+            }
+            let statusAfter = service.authorizationStatus
+            switch statusAfter {
+            case .denied, .restricted:
+                locationIssue = "定位权限被拒绝了。到「设置 → 隐私与安全性 → 定位服务 → 步迷」选「使用 App 期间」。"
+            case .notDetermined:
+                locationIssue = "定位授权还没完成（系统弹窗可能被关掉了）。点下面的按钮再试一次。"
+            case .authorized:
+                locationIssue = statusBefore == .authorized
+                    ? "定位权限是开的，但 10 秒内没拿到坐标。可能是室内/地下，走到窗边或室外再试。"
+                    : "刚授权完还没拿到坐标，再试一次通常就有了。"
+            }
+            fail(reason: "location", reports: [])
+        }
+    }
+
+    private func openLocationSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private static func parseOrigin(_ raw: String) -> GeoPoint? {

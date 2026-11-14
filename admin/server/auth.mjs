@@ -122,7 +122,8 @@ export class AuthManager {
   // ---------- 密码 ----------
 
   initializePassword() {
-    const envPassword = String(this.env.WA_ADMIN_PASSWORD || '').trim();
+    // WA_ 优先，BW_ 兜底（线上单元用 BW_ADMIN_PASSWORD）
+    const envPassword = String(this.env.WA_ADMIN_PASSWORD || this.env.BW_ADMIN_PASSWORD || '').trim();
     if (envPassword.length > 0) {
       const hashed = hashPassword(envPassword);
       this.passwordSalt = hashed.salt;

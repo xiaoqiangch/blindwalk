@@ -27,7 +27,8 @@
     booted: false,
     statsError: '',
     mock: !!window.__WA_MOCK__,
-    mapkeys: { loading: false, data: null, error: '', testResults: {} }
+    mapkeys: { loading: false, data: null, error: '', testResults: {} },
+    surprises: { loading: false, data: null, error: '', status: 'waiting', q: '', photoOf: '', busyId: '' }
   };
 
   const els = {
@@ -37,7 +38,9 @@
     listpane: document.getElementById('listpane'),
     editorpane: document.getElementById('editorpane'),
     mapkeysPanel: document.getElementById('mapkeys-panel'),
-    mapkeysBody: document.getElementById('mapkeys-body')
+    mapkeysBody: document.getElementById('mapkeys-body'),
+    surprisesPanel: document.getElementById('surprises-panel'),
+    surprisesBody: document.getElementById('surprises-body')
   };
 
   let drawerScrim = null;
@@ -127,6 +130,11 @@
       '<button type="button" class="btn" data-action="ai-batch" title="' + UI.escapeHtml(ruleHint) + '" aria-label="批量分析当前筛选状态下的兴趣点">' +
         UI.icon('layers') + '<span>AI 批量分析</span></button>' +
       '<span class="toolbar-sep" aria-hidden="true"></span>' +
+      '<button type="button" class="btn" data-action="surprises" aria-label="审核用户惊喜">' +
+        UI.icon('image', 14) + '<span>用户惊喜</span></button>' +
+      '<span class="toolbar-sep" aria-hidden="true"></span>' +
+      '<button type="button" class="btn" data-action="settings" aria-label="服务端设置">' +
+        UI.icon('lock', 14) + '<span>设置</span></button>' +
       '<button type="button" class="btn" data-action="mapkeys" aria-label="管理地图 Key">' +
         UI.icon('lockKey') + '<span>地图 Key</span></button>' +
       '<button type="button" class="btn" data-action="export" aria-label="导出已通过的兴趣点到 App">' +
@@ -1258,7 +1266,9 @@
         else if (action === 'ai-edit') openAiEditModal();
         else if (action === 'ai-analyze') runAnalyze(button);
         else if (action === 'ai-batch') runBatchAnalyze(button);
+        else if (action === 'settings') { if (window.WASettings) window.WASettings.open(); }
         else if (action === 'mapkeys') openMapKeysPanel();
+        else if (action === 'surprises') openSurprisesPanel();
         else if (action === 'export') runExport(button);
       });
     });
@@ -1483,6 +1493,240 @@
     if (state.selection.size > 0) return Array.from(state.selection);
     if (state.current) return [state.current.id];
     return [];
+  }
+
+  // ============================================================
+  // 用户惊喜审核（读账号服务的 surprises 表）
+  // ============================================================
+
+  const SURPRISE_STATUS_META = {
+    waiting: { label: '待寻', hint: '正常展示在所有人的「附近惊喜」里' },
+    found: { label: '已找到', hint: '已被某个人拍出同款，不再展示' },
+    hidden: { label: '已下架', hint: '后台隐藏，所有人看不到' }
+  };
+
+  function surpriseStatusPill(status) {
+    const meta = SURPRISE_STATUS_META[status] || { label: status, hint: '' };
+    return '<span class="surprise__pill is-' + UI.escapeHtml(status) + '" title="' + UI.escapeHtml(meta.hint) + '">' +
+      UI.escapeHtml(meta.label) + '</span>';
+  }
+
+  function openSurprisesPanel() {
+    if (!els.surprisesPanel) return;
+    els.surprisesPanel.hidden = false;
+    loadSurprises();
+  }
+
+  function closeSurprisesPanel() {
+    if (!els.surprisesPanel) return;
+    els.surprisesPanel.hidden = true;
+    state.surprises.photoOf = '';
+  }
+
+  async function loadSurprises() {
+    state.surprises.loading = true;
+    state.surprises.error = '';
+    renderSurprises();
+    try {
+      const data = await API.surprises({
+        status: state.surprises.status,
+        q: state.surprises.q,
+        limit: 60
+      });
+      state.surprises.data = data;
+    } catch (error) {
+      state.surprises.error = errorText(error);
+      state.surprises.data = null;
+    } finally {
+      state.surprises.loading = false;
+      renderSurprises();
+    }
+  }
+
+  function surpriseCardHtml(item) {
+    const busy = state.surprises.busyId === item.id;
+    const openPhoto = state.surprises.photoOf === item.id;
+    const photoHtml = item.hasPhoto
+      ? (openPhoto
+          ? '<figure class="surprise__photo"><img src="' + API.surprisePhotoUrl(item.id) +
+              '" alt="用户埋下的照片" loading="lazy" data-surprise-photo="' + UI.escapeHtml(item.id) + '">' +
+            '<figcaption>作者原图 · ' + (item.photoBytes >= 1024 ? Math.round(item.photoBytes / 1024) + ' KB' : item.photoBytes + ' B') + '</figcaption></figure>'
+          : '<button type="button" class="btn btn--sm" data-surprise-photo-btn="' + UI.escapeHtml(item.id) + '">' +
+            UI.icon('image', 13) + '<span>查看照片</span></button>')
+      : '<span class="surprise__nophoto">' + UI.icon('imageOff', 13) + '<span>没有照片</span></span>';
+
+    const actions = [];
+    if (item.status === 'waiting') {
+      actions.push('<button type="button" class="btn btn--sm btn--danger" data-surprise-hide="' + UI.escapeHtml(item.id) + '"' +
+        (busy ? ' disabled' : '') + '>下架</button>');
+    } else if (item.status === 'hidden') {
+      actions.push('<button type="button" class="btn btn--sm" data-surprise-restore="' + UI.escapeHtml(item.id) + '"' +
+        (busy ? ' disabled' : '') + '>恢复上架</button>');
+    }
+    actions.push('<button type="button" class="btn btn--sm btn--ghost" data-surprise-delete="' + UI.escapeHtml(item.id) + '"' +
+      (busy ? ' disabled' : '') + ' title="从数据库彻底删除，不可恢复">删除</button>');
+
+    return '<article class="surprise" data-surprise-id="' + UI.escapeHtml(item.id) + '">' +
+      '<header class="surprise__head">' +
+        '<div class="surprise__who">' +
+          '<span class="surprise__emoji" aria-hidden="true">' + UI.escapeHtml(item.authorEmoji) + '</span>' +
+          '<div>' +
+            '<p class="surprise__author">' + UI.escapeHtml(item.authorName || '未知作者') + '</p>' +
+            '<p class="surprise__meta">' + UI.escapeHtml(item.areaLabel || '未标区域') +
+              ' · ' + UI.escapeHtml(UI.formatTime(item.createdAt)) + '</p>' +
+          '</div>' +
+        '</div>' +
+        surpriseStatusPill(item.status) +
+      '</header>' +
+      '<p class="surprise__message">' + UI.escapeHtml(item.message || '（没写留言）') + '</p>' +
+      (item.clues && item.clues.length
+        ? '<ol class="surprise__clues">' + item.clues.map(function (clue) {
+            return '<li>' + UI.escapeHtml(clue) + '</li>';
+          }).join('') + '</ol>'
+        : '') +
+      '<dl class="surprise__facts">' +
+        '<div><dt>坐标</dt><dd>' + item.lat.toFixed(5) + ', ' + item.lon.toFixed(5) + '</dd></div>' +
+        '<div><dt>半径</dt><dd>' + Math.round(item.radiusMeters) + ' m</dd></div>' +
+        (item.finderName ? '<div><dt>找到者</dt><dd>' + UI.escapeHtml(item.finderName) + '</dd></div>' : '') +
+        '<div><dt>ID</dt><dd class="surprise__id">' + UI.escapeHtml(item.id) + '</dd></div>' +
+      '</dl>' +
+      photoHtml +
+      '<footer class="surprise__actions">' + actions.join('') + '</footer>' +
+    '</article>';
+  }
+
+  function renderSurprises() {
+    if (!els.surprisesBody) return;
+    const stateSurprises = state.surprises;
+    if (stateSurprises.loading && !stateSurprises.data) {
+      els.surprisesBody.innerHTML = '<p class="mapkeys__loading">正在读取用户惊喜…</p>';
+      return;
+    }
+    if (stateSurprises.error) {
+      els.surprisesBody.innerHTML = '<p class="mapkeys__err">读取失败：' +
+        UI.escapeHtml(stateSurprises.error) + '</p>' +
+        '<p class="mapkeys__help">如果是「账号库不可用」，检查账号服务的数据目录，或用 BW_ACCOUNT_DB 指定路径。</p>';
+      return;
+    }
+
+    const data = stateSurprises.data || { items: [], total: 0, counts: {} };
+    const counts = data.counts || {};
+    const totalAll = (counts.waiting || 0) + (counts.found || 0) + (counts.hidden || 0);
+    const tabs = [
+      { id: 'waiting', label: '待寻', count: counts.waiting || 0 },
+      { id: 'found', label: '已找到', count: counts.found || 0 },
+      { id: 'hidden', label: '已下架', count: counts.hidden || 0 },
+      { id: 'all', label: '全部', count: totalAll }
+    ].map(function (tab) {
+      return '<button type="button" class="surprise__tab' +
+        (stateSurprises.status === tab.id ? ' is-on' : '') + '" data-surprise-tab="' + tab.id + '">' +
+        UI.escapeHtml(tab.label) + '<span>' + tab.count + '</span></button>';
+    }).join('');
+
+    const list = data.items && data.items.length
+      ? data.items.map(surpriseCardHtml).join('')
+      : '<div class="empty"><p class="empty__title">这个分类下没有惊喜</p>' +
+        '<p class="empty__sub">用户在 App 里「埋下一个」之后，会在这里出现。</p></div>';
+
+    els.surprisesBody.innerHTML =
+      '<div class="mapkeys__note">' + UI.icon('alert', 14) +
+        '<span>这里是用户真实上传的内容。<strong>下架</strong>会让它立刻从所有人的「附近惊喜」消失；' +
+        '作者的原图只有在本页能看（客户端列表接口按设计不下发照片）。</span>' +
+      '</div>' +
+      '<div class="surprise__toolbar">' +
+        '<div class="surprise__tabs" role="tablist">' + tabs + '</div>' +
+        '<input class="input surprise__search" id="surprise-search" type="search" placeholder="搜区域 / 留言 / 作者 / ID" ' +
+          'value="' + UI.escapeHtml(stateSurprises.q) + '" aria-label="搜索惊喜">' +
+      '</div>' +
+      '<div class="surprise__list">' + list + '</div>' +
+      '<footer class="mapkeys__foot"><span class="mapkeys__public">共 ' + data.total + ' 条</span></footer>';
+  }
+
+  async function setSurpriseStatus(id, status, button) {
+    state.surprises.busyId = id;
+    renderSurprises();
+    try {
+      await API.setSurpriseStatus(id, status);
+      UI.toast(status === 'hidden' ? '已下架' : '已恢复上架', 'success', 2400);
+      await loadSurprises();
+    } catch (error) {
+      toastError('操作失败', error);
+    } finally {
+      state.surprises.busyId = '';
+      renderSurprises();
+    }
+  }
+
+  async function deleteSurprise(id) {
+    const ok = await UI.confirmDialog({
+      title: '彻底删除这条惊喜',
+      subtitle: id,
+      message: '会从数据库里删掉，作者的原图和留言都不可恢复。只是不想让它出现在地图上，用「下架」就够了。',
+      confirmText: '彻底删除',
+      cancelText: '取消',
+      danger: true
+    });
+    if (!ok) return;
+    state.surprises.busyId = id;
+    renderSurprises();
+    try {
+      await API.removeSurprise(id);
+      UI.toast('已删除', 'success', 2400);
+      await loadSurprises();
+    } catch (error) {
+      toastError('删除失败', error);
+    } finally {
+      state.surprises.busyId = '';
+      renderSurprises();
+    }
+  }
+
+  function bindSurprisesPanel() {
+    if (!els.surprisesPanel) return;
+    els.surprisesPanel.addEventListener('click', function (event) {
+      if (event.target.closest('[data-surprises-close]')) {
+        closeSurprisesPanel();
+        return;
+      }
+      const tab = event.target.closest('[data-surprise-tab]');
+      if (tab) {
+        state.surprises.status = tab.getAttribute('data-surprise-tab');
+        state.surprises.photoOf = '';
+        loadSurprises();
+        return;
+      }
+      const photoBtn = event.target.closest('[data-surprise-photo-btn]');
+      if (photoBtn) {
+        state.surprises.photoOf = photoBtn.getAttribute('data-surprise-photo-btn');
+        renderSurprises();
+        return;
+      }
+      const hideBtn = event.target.closest('[data-surprise-hide]');
+      if (hideBtn) {
+        setSurpriseStatus(hideBtn.getAttribute('data-surprise-hide'), 'hidden', hideBtn);
+        return;
+      }
+      const restoreBtn = event.target.closest('[data-surprise-restore]');
+      if (restoreBtn) {
+        setSurpriseStatus(restoreBtn.getAttribute('data-surprise-restore'), 'waiting', restoreBtn);
+        return;
+      }
+      const deleteBtn = event.target.closest('[data-surprise-delete]');
+      if (deleteBtn) {
+        deleteSurprise(deleteBtn.getAttribute('data-surprise-delete'));
+      }
+    });
+
+    els.surprisesPanel.addEventListener('input', UI.debounce(function (event) {
+      if (event.target && event.target.id === 'surprise-search') {
+        state.surprises.q = event.target.value.trim();
+        loadSurprises();
+      }
+    }, 350));
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !els.surprisesPanel.hidden) closeSurprisesPanel();
+    });
   }
 
   // ---------- 抓取附近 ----------
@@ -1803,6 +2047,8 @@
     renderTopActions();
     bindTopActions();
     bindMapKeysPanel();
+    bindSurprisesPanel();
+    if (window.WASettings) window.WASettings.bind();
     renderLlmBadge();
     renderFilters();
     renderList();

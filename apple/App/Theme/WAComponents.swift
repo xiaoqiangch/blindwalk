@@ -34,7 +34,8 @@ struct WAPseudoRandom {
 
 // MARK: - 卡片
 
-/// 面卡：16pt 圆角 + 发丝描边 + 中性微阴影。白面 + 描边就够分层，不需要彩色投影。
+/// 分组卡片：系统卡片色 + 圆角。不加描边、不加投影——
+/// 系统的「分组背景 / 卡片」两档色本身就分层，描边会让它重新变成网页卡片。
 struct WACard<Content: View>: View {
     private let padding: CGFloat
     private let background: Color
@@ -51,19 +52,15 @@ struct WACard<Content: View>: View {
             .padding(padding)
             .background(background)
             .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                    .stroke(WATheme.line, lineWidth: 1)
-            )
     }
 }
 
-/// 发丝分割线
+/// 发丝分割线（1 物理像素）
 struct WAHairline: View {
     var body: some View {
         Rectangle()
             .fill(WATheme.line)
-            .frame(height: 1)
+            .frame(height: 1 / UIScreen.main.scale)
     }
 }
 
@@ -82,12 +79,13 @@ struct WAMicroLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12.5, weight: .medium))
+            .font(.footnote)
             .foregroundStyle(tint)
+            .textCase(nil)
     }
 }
 
-/// 小节标题：一行文字 + 右侧可选动作，不用追踪标签
+/// 小节标题：与系统 Form section header 一致（小号、次要色、不追踪）
 struct WASectionHeader: View {
     let title: String
     var trailingTitle: String? = nil
@@ -96,25 +94,22 @@ struct WASectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.headline)
                 .foregroundStyle(WATheme.ink)
 
             Spacer(minLength: 0)
 
             if let trailingTitle, let action {
                 Button(action: action) {
-                    HStack(spacing: 2) {
-                        Text(trailingTitle).font(WAType.caption(12.5))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundStyle(WATheme.ink3)
+                    Text(trailingTitle)
+                        .font(.subheadline)
+                        .foregroundStyle(WATheme.amber)
                 }
-                .buttonStyle(WAPressEffectStyle())
+                .buttonStyle(.plain)
             } else if let trailingTitle {
                 Text(trailingTitle)
-                    .font(WAType.caption(12.5))
-                    .foregroundStyle(WATheme.ink3)
+                    .font(.subheadline)
+                    .foregroundStyle(WATheme.ink2)
             }
         }
     }
@@ -125,24 +120,22 @@ struct WASectionHeader: View {
 struct WAPressEffectStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(WAAnimation.quick, value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.55 : 1)
     }
 }
 
-/// 主 CTA：纯色靛蓝 + 白字 + 中性外阴影。
-/// v1 是「黑字压在主色上 + 主色投影」，对比不足且发虚；v3 一次只允许有一个这样的按钮。
+/// 主 CTA：系统填充按钮形态（tint 底 + 白字 + 高度 50 + 连续圆角）。
+/// v4 去掉主色投影 —— iOS 的实心按钮不投影。
 struct WAPrimaryButton: View {
     let title: String
     var icon: String? = nil
     var caption: String? = nil
-    var height: CGFloat = 52
+    var height: CGFloat = 50
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 15, weight: .semibold))
@@ -151,11 +144,10 @@ struct WAPrimaryButton: View {
                     .font(WAType.cta())
                 if let caption {
                     Text(caption)
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .tracking(0.4)
+                        .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1.5)
-                        .background(Color.white.opacity(0.20))
+                        .background(Color.white.opacity(0.22))
                         .clipShape(Capsule())
                 }
             }
@@ -163,14 +155,13 @@ struct WAPrimaryButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .background(WATheme.amber)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: WATheme.amber.opacity(0.18), radius: 8, x: 0, y: 4)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(WAPressEffectStyle())
     }
 }
 
-/// 次级按钮：白面 + 发丝描边
+/// 次级按钮：系统「灰色填充按钮」形态（secondarySystemFill 底 + 强调字）
 struct WASecondaryButton: View {
     let title: String
     var icon: String? = nil
@@ -179,28 +170,24 @@ struct WASecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .semibold))
                 }
-                Text(title).font(WAType.cta(14.5))
+                Text(title).font(WAType.cta(15))
             }
-            .foregroundStyle(WATheme.ink)
+            .foregroundStyle(WATheme.amber)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(WATheme.paper)
+            .background(Color(.secondarySystemFill))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(WATheme.line, lineWidth: 1)
-            )
         }
         .buttonStyle(WAPressEffectStyle())
     }
 }
 
-/// 圆形图标按钮
+/// 圆形图标按钮（导航栏里那种）：无描边、无底色，只有图标
 struct WAIconButton: View {
     let systemName: String
     var size: CGFloat = 34
@@ -209,18 +196,16 @@ struct WAIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: size * 0.42, weight: .medium))
-                .foregroundStyle(WATheme.ink2)
+                .font(.system(size: size * 0.46, weight: .regular))
+                .foregroundStyle(WATheme.amber)
                 .frame(width: size, height: size)
-                .background(WATheme.paper)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(WATheme.line, lineWidth: 1))
+                .contentShape(Circle())
         }
-        .buttonStyle(WAPressEffectStyle())
+        .buttonStyle(.plain)
     }
 }
 
-/// 筛选 chip：选中 = 主色淡底 + 主色字（不再用「黑底白字」，黑底按钮太重）
+/// 筛选 chip：未选中 = 灰填充；选中 = 强调色填充 + 白字（系统 Segmented/Filter 的写法）
 struct WAPill: View {
     let title: String
     var selected: Bool = false
@@ -229,16 +214,13 @@ struct WAPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 13.5, weight: selected ? .medium : .regular))
-                .foregroundStyle(selected ? WATheme.amberDeep : WATheme.ink2)
+                .font(.subheadline.weight(selected ? .semibold : .regular))
+                .foregroundStyle(selected ? Color.white : WATheme.ink)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(height: 32)
-                .background(selected ? WATheme.amberSoft : WATheme.paper)
+                .background(selected ? WATheme.amber : Color(.secondarySystemFill))
                 .clipShape(Capsule())
-                .overlay(
-                    Capsule().stroke(selected ? WATheme.amber.opacity(0.28) : WATheme.line, lineWidth: 1)
-                )
         }
         .buttonStyle(WAPressEffectStyle())
     }
@@ -252,12 +234,12 @@ struct WARarityBadge: View {
 
     var body: some View {
         Text(rarity.label)
-            .font(.system(size: 11.5, weight: .medium))
+            .font(.caption2.weight(.medium))
             .foregroundStyle(WATheme.rarityColor(rarity))
-            .padding(.horizontal, 7)
-            .frame(height: 20)
+            .padding(.horizontal, 6)
+            .frame(height: 19)
             .background(WATheme.raritySoft(rarity))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
     }
 }
 
@@ -282,32 +264,39 @@ struct WAStatCell: View {
     let title: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .center, spacing: 2) {
             Text(value)
-                .font(WAType.number(22))
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(WATheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(title)
-                .font(.system(size: 12))
-                .foregroundStyle(WATheme.ink3)
+                .font(.caption)
+                .foregroundStyle(WATheme.ink2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 }
 
-/// 三栏统计行
+/// 三栏统计：系统「分组卡片里的一行三列」形态
 struct WAStatsRow: View {
     let items: [(String, String)]
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+        HStack(alignment: .top, spacing: 8) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 WAStatCell(value: item.0, title: item.1)
+                if index < items.count - 1 {
+                    Divider().frame(height: 32)
+                }
             }
         }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
     }
 }
 
@@ -516,43 +505,26 @@ struct WAToastView: View {
     var onDismiss: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 8) {
             if toast.icon.count <= 2, toast.icon.unicodeScalars.contains(where: { $0.properties.isEmoji }) {
                 Text(toast.icon)
-                    .font(.system(size: 14))
+                    .font(.subheadline)
             } else {
                 Image(systemName: toast.icon)
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .foregroundStyle(toast.isAmber ? WATheme.ink : WATheme.amber)
+                    .font(.subheadline.weight(.semibold))
             }
 
             Text(toast.text)
-                .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(toast.isAmber ? WATheme.ink : WATheme.cream)
+                .font(.subheadline.weight(.medium))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .foregroundStyle(.white)
         .padding(.horizontal, 16)
-        .padding(.vertical, 11)
-        .background {
-            if toast.isAmber {
-                LinearGradient(
-                    colors: [WATheme.amber, WATheme.amberDeep],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            } else {
-                WATheme.ink
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        // 深色舞台（揭晓页）上墨色药丸会和底色混在一起，加一道极淡亮边分离；
-        // 奶油纸底上这条边几乎不可见，不影响克制感。
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(WATheme.cream.opacity(0.16), lineWidth: 1)
-        )
-        .shadow(color: WATheme.ink.opacity(0.28), radius: 18, x: 0, y: 10)
+        .padding(.vertical, 12)
+        .background(WATheme.amber)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 6)
         .onAppear {
             guard let onDismiss else { return }
             waAfter(2.4) {

@@ -15,6 +15,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const DB_FILENAME = 'walkaholic-users.db';
+/**
+ * 早期部署（步谜 / Bumia 时代）用的是 blindwalk-users.db。
+ * 迁移策略：**已存在的库优先**，绝不因为改名而新建一个空库把用户账号丢掉。
+ */
+export const LEGACY_DB_FILENAMES = ['blindwalk-users.db'];
+
+/** 数据目录里该用哪个库文件名（显式指定 > 已存在的 > 默认） */
+export function resolveDbFileName(dataDir, explicit) {
+  if (explicit) return explicit;
+  const root = path.resolve(dataDir);
+  if (fs.existsSync(path.join(root, DB_FILENAME))) return DB_FILENAME;
+  for (const name of LEGACY_DB_FILENAMES) {
+    if (fs.existsSync(path.join(root, name))) return name;
+  }
+  return DB_FILENAME;
+}
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -60,6 +76,27 @@ CREATE TABLE IF NOT EXISTS surprises (
 CREATE INDEX IF NOT EXISTS idx_surprises_geo ON surprises(lat, lon);
 CREATE INDEX IF NOT EXISTS idx_surprises_status ON surprises(status);
 CREATE INDEX IF NOT EXISTS idx_surprises_user ON surprises(user_id);
+
+-- 微信登录绑定的身份（一个本地用户可以绑多个渠道，目前只有 wechat）
+CREATE TABLE IF NOT EXISTS identities (
+  provider TEXT NOT NULL,
+  external_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  nickname TEXT,
+  avatar TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (provider, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_identities_user ON identities(user_id);
+
+-- 到达地点时拍的「到此一游」照片（每个用户每个地点一张，覆盖更新）
+CREATE TABLE IF NOT EXISTS place_photos (
+  user_id TEXT NOT NULL,
+  place_id TEXT NOT NULL,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, place_id)
+);
 `;
 
 /** 打开 SQLite（WAL）并建表 */
@@ -93,7 +130,7 @@ export class AccountStore {
   constructor(options = {}) {
     if (!options.dataDir) throw new Error('AccountStore 需要 dataDir');
     this.dataDir = path.resolve(options.dataDir);
-    this.dbPath = path.join(this.dataDir, options.dbFileName || DB_FILENAME);
+    this.dbPath = path.join(this.dataDir, resolveDbFileName(this.dataDir, options.dbFileName));
     this.db = openDatabase(this.dbPath);
   }
 
@@ -211,6 +248,39 @@ export class AccountStore {
     }
   }
 
+  // ---------- 第三方身份（微信等） ----------
+
+  findIdentity(provider, externalId) {
+    const row = this.db.prepare(
+      'SELECT * FROM identities WHERE provider = ? AND external_id = ?'
+    ).get(provider, externalId);
+    if (!row) return null;
+    return {
+      provider: String(row.provider),
+      externalId: String(row.external_id),
+      userId: String(row.user_id),
+      nickname: row.nickname ? String(row.nickname) : null,
+      avatar: row.avatar ? String(row.avatar) : null,
+      createdAt: Number(row.created_at)
+    };
+  }
+
+  bindIdentity(provider, externalId, userId, meta, now) {
+    this.db.prepare(
+      `INSERT INTO identities (provider, external_id, user_id, nickname, avatar, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(provider, external_id) DO UPDATE SET
+         nickname = COALESCE(excluded.nickname, identities.nickname),
+         avatar = COALESCE(excluded.avatar, identities.avatar)`
+    ).run(
+      provider, externalId, userId,
+      (meta && meta.nickname) || null,
+      (meta && meta.avatar) || null,
+      now
+    );
+    return this.findIdentity(provider, externalId);
+  }
+
   // ---------- 惊喜（跨用户共享） ----------
 
   createSurprise(item) {
@@ -271,6 +341,25 @@ export class AccountStore {
   countSurprises() {
     const row = this.db.prepare('SELECT COUNT(*) AS c FROM surprises').get();
     return row ? Number(row.c) : 0;
+  }
+
+  // MARK: - 到达照片（check-in photo）
+
+  savePlacePhoto(userId, placeId, data, now) {
+    this.db.prepare(
+      `INSERT INTO place_photos (user_id, place_id, data, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, place_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`
+    ).run(userId, placeId, data, now);
+    return { ok: true };
+  }
+
+  getPlacePhoto(userId, placeId) {
+    const row = this.db.prepare(
+      'SELECT data, updated_at FROM place_photos WHERE user_id = ? AND place_id = ?'
+    ).get(userId, placeId);
+    if (!row) return null;
+    return { data: row.data, updatedAt: Number(row.updated_at) };
   }
 }
 

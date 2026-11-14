@@ -28,6 +28,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.walkaholic.app
+        # Sign in with Apple 需要 **付费 Apple Developer Program**（$99/年）；
+        # 免费 Personal Team 不支持该 capability，开启会导致签名失败。
+        # 付费账号后取消下面这行注释即可启用：
+        # CODE_SIGN_ENTITLEMENTS: Info/Walkaholic.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_CFBundleDisplayName: 步迷
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -54,6 +58,15 @@ targets:
           - location
         NSCameraUsageDescription: 步迷需要用相机拍下你埋下的惊喜，或复刻别人留在这里的那一张。
         NSPhotoLibraryUsageDescription: 步迷需要读取你选的照片，作为埋在某个地方的惊喜。
+        # 微信登录：授权回调用自定义 scheme；查询微信是否安装
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.walkaholic.app.wechat
+            CFBundleURLSchemes:
+              - walkaholic
+        LSApplicationQueriesSchemes:
+          - weixin
+          - weixinULAPI
 
   WalkaholicWatch:
     type: application

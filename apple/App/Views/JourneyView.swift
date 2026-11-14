@@ -43,6 +43,8 @@ struct JourneyView: View {
     @State private var walkedTrail: [GeoPoint] = []
     /// 手机朝向（真机才有）
     @State private var headingDegrees: Double?
+    /// 平滑后的朝向（地图旋转用）：罗盘每 5° 一跳，直接跟会抖
+    @State private var smoothedHeading: Double?
     /// 步行路线（迷雾路径的形状来源；Valhalla）
     @State private var route: WalkingRoute?
     @State private var routeTarget: GeoPoint?
@@ -67,6 +69,10 @@ struct JourneyView: View {
     @State private var hasTriggeredArrival = false
     /// 「这是编辑精选的地点」提示（抽到后台策展点后短暂出现）
     @State private var curatedNoticeVisible = false
+    /// 用户手动确认「已停车」：GPS 在停车场里经常漂几百米，不能只靠距离自动切换
+    @State private var parkedOverride = false
+    /// 还离很远就点「已停车」→ 先确认一次（避免手滑把 15 公里当成停好车）
+    @State private var confirmParkedFar = false
 
     var body: some View {
         ZStack {
@@ -95,6 +101,25 @@ struct JourneyView: View {
         }
         .onAppear(perform: handleAppear)
         .onDisappear(perform: handleDisappear)
+        .confirmationDialog(
+            "还没到停车圈，确定已经停好车了吗？",
+            isPresented: $confirmParkedFar,
+            titleVisibility: .visible
+        ) {
+            Button("已经停好车，按步行段继续") {
+                parkedOverride = true
+                WAHaptics.medium()
+                refreshMode()
+            }
+            Button("再开一会儿", role: .cancel) {}
+        } message: {
+            Text("现在离目的地还有 \(distanceText(meters: store.session?.remainingMeters ?? 0))。按步行段继续后，线索仍按真实距离解锁。")
+        }
+        .onChange(of: store.session?.id) { _, _ in
+            // 换了另一趟旅程：手动停车标记不应该带过去
+            parkedOverride = false
+            confirmParkedFar = false
+        }
         .onChange(of: scenePhase) { _, phase in
             // 从「设置」改完权限回来：重新尝试真实定位（暂停中不打扰）
             guard phase == .active, !isPaused, let service = liveService, !choseDemo else { return }
@@ -137,15 +162,29 @@ struct JourneyView: View {
                 ScrollView(showsIndicators: false) {
                     if WATheme.isWide(geo.size.width) {
                         HStack(alignment: .top, spacing: 22) {
-                            mapSection(session: session)
-                                .frame(height: max(260, mapHeight(for: geo.size.height)))
+                            // 宽屏同样要先分「开车段 / 步行段」：开车段没有迷雾路径可画
+                            Group {
+                                if isDriveSegment {
+                                    driveSection(session: session)
+                                } else {
+                                    mapSection(session: session)
+                                }
+                            }
+                            .frame(height: max(260, mapHeight(for: geo.size.height)))
 
                             VStack(alignment: .leading, spacing: 16) {
                                 if authorization.isBlocked && !choseDemo {
                                     permissionBanner
                                 }
+                                if isRoamQuest, !isDriveSegment {
+                                    roamParkedBanner
+                                }
                                 distanceSection(session: session)
-                                clueSection(session: session, place: place)
+                                if isDriveSegment {
+                                    lockedCluePlaceholder
+                                } else {
+                                    clueSection(session: session, place: place)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -156,18 +195,33 @@ struct JourneyView: View {
                         .frame(maxWidth: .infinity)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
-                            // 抽象地图区：占屏高约 45%（design-system §5.3），小屏收到 38%
-                            mapSection(session: session)
-                                .frame(height: mapHeight(for: geo.size.height))
+                            if isDriveSegment {
+                                // 开车段：不画迷雾路径、不给线索 —— 还没到该看线索的时候
+                                driveSection(session: session)
+                                    .padding(.horizontal, WATheme.pagePadding)
+                                    .padding(.top, 6)
+                            } else {
+                                // 抽象地图区：占屏高约 45%（design-system §5.3），小屏收到 38%
+                                mapSection(session: session)
+                                    .frame(height: mapHeight(for: geo.size.height))
+                            }
 
                             VStack(alignment: .leading, spacing: 16) {
                                 if authorization.isBlocked && !choseDemo {
                                     permissionBanner
                                 }
 
+                                if isRoamQuest, !isDriveSegment {
+                                    roamParkedBanner
+                                }
+
                                 distanceSection(session: session)
 
-                                clueSection(session: session, place: place)
+                                if isDriveSegment {
+                                    lockedCluePlaceholder
+                                } else {
+                                    clueSection(session: session, place: place)
+                                }
                             }
                             .padding(.horizontal, WATheme.pagePadding)
                             .padding(.top, 12)
@@ -203,7 +257,7 @@ struct JourneyView: View {
     private func topBar(session: QuestSession) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("盲盒进行中")
+                Text(isDriveSegment ? "远程漫游 · 开车段" : (isRoamQuest ? "远程漫游 · 步行段" : "盲盒进行中"))
                     .font(.system(size: 12, weight: .semibold))
                     .tracking(1.2)
                     .foregroundStyle(WATheme.amberDeep)
@@ -378,6 +432,155 @@ struct JourneyView: View {
         .accessibilityLabel("这是编辑精选的地点，终点仍然保密")
     }
 
+    // MARK: 远程漫游（开车段）
+
+    /// 开车段面板：只有「还有多远 / 怎么过去 / 到哪停车」，不给线索也不画路。
+    /// 理由：这一段不是散步，画迷雾路径会让人误以为已经可以开始找线索。
+    private func driveSection(session: QuestSession) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "car.fill")
+                    .font(.subheadline.weight(.semibold))
+                Text("远程漫游 · 先开车过去")
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 0)
+                Text("目的地保密")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(driveDistanceText(session))
+                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                Text("到停车圈")
+                    .font(.subheadline)
+                    .foregroundStyle(WATheme.ink2)
+            }
+
+            Text("开到目的地 1 公里内找个地方停车，剩下的路再走过去。不会告诉你终点具体在哪。")
+                .font(.footnote)
+                .foregroundStyle(WATheme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !canMarkParked {
+                Text("还有 \(driveDistanceText(session))，进到 2 公里内就能点「已停车」；GPS 飘了也可以手动确认。")
+                    .font(.caption)
+                    .foregroundStyle(WATheme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    openParkingNavigation()
+                } label: {
+                    Label("导航到附近", systemImage: "map")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    // 进了停车圈直接切；还没到则要求确认一次（停车场 GPS 常飘，不能只信距离）
+                    if canMarkParked {
+                        markParked()
+                    } else {
+                        confirmParkedFar = true
+                    }
+                } label: {
+                    Text("已停车")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+    }
+
+    /// 进停车圈后的提示条
+    private var roamParkedBanner: some View {
+        Label(parkingBannerText, systemImage: inParkingZone ? "figure.walk" : "parkingsign")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(WATheme.teal)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(WATheme.teal.opacity(0.10))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var parkingBannerText: String {
+        if inParkingZone {
+            return "已进入停车圈 · 开始步行探索，线索按距离解锁"
+        }
+        return "已按「已停车」处理 · 还有 \(distanceText(meters: store.session?.remainingMeters ?? 0)) 走到停车圈"
+    }
+
+    /// 开车段不显示线索：给一个说明，而不是空着
+    private var lockedCluePlaceholder: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("线索")
+                .font(.headline)
+            Text("进入停车圈后才会解锁。现在看线索，你也找不准。")
+                .font(.footnote)
+                .foregroundStyle(WATheme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(WATheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+    }
+
+    private func driveDistanceText(_ session: QuestSession) -> String {
+        distanceText(meters: session.remainingMeters)
+    }
+
+    /// 米 / 公里共用一套写法：漫游里 1 公里以上一律读「X.X 公里」
+    private func distanceText(meters: Int) -> String {
+        let value = Double(meters)
+        if value >= 1000 {
+            return String(format: "%.1f 公里", value / 1000)
+        }
+        return "\(Int(value.rounded())) 米"
+    }
+
+    /// 用系统地图导航到「停车点」（目的地 1 公里外的随机落点，不泄露终点）
+    private func openParkingNavigation() {
+        guard let point = parkingPoint else { return }
+        var components = URLComponents(string: "http://maps.apple.com/")
+        components?.queryItems = [
+            URLQueryItem(name: "daddr", value: String(format: "%.6f,%.6f", point.latitude, point.longitude)),
+            URLQueryItem(name: "dirflg", value: "d"),
+            URLQueryItem(name: "q", value: "目的地附近")
+        ]
+        if let url = components?.url { openURL(url) }
+        WAHaptics.light()
+    }
+
+    /// 用户说「已停车」：把剩余距离压到停车圈边缘，从此进入步行段。
+    /// 这是一个诚实的越权：我们无法判断他到底停在哪，但按「1 公里」处理，
+    /// 后面的线索仍然要他走完最后一段才会解锁。
+    private func markParked() {
+        guard canMarkParked else { return }
+        // 只切换「段」，不动距离：
+        // 以前这里把剩余距离直接压到 1 公里，等于篡改了 GPS —— 如果用户其实停得远，
+        // 后面的线索会在错误的位置解锁。现在老老实实保留真实剩余距离。
+        parkedOverride = true
+        if !isParkingZoneReached {
+            WAHaptics.medium()
+        }
+        refreshMode()
+    }
+
+    /// 真实剩余距离是否已经进到停车圈里（只看距离，不看手动标记）
+    private var isParkingZoneReached: Bool { inParkingZone }
+
     // MARK: 抽象地图
 
     private func mapSection(session: QuestSession) -> some View {
@@ -388,8 +591,11 @@ struct JourneyView: View {
                     route: route,
                     here: currentPoint,
                     remainingMeters: session.remainingMeters,
-                    heading: lastReading?.headingDegrees,
-                    northUp: !mapFollowsHeading
+                    heading: mapHeading,
+                    northUp: !mapFollowsHeading,
+                    walkedMeters: session.totalMeters - session.remainingMeters,
+                    clueGap: nextClueGapMeters(in: session),
+                    clueIndex: session.unlockedHintCount + 1
                 )
             } else {
                 JourneyMapView(
@@ -408,6 +614,8 @@ struct JourneyView: View {
 
     /// 拿到真实目的地后拉一次步行路线；失败不影响旅程（只显示「正在规划路径」）
     private func loadRouteIfNeeded() {
+        // 开车段不规划步行路线：20 公里的 pedestrian 路线既慢又会把终点形状拼出来
+        guard !isDriveSegment else { return }
         guard let target = store.session?.target, let here = currentPoint else { return }
         if routeTarget == target, route != nil { return }
         routeTarget = target
@@ -427,12 +635,97 @@ struct JourneyView: View {
         }
     }
 
+    /// 距离下一条线索还差多少米（没有未解锁线索时 nil）
+    private func nextClueGapMeters(in session: QuestSession) -> Int? {
+        guard session.unlockedHintCount < QuestSession.hintThresholds.count else { return nil }
+        let threshold = QuestSession.hintThresholds[session.unlockedHintCount]
+        return max(0, session.remainingMeters - threshold)
+    }
+
+    /// 这一趟是不是「远程漫游」：优先看会话自己记的范围（抽盒时选定），
+    /// 旧会话没有这个字段时再按里程兜底推断。
+    private var isRoamQuest: Bool {
+        guard let session = store.session else { return false }
+        if session.scope == .roam { return true }
+        return ExploreScope.isRoamJourney(totalMeters: session.totalMeters)
+    }
+
+    /// 已进入停车圈（目的地 1 公里内）—— 从这里开始才算真正的步行探索
+    private var inParkingZone: Bool {
+        Double(store.session?.remainingMeters ?? 0) <= ExploreScope.parkingRadiusMeters
+    }
+
+    /// 漫游旅程当前处于「开车段」——开车段不给线索、不画迷雾路径。
+    /// 判定顺序：进了停车圈 → 步行段；手动点过「已停车」→ 步行段，
+    /// 但之后又把车开出去（超过 3.5 公里）→ 自动退回开车段。
+    private var isDriveSegment: Bool {
+        guard isRoamQuest else { return false }
+        // 真进了停车圈：一律按步行段
+        if inParkingZone { return false }
+        // 手动点过「已停车」：按步行段，直到又把车开回 3.5 公里外
+        if parkedOverride {
+            let remaining = Double(store.session?.remainingMeters ?? 0)
+            return remaining > ExploreScope.driveResumeMeters
+        }
+        return true
+    }
+
+    /// 允许手动标记「已停车」的距离上限：停车圈 1 公里 + 一点 GPS / 停车场误差
+    private var canMarkParked: Bool {
+        guard isRoamQuest, !parkedOverride else { return false }
+        return Double(store.session?.remainingMeters ?? 0) <= ExploreScope.parkingToleranceMeters
+    }
+
+    /// 开车阶段的导航点：距离目的地 1 公里、方向随机的落点。
+    /// 这样用户能「导航到附近」，但看不到终点到底在哪 —— 保密和可用性都保住。
+    private var parkingPoint: GeoPoint? {
+        guard let session = store.session, let target = session.target else { return nil }
+        var generator = SeededGenerator(seed: UInt64(bitPattern: Int64(session.id.hashValue)))
+        let bearing = Double(Int.random(in: 0..<360, using: &generator))
+        return GeoMath.offset(
+            from: target,
+            meters: ExploreScope.parkingRadiusMeters * 0.9,
+            bearingDegrees: bearing
+        )
+    }
+
+    /// 地图可以拿来旋转的朝向。
+    /// 与箭头用的 `usableHeading` 分开：地图只要「大致方向对」就能转，
+    /// 卡 25° 精度会让很多真机永远停在「路线朝上」（真机实测罗盘精度常年 30–90°）。
+    /// 只有明确无效（< 0）才丢弃。
+    private var mapHeading: Double? {
+        guard let reading = lastReading, let raw = reading.headingDegrees, raw >= 0 else { return nil }
+        if let accuracy = reading.headingAccuracy, accuracy < 0 { return nil }
+        return smoothedHeading ?? raw
+    }
+
+    /// 箭头用的朝向：精度太差时宁可不转，也别把箭头指错方向
+    private var usableHeading: Double? {
+        guard let heading = mapHeading else { return nil }
+        if let accuracy = lastReading?.headingAccuracy, accuracy > 45 { return nil }
+        return heading
+    }
+
+    /// 角度低通：处理 0/360 跨越，把罗盘跳变磨平
+    private func smoothHeading(_ fresh: Double?) {
+        guard let fresh, fresh >= 0 else { return }
+        guard let current = smoothedHeading else {
+            smoothedHeading = fresh
+            return
+        }
+        var delta = fresh - current
+        while delta > 180 { delta -= 360 }
+        while delta < -180 { delta += 360 }
+        // 一次只跟 35%：既跟得上转身，又不会让画布抖成一团
+        smoothedHeading = (current + delta * 0.35 + 360).truncatingRemainder(dividingBy: 360)
+    }
+
     /// 抽象地图上的「目的地保密中」胶囊（真实地图自带，不重复画）
     private func mapCaption(session: QuestSession) -> some View {
         HStack(spacing: 5) {
             Image(systemName: "eye.slash")
                 .font(.system(size: 11, weight: .semibold))
-            Text("目的地保密中 · 还有 \(session.remainingMeters) 米")
+            Text("目的地保密中 · 还有 \(distanceText(meters: session.remainingMeters))")
                 .font(.system(size: 12, weight: .medium))
                 .italic()
         }
@@ -449,16 +742,27 @@ struct JourneyView: View {
     // MARK: 距离
 
     private func distanceSection(session: QuestSession) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // 漫游里程动辄十几公里：一律用公里读数，「还有 23456 米」没法读
+        let useKilometers = isRoamQuest || session.remainingMeters >= 1000
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(session.remainingMeters)")
-                    .font(WATheme.display(30))
-                    .monospacedDigit()
-                    .foregroundStyle(WATheme.ink)
-
-                Text("米")
-                    .font(WATheme.title(18))
-                    .foregroundStyle(WATheme.ink2)
+                if useKilometers {
+                    Text(String(format: "%.1f", Double(session.remainingMeters) / 1000))
+                        .font(WATheme.display(30))
+                        .monospacedDigit()
+                        .foregroundStyle(WATheme.ink)
+                    Text("公里")
+                        .font(WATheme.title(18))
+                        .foregroundStyle(WATheme.ink2)
+                } else {
+                    Text("\(session.remainingMeters)")
+                        .font(WATheme.display(30))
+                        .monospacedDigit()
+                        .foregroundStyle(WATheme.ink)
+                    Text("米")
+                        .font(WATheme.title(18))
+                        .foregroundStyle(WATheme.ink2)
+                }
 
                 Spacer(minLength: 8)
 
@@ -488,9 +792,15 @@ struct JourneyView: View {
             .frame(height: 5)
             .padding(.top, 4)
 
-            Text("已走 \(session.totalMeters - session.remainingMeters) 米 · 共 \(session.totalMeters) 米")
-                .font(WATheme.caption(10))
-                .foregroundStyle(WATheme.ink3)
+            if useKilometers {
+                Text("已走 \(distanceText(meters: session.totalMeters - session.remainingMeters)) · 共 \(distanceText(meters: session.totalMeters))")
+                    .font(WATheme.caption(10))
+                    .foregroundStyle(WATheme.ink3)
+            } else {
+                Text("已走 \(session.totalMeters - session.remainingMeters) 米 · 共 \(session.totalMeters) 米")
+                    .font(WATheme.caption(10))
+                    .foregroundStyle(WATheme.ink3)
+            }
         }
     }
 
@@ -498,7 +808,8 @@ struct JourneyView: View {
     private func directionArrow(session: QuestSession) -> String {
         if locationMode == .tracking,
            let bearing = session.currentBearing,
-           let heading = headingDegrees {
+           let heading = usableHeading {
+            // 「往前直走」= 箭头朝上：显示的是「目的地相对你」的角度
             return GeoMath.arrow(bearing - heading)
         }
         return session.arrowSymbol
@@ -517,7 +828,7 @@ struct JourneyView: View {
     private func directionAccessibilityLabel(session: QuestSession) -> String {
         if locationMode == .tracking,
            let bearing = session.currentBearing,
-           let heading = headingDegrees {
+           let heading = usableHeading {
             let relative = (bearing - heading + 360).truncatingRemainder(dividingBy: 360)
             let relativeCopy: String
             switch relative {
@@ -716,8 +1027,8 @@ struct JourneyView: View {
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.55 : 1)
 
-                Button(action: switchToDemo) {
-                    Text("位置没动？改用演示模式")
+                Button(action: retryLocating) {
+                    Text("位置没动？重新获取定位")
                         .font(WATheme.caption(12))
                         .foregroundStyle(WATheme.ink3)
                         .frame(maxWidth: .infinity)
@@ -748,11 +1059,12 @@ struct JourneyView: View {
                 .buttonStyle(WAPressEffectStyle())
 
             case .demo:
+                // 漫游的开车段：按 1 公里一步，50 米一步没法把 20 公里走完
                 WAPrimaryButton(
-                    title: "模拟步行 +50m",
-                    icon: "figure.walk",
+                    title: isDriveSegment ? "模拟开车 +1km" : "模拟步行 +50m",
+                    icon: isDriveSegment ? "car.fill" : "figure.walk",
                     caption: "演示",
-                    action: simulateWalk
+                    action: isDriveSegment ? simulateDrive : simulateWalk
                 )
                 .disabled(isPaused)
                 .opacity(isPaused ? 0.55 : 1)
@@ -852,6 +1164,16 @@ struct JourneyView: View {
         handle(events: events)
     }
 
+    /// 演示模式下模拟「开车」：一次 1 公里，把漫游的开车段走完
+    private func simulateDrive() {
+        guard !isPaused else { return }
+        let events = store.advance(byMeters: 1_000)
+        demoService.simulateAdvance(meters: 1_000)
+        demoService.sync(remaining: store.session?.remainingMeters)
+        WAHaptics.light()
+        handle(events: events)
+    }
+
     private func arriveNow() {
         let events = store.arriveNow()
         handle(events: events)
@@ -895,6 +1217,7 @@ struct JourneyView: View {
                 remainingMeters: Double(store.session?.remainingMeters ?? 0),
                 bearingDegrees: store.session?.currentBearing,
                 headingDegrees: nil,
+                headingAccuracy: nil,
                 horizontalAccuracy: 8
             )
             if walkedTrail.isEmpty { walkedTrail = [origin] }
@@ -996,6 +1319,7 @@ struct JourneyView: View {
     private func apply(reading: LocationReading, service: LiveLocationService) {
         lastReading = reading
         headingDegrees = reading.headingDegrees
+        smoothHeading(reading.headingDegrees)
         if let accuracy = reading.horizontalAccuracy {
             locatingIssue = accuracy > 60 ? "信号弱" : nil
         }
@@ -1003,6 +1327,10 @@ struct JourneyView: View {
         // 记下最近定位点，下一次抽盒时 startQuest 可以直接用它当起点
         if let origin = reading.origin {
             store.lastKnownOrigin = origin
+            // 个人城市地图的轨迹：只在步行段记（开车段记进去，城市地图就成了行车记录）
+            if !isDriveSegment {
+                WalkTrackStore.shared.append(origin, at: reading.timestamp)
+            }
             // 轨迹：只在移动超过 8 米时记录，避免 GPS 抖动画出毛线团
             if let last = walkedTrail.last {
                 if GeoMath.distance(from: last, to: origin) >= 8 {

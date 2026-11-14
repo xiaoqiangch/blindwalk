@@ -108,6 +108,12 @@ final class AdminPOIService {
         return Date().timeIntervalSince(fetchedAt) >= Self.memoryTTL
     }
 
+    /// 刷新成功后把策展地点灌进 PlaceDirectory：
+    /// Shared 层（图鉴、手表、统计）只认这一个目录，不直接依赖本服务。
+    private func publishToDirectory() {
+        PlaceDirectory.shared.replaceCurated(allPlaces)
+    }
+
     private func refresh() async {
         if isRefreshing {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -153,6 +159,7 @@ final class AdminPOIService {
             pois = valid
             fetchedAt = Date()
             rebuildInfos()
+            publishToDirectory()
             saveToDisk(raw: data, fetchedAt: Date())
         } catch {
             // 静默：断网 / 超时 / 404 / JSON 坏掉都保留旧数据
@@ -176,19 +183,37 @@ final class AdminPOIService {
         origin: GeoPoint,
         mood: Mood,
         startMeters: Int,
-        seed: UInt64
+        seed: UInt64,
+        excluding excludedIDs: Set<String> = [],
+        scope: ExploreScope = .walk,
+        moment: DayMoment = .now
     ) -> Place? {
         guard !pois.isEmpty else { return nil }
 
-        let minDistance = max(110, Double(startMeters) * 0.35)
-        let maxDistance = Double(startMeters) * 1.7
+        // 步行：按「离你多远」筛；漫游：按「先开车到附近」的 10–45 公里筛
+        let minDistance = scope == .roam ? 0 : max(110, Double(startMeters) * 0.35)
         var pool: [(poi: CuratedPOI, weight: Int)] = []
 
-        for poi in pois {
-            let distance = GeoMath.distance(from: origin, to: poi.coordinate)
-            guard distance >= minDistance, distance <= maxDistance else { continue }
-            let weight = Self.weight(for: poi, mood: mood)
-            pool.append((poi, weight))
+        // 距离窗口逐档放宽：原来的硬上限 1.7× 会让「附近只剩一个 900 米的点、
+        // 而 30 分钟窗口只到 816 米」这种情况直接判失败（实测就是这样）。
+        // 宁可让他多走两百米，也不要弹「没找到」。
+        let scales: [Double] = scope == .roam ? [1.0, 1.4, 1.9] : [1.0, 1.6, 2.6]
+        for scale in scales {
+            let maxDistance = scope == .roam
+                ? POISelection.roamRange(relax: scale > 1.7 ? 2 : (scale > 1.2 ? 1 : 0)).upperBound
+                : Double(startMeters) * 1.7 * scale
+            let lower = scope == .roam
+                ? POISelection.roamRange(relax: scale > 1.7 ? 2 : (scale > 1.2 ? 1 : 0)).lowerBound
+                : minDistance
+            pool = []
+            for poi in pois {
+                // 已经收录过的点不再抽（否则同一个策展点会反复出现）
+                guard !excludedIDs.contains(poi.placeID) else { continue }
+                let distance = GeoMath.distance(from: origin, to: poi.coordinate)
+                guard distance >= lower, distance <= maxDistance else { continue }
+                pool.append((poi, Self.weight(for: poi, mood: mood, moment: moment)))
+            }
+            if !pool.isEmpty { break }
         }
 
         guard !pool.isEmpty else { return nil }
@@ -210,7 +235,7 @@ final class AdminPOIService {
     /// 心情加权（与 web geo.js pickCurated 一致）：
     /// drift → park/river/temple/historic；discover → art/library/viewpoint/museum；
     /// lively → plaza/market/cafe；其余权重 1。
-    private static func weight(for poi: CuratedPOI, mood: Mood) -> Int {
+    private static func weight(for poi: CuratedPOI, mood: Mood, moment: DayMoment = .now) -> Int {
         let category = (poi.category ?? "plaza").lowercased()
         var weight = 10
         switch mood {
@@ -221,7 +246,9 @@ final class AdminPOIService {
         case .lively:
             if ["plaza", "market", "cafe"].contains(category) { weight = 16 }
         }
-        return weight
+        // 环境性盲盒：同一批策展点，黄昏和夜里该抽到的不是同一个
+        weight = Int((Double(weight) * moment.affinity(for: POISelection.mapCategory(raw: category, name: poi.name))).rounded())
+        return max(1, weight)
     }
 
     // MARK: 映射成 Place
@@ -311,9 +338,12 @@ final class AdminPOIService {
         return infos[place.id]
     }
 
-    /// 按 placeID 还原策展 `Place`（图鉴 / 首页「上一次的惊喜」后续接入用）。
-    /// 备注：`CardsView` / `HomeView` 目前仍只用 `PlaceCatalog`（不在本任务写作用域），
-    /// 所以收录的策展卡片暂时不会出现在图鉴里；接入时把这里的结果和目录结果合并即可。
+    /// 全部策展地点（真实坐标）。图鉴用它列出「还没去过」的可探秘候选。
+    var allPlaces: [Place] {
+        pois.map { makePlace(from: $0, origin: $0.coordinate, startMeters: 480) }
+    }
+
+    /// 按 placeID 还原策展 `Place`（图鉴 / 首页「上一次的惊喜」用）。
     func place(for placeID: String) -> Place? {
         guard let poi = pois.first(where: { $0.placeID == placeID }) else { return nil }
         return makePlace(from: poi, origin: poi.coordinate, startMeters: 480)
@@ -351,6 +381,7 @@ final class AdminPOIService {
         let stamp = defaults.double(forKey: Self.diskFetchedAtKey)
         fetchedAt = stamp > 0 ? Date(timeIntervalSince1970: stamp) : nil
         rebuildInfos()
+        publishToDirectory()
     }
 
     private func saveToDisk(raw: Data, fetchedAt date: Date) {

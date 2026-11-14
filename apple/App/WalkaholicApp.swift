@@ -114,6 +114,11 @@ enum AppTab: Hashable {
 struct RootView: View {
     let store: WalkaholicStore
 
+    /// 是否处于「演示 / 截图」运行：这种模式下不连账号、不上传、不写真实存档
+    static var isPreviewRun: Bool {
+        !(ProcessInfo.processInfo.environment["WA_PREVIEW"] ?? "").isEmpty
+    }
+
     @State private var selectedTab: AppTab = .home
     @State private var isSetupPresented = false
     @State private var isJourneyPresented = false
@@ -149,6 +154,16 @@ struct RootView: View {
             .sheet(isPresented: $isSetupPresented) { setupSheet }
             .fullScreenCover(isPresented: $isJourneyPresented) { journeyCover }
             .onAppear(perform: activateWatchSync)
+            .onAppear {
+                Task {
+                    // 演示/截图模式下不连账号、不上传：演示数据绝不能进生产库
+                    guard !Self.isPreviewRun else { return }
+                    await AccountService.shared.refresh()
+                    uploadPendingSurprises()
+                    // 冷启动先拿一次定位：图鉴的距离、「去探秘」、抽盒都要用它
+                    await LocationBootstrap.seedIfNeeded(store)
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active else { return }
                 watchSync.forceSync(store: store)
@@ -228,5 +243,16 @@ struct RootView: View {
 
     private func pushWatch() {
         watchSync.sync(store: store)
+    }
+
+    // MARK: 补传（登录后 / 冷启动）
+
+    /// 本机埋了但没上传成功的惊喜，在登录后自动补传，让它真的能被别人找到。
+    private func uploadPendingSurprises() {
+        Task { @MainActor in
+            await SurpriseService.shared.flushPending(store: store)
+            // 顺便收一次「被找到」的回执：红点不该等用户点进我的惊喜才出现
+            await SurpriseService.shared.syncMine(store: store)
+        }
     }
 }

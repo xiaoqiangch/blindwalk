@@ -156,6 +156,82 @@ final class AccountService {
         }
     }
 
+    // MARK: 微信登录
+
+    /// 用微信 code 换会话：服务端换 openid、找不到就建号、下发 Cookie。
+    func loginWithWeChat(code: String) async -> Bool {
+        isBusy = true
+        lastError = nil
+        defer { isBusy = false }
+        do {
+            let payload = try await call(
+                path: "/api/auth/wechat",
+                method: "POST",
+                body: ["code": code]
+            )
+            guard let dictionary = payload["user"] as? [String: Any] else {
+                lastError = "服务返回异常"
+                return false
+            }
+            record(user: Self.parseUser(dictionary))
+            lastMessage = "已用微信登录"
+            return true
+        } catch {
+            lastError = Self.message(for: error)
+            return false
+        }
+    }
+
+    // MARK: Sign in with Apple
+
+    /// 用 Apple 的 identityToken 换会话（服务端验签 + 建号/登录 + 下发 Cookie）
+    func loginWithApple(identityToken: String, nonce: String, fullName: String?) async -> Bool {
+        isBusy = true
+        lastError = nil
+        defer { isBusy = false }
+        do {
+            var body: [String: Any] = ["identityToken": identityToken, "nonce": nonce]
+            if let fullName, !fullName.isEmpty { body["fullName"] = fullName }
+            let payload = try await call(path: "/api/auth/apple", method: "POST", body: body)
+            guard let dictionary = payload["user"] as? [String: Any] else {
+                lastError = "服务返回异常"
+                return false
+            }
+            record(user: Self.parseUser(dictionary))
+            lastMessage = "已用 Apple 登录"
+            return true
+        } catch {
+            lastError = Self.message(for: error)
+            return false
+        }
+    }
+
+    // MARK: 短信验证码
+
+    /// 验完码后换取会话（Cookie 由服务端下发）
+    func loginWithSms(phone: String, code: String) async -> Bool {
+        isBusy = true
+        lastError = nil
+        defer { isBusy = false }
+        do {
+            let payload = try await call(
+                path: "/api/auth/sms/verify",
+                method: "POST",
+                body: ["phone": phone, "code": code]
+            )
+            guard let dictionary = payload["user"] as? [String: Any] else {
+                lastError = "服务返回异常"
+                return false
+            }
+            record(user: Self.parseUser(dictionary))
+            lastMessage = "已用手机号登录"
+            return true
+        } catch {
+            lastError = Self.message(for: error)
+            return false
+        }
+    }
+
     // MARK: 资料同步
 
     func push(_ envelope: AccountSyncEnvelope) async -> Bool {
@@ -201,6 +277,32 @@ final class AccountService {
             lastError = Self.message(for: error)
             return nil
         }
+    }
+
+    // MARK: 到达照片（「到了这里」的实拍）
+
+    /// 上传到达时拍的照片（需要登录）。返回远端路径（`/api/photos/<placeId>`），失败返回 nil。
+    /// 照片不进 profile 同步包（256KB 上限塞不下），而是单独存、按地点取。
+    func uploadCheckInPhoto(placeID: String, dataURL: String) async -> String? {
+        guard isLoggedIn else { return nil }
+        do {
+            let payload = try await call(
+                path: "/api/photos",
+                method: "POST",
+                body: ["placeId": placeID, "dataUrl": dataURL]
+            )
+            return payload["path"] as? String
+        } catch {
+            lastError = Self.message(for: error)
+            return nil
+        }
+    }
+
+    /// 远端照片路径 → 可加载的 URL（AsyncImage 共用同一套 Cookie）
+    func photoURL(path: String) -> URL? {
+        let trimmed = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard path.hasPrefix("/") else { return nil }
+        return URL(string: trimmed + path)
     }
 
     // MARK: HTTP
@@ -252,6 +354,21 @@ final class AccountService {
             case "BAD_CREDENTIALS": return "用户名或密码不对"
             case "UNAUTHENTICATED": return "登录已过期，请重新登录"
             case "TOO_MANY_ATTEMPTS": return "尝试太频繁，请稍后再试"
+            case "WECHAT_NOT_CONFIGURED": return "服务端还没配置微信登录（缺 WECHAT_APPID / WECHAT_SECRET）"
+            case "WECHAT_CODE_INVALID": return "微信授权已失效，请重新授权"
+            case "WECHAT_UNREACHABLE": return "连不上微信服务器，稍后再试"
+            case "WECHAT_FAILED": return "微信登录失败：\(account.message)"
+            case "APPLE_NOT_CONFIGURED": return "服务端还没配置 Apple 登录（缺 WA_APPLE_CLIENT_ID）"
+            case "APPLE_BAD_SIGNATURE", "APPLE_BAD_TOKEN", "APPLE_BAD_AUDIENCE", "APPLE_BAD_ISSUER",
+                 "APPLE_BAD_NONCE", "APPLE_EXPIRED", "APPLE_JWKS_FAILED":
+                return "Apple 登录校验失败，请重新授权"
+            case "SMS_NOT_CONFIGURED": return "服务端还没配置短信服务"
+            case "SMS_TOO_MANY_SENDS": return "发送太频繁，请稍后再试"
+            case "SMS_NOT_FOUND", "SMS_NO_CODE": return "还没发送验证码，或已经用过了"
+            case "SMS_EXPIRED": return "验证码已过期，请重新获取"
+            case "SMS_WRONG_CODE": return "验证码不对"
+            case "SMS_TOO_MANY_ATTEMPTS": return "尝试次数过多，请重新获取"
+            case "BAD_PHONE": return "手机号格式不对（需要 11 位中国大陆号码）"
             case "BAD_REQUEST": return account.message
             default: return account.message
             }

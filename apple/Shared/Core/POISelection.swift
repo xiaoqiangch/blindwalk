@@ -55,6 +55,23 @@ public enum POISelection {
         tiers[max(0, min(tiers.count - 1, relax))]
     }
 
+    /// 远程漫游的距离窗口：下限固定 10 公里，上限逐档放宽（45 → 55 → 65 公里）。
+    ///
+    /// 为什么下限不再往下掉：早年为了让「10 公里外一个点都没有」也能出结果，
+    /// 第三档会掉到 6 公里 —— 那已经能走过去了，却还按「先开车」的流程展示，
+    /// 用户会觉得被耍。宁可明确失败，也不把近距离的点伪装成漫游。
+    public static func roamRange(relax: Int = 0) -> ClosedRange<Double> {
+        let ups: [Double] = [ExploreScope.roamMaxMeters, 55_000, 65_000]
+        let index = max(0, min(ups.count - 1, relax))
+        return ExploreScope.roamMinMeters...ups[index]
+    }
+
+    /// 远程漫游的搜索半径（米）。高德/百度的 around 半径上限是 50000。
+    public static func roamSearchRadius(relax: Int = 0) -> Int {
+        let radius = roamRange(relax: relax).upperBound * 1.15
+        return Int(min(50_000, max(12_000, radius)))
+    }
+
     /// 搜索半径（各数据源查询用）
     public static func searchRadius(startMeters: Int, relax: Int) -> Int {
         let t = tier(relax: relax)
@@ -156,7 +173,8 @@ public enum POISelection {
         candidate: POICandidate,
         mood: Mood,
         relax: Int,
-        origin: GeoPoint
+        origin: GeoPoint,
+        moment: DayMoment = .now
     ) -> Double {
         let category = candidate.category
         var weight: Double = 1
@@ -179,6 +197,8 @@ public enum POISelection {
 
         // 软黑名单降权
         weight *= scoreWalkworthy(name: candidate.name).penalty
+        // 时段偏好：环境性盲盒的核心 —— 黄昏往水边走，夜里避开公园
+        weight *= moment.affinity(for: category)
         // 百科 / OSM 通常比商业 POI 更有「地点感」
         if candidate.source == "wiki" || candidate.source == "osm" { weight *= 1.25 }
         // 有照片的优先（揭晓体验更好）
@@ -197,17 +217,24 @@ public enum POISelection {
         mood: Mood,
         startMeters: Int,
         relax: Int,
-        seed: UInt64
+        seed: UInt64,
+        excluding excludedIDs: Set<String> = [],
+        scope: ExploreScope = .walk,
+        moment: DayMoment = .now
     ) -> POICandidate? {
-        let range = distanceRange(startMeters: startMeters, relax: relax)
+        let range = scope == .roam
+            ? roamRange(relax: relax)
+            : distanceRange(startMeters: startMeters, relax: relax)
         var pool: [(candidate: POICandidate, weight: Double)] = []
 
         for candidate in candidates {
+            // 已经探索过的点不再抽（真实 POI 的 id 是稳定的，能跨会话去重）
+            guard !excludedIDs.contains(candidate.id) else { continue }
             let worth = scoreWalkworthy(name: candidate.name)
             guard worth.ok else { continue }
             let distance = GeoMath.distance(from: origin, to: candidate.coordinate)
             guard range.contains(distance) else { continue }
-            pool.append((candidate, weight(candidate: candidate, mood: mood, relax: relax, origin: origin)))
+            pool.append((candidate, weight(candidate: candidate, mood: mood, relax: relax, origin: origin, moment: moment)))
         }
         guard !pool.isEmpty else { return nil }
 

@@ -32,49 +32,56 @@ struct HomeView: View {
     ]
 
     var body: some View {
-        ZStack {
-            WAPaperBackground()
-
-            ScrollView(showsIndicators: false) {
-                Group {
-                    if isWideLayout {
-                        VStack(alignment: .leading, spacing: 0) {
-                            topBar
-                            hero
-                            HStack(alignment: .top, spacing: 20) {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    blindBoxCard
-                                    lastSurpriseSection.padding(.top, 16)
-                                }
-                                VStack(alignment: .leading, spacing: 0) {
-                                    statsRow
-                                    friendsRow.padding(.top, 24)
-                                    SurpriseHubCard(store: store).padding(.top, 24)
-                                }
+        ScrollView {
+            Group {
+                if isWideLayout {
+                    VStack(alignment: .leading, spacing: 0) {
+                        hero
+                        HStack(alignment: .top, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                blindBoxCard
+                                lastSurpriseSection.padding(.top, 16)
+                            }
+                            VStack(alignment: .leading, spacing: 0) {
+                                statsRow
+                                friendsRow.padding(.top, 24)
+                                SurpriseHubCard(store: store).padding(.top, 24)
                             }
                         }
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            topBar
-                            hero
-                            blindBoxCard
-                            statsRow.padding(.top, 24)
-                            friendsRow.padding(.top, 24)
-                            lastSurpriseSection.padding(.top, 24)
-                            // 惊喜社区入口（埋惊喜 / 寻惊喜）。详情见 docs/surprise-exchange.md
-                            SurpriseHubCard(store: store).padding(.top, 24)
-                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        hero
+                        blindBoxCard
+                        statsRow.padding(.top, 24)
+                        friendsRow.padding(.top, 24)
+                        lastSurpriseSection.padding(.top, 24)
+                        // 惊喜社区入口（埋惊喜 / 寻惊喜）。详情见 docs/surprise-exchange.md
+                        SurpriseHubCard(store: store).padding(.top, 24)
                     }
                 }
-                .padding(.horizontal, WATheme.pagePadding)
-                .padding(.top, 8)
-                .padding(.bottom, 28)
-                .frame(maxWidth: isWideLayout ? WATheme.contentMaxWidth : .infinity, alignment: .leading)
-                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, WATheme.pagePadding)
+            .padding(.bottom, 28)
+            .frame(maxWidth: isWideLayout ? WATheme.contentMaxWidth : .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .background(WATheme.cream)
+        .navigationTitle("今天")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                    Text("\(store.profile.streakDays) 天")
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(WATheme.ink2)
+                }
+                .accessibilityLabel("连续 \(store.profile.streakDays) 天")
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
-        .waTabBarChrome()
         .waTypeBounds()
         .onAppear {
             let env = ProcessInfo.processInfo.environment
@@ -91,48 +98,32 @@ struct HomeView: View {
 
     private var isWideLayout: Bool { horizontalSizeClass == .regular }
 
-    // MARK: 顶栏
+    // MARK: 顶部说明
     //
-    // 不做「晚上好，阿澈」这类问候式大标题（那是模板特征）。
-    // 这一行只放上下文：今天是第几天 + 一个安静的连续天数读数。
-
-    private var topBar: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Text(WAFormat.shortDate(Date()))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WATheme.ink3)
-                .monospacedDigit()
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 4) {
-                Image(systemName: "flame")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(WATheme.ink3)
-                Text("\(store.profile.streakDays) 天")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(WATheme.ink2)
-            }
-        }
-    }
-
-    // MARK: 主标题
+    // 标题交给系统大标题（「今天」），这里只放一句话说明产品规则。
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("今天，随便走走")
-                .font(WAType.hero())
-                .foregroundStyle(WATheme.ink)
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 5) {
+                Image(systemName: DayMoment.now.symbol)
+                    .font(.caption)
+                Text(DayMoment.now.boxTitle)
+                    .font(.footnote.weight(.medium))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(WATheme.amber)
+
+            Text(DayMoment.now.line)
+                .font(.subheadline)
+                .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("目的地抽到才知道。走过去的路上，它不显示。")
-                .font(.system(size: 14))
-                .foregroundStyle(WATheme.ink2)
+                .font(.caption)
+                .foregroundStyle(WATheme.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 20)
-        .padding(.bottom, 18)
+        .padding(.bottom, 16)
     }
 
     // MARK: 盲盒主卡
@@ -144,8 +135,8 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
                 Text("今日盲盒")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(WATheme.ink3)
+                    .font(.headline)
+                    .foregroundStyle(WATheme.ink)
                 Spacer(minLength: 8)
                 if store.hasActiveQuest {
                     resumeChip
@@ -163,42 +154,44 @@ struct HomeView: View {
             WAPrimaryButton(title: "开一个盲盒", action: onOpenSetup)
 
             HStack(spacing: 4) {
-                Image(systemName: "figure.walk")
-                    .font(.system(size: 10, weight: .medium))
-                Text("\(store.selectedDuration.rawValue) 分钟 · \(WAFormat.distanceKilometers(store.selectedDuration.radiusMeters)) 内")
+                Image(systemName: store.selectedScope.symbol)
+                    .font(.caption)
+                Text(scopeCaption)
                     .monospacedDigit()
             }
-            .font(.system(size: 11.5))
-            .foregroundStyle(WATheme.ink3)
+            .font(.caption)
+            .foregroundStyle(WATheme.ink2)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, 12)
         }
-        .padding(18)
+        .padding(16)
         .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                .stroke(WATheme.line, lineWidth: 1)
-        )
+    }
+
+    private var scopeCaption: String {
+        switch store.selectedScope {
+        case .walk:
+            return "\(store.selectedDuration.rawValue) 分钟 · \(WAFormat.distanceKilometers(store.selectedDuration.radiusMeters)) 内"
+        case .roam:
+            return "10–45 公里 · 先开车再走"
+        }
     }
 
     /// 卡内右上角：正在走的盲盒
     private var resumeChip: some View {
         Button(action: onOpenJourney) {
             HStack(spacing: 3) {
-                Text("继续 · \(store.session?.remainingMeters ?? 0) m")
-                    .font(.system(size: 12, weight: .medium))
+                Text("继续")
+                Text("\(store.session?.remainingMeters ?? 0) m")
                     .monospacedDigit()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
             }
-            .foregroundStyle(WATheme.amberDeep)
-            .padding(.horizontal, 9)
-            .frame(height: 24)
-            .background(WATheme.amberSoft)
-            .clipShape(Capsule())
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(WATheme.amber)
         }
-        .buttonStyle(WAPressEffectStyle())
+        .buttonStyle(.plain)
         .accessibilityLabel("继续这趟散步")
     }
 
@@ -224,11 +217,11 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("3 个朋友")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(WATheme.ink2)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(WATheme.ink)
                 Text("今晚也在散步")
-                    .font(.system(size: 13))
-                    .foregroundStyle(WATheme.ink3)
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
             }
             .fixedSize(horizontal: false, vertical: true)
 
@@ -239,19 +232,15 @@ struct HomeView: View {
     private func friendAvatar(_ friend: Friend) -> some View {
         ZStack(alignment: .bottomTrailing) {
             Text(friend.initial)
-                .font(.system(size: 13, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(WATheme.ink2)
                 .frame(width: 34, height: 34)
-                .background(WATheme.paper)
+                .background(Color(.secondarySystemFill))
                 .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(friend.isOnline ? WATheme.ink.opacity(0.16) : WATheme.line, lineWidth: 1)
-                )
 
             if friend.isOnline {
                 Circle()
-                    .fill(WATheme.teal)
+                    .fill(.green)
                     .frame(width: 8, height: 8)
                     .overlay(Circle().stroke(WATheme.cream, lineWidth: 2))
             }
@@ -267,63 +256,55 @@ struct HomeView: View {
             Button(action: onOpenCards) {
                 HStack(spacing: 12) {
                     Text(place.emoji)
-                        .font(.system(size: 18))
-                        .frame(width: 44, height: 44)
-                        .background(WATheme.paper2)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .font(.title3)
+                        .frame(width: 40, height: 40)
+                        .background(Color(.secondarySystemFill))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(place.name)
-                            .font(.system(size: 14.5, weight: .medium))
+                            .font(.body)
                             .foregroundStyle(WATheme.ink)
                             .lineLimit(1)
                         Text("上一次 · \(WAFormat.dayPhrase(since: card.collectedAt))")
-                            .font(.system(size: 12))
-                            .foregroundStyle(WATheme.ink3)
+                            .font(.footnote)
+                            .foregroundStyle(WATheme.ink2)
                     }
 
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(WATheme.ink3)
                 }
-                .padding(12)
+                .padding(14)
                 .background(WATheme.paper)
                 .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                        .stroke(WATheme.line, lineWidth: 1)
-                )
             }
             .buttonStyle(WAPressEffectStyle())
-            .accessibilityLabel("去回忆册看上一次的惊喜")
+            .accessibilityLabel("去图鉴看上一次的惊喜")
         } else {
             HStack(spacing: 12) {
                 Image(systemName: "shippingbox")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(WATheme.ink3)
-                    .frame(width: 44, height: 44)
-                    .background(WATheme.paper2)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .font(.body)
+                    .foregroundStyle(WATheme.ink2)
+                    .frame(width: 40, height: 40)
+                    .background(Color(.secondarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("第一盒还没开")
-                        .font(.system(size: 14.5, weight: .medium))
+                        .font(.body)
                         .foregroundStyle(WATheme.ink)
                     Text("城市已经准备好了")
-                        .font(.system(size: 12))
-                        .foregroundStyle(WATheme.ink3)
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(12)
-            .background(WATheme.paper.opacity(0.6))
+            .padding(14)
+            .background(WATheme.paper)
             .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                    .stroke(WATheme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            )
         }
     }
 
@@ -334,7 +315,7 @@ struct HomeView: View {
         guard let card = cards.max(by: { $0.collectedAt < $1.collectedAt }) else {
             return nil
         }
-        return PlaceCatalog.place(id: card.placeID)
+        return PlaceDirectory.shared.place(id: card.placeID)
             ?? AdminPOIService.shared.place(for: card.placeID)
     }
 }

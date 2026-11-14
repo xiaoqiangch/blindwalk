@@ -119,6 +119,22 @@ enum PhotoLibraryService {
     // 与 `Shared/Core/Surprise.swift` 的 `PhotoMatcher` 共用同一算法：
     // 9×8 灰度 → 每行相邻像素比较 → 64 位。这里只负责「UIImage → 9×8 灰度」。
 
+    /// 到达实拍上传用的 data URL：长边 1200、质量 0.72 → 一般 100–200KB，
+    /// 低于服务端 600KB 上限，也能在弱网下传完。
+    static func checkInDataURL(_ image: UIImage, maxSide: CGFloat = 1_200, quality: CGFloat = 0.72) -> String? {
+        let side = max(image.size.width, image.size.height)
+        let ratio = side > 0 ? min(1, maxSide / side) : 1
+        let size = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = true
+        let rendered = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let data = rendered.jpegData(compressionQuality: quality) else { return nil }
+        return "data:image/jpeg;base64," + data.base64EncodedString()
+    }
+
     /// UIImage → 64 位 dHash。失败返回 0（0 不参与判定，调用方要处理）
     static func dHash(of image: UIImage) -> UInt64 {
         guard let values = grayValues(of: image, width: 9, height: 8) else { return 0 }

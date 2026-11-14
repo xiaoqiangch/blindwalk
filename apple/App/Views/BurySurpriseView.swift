@@ -51,18 +51,30 @@ struct BurySurpriseView: View {
         case none, album, camera
     }
 
+    /// 上传状态：埋下之后要如实告诉用户「别人现在能不能找到」
+    private enum UploadState: Equatable {
+        case idle
+        case uploading
+        case done
+        case notLoggedIn
+        case failed
+    }
+
+    @State private var uploadState: UploadState = .idle
+
     // MARK: 位置
 
-    private var resolvedPoint: GeoPoint {
-        probe.origin ?? store.lastKnownOrigin ?? SurpriseLocation.demoPoint
+    /// 真实坐标；拿不到就是 nil —— **绝不回退到虚构坐标**。
+    /// 埋惊喜的位置必须是用户真实站的地方，否则别人按线索走过去会发现那里什么都没有。
+    private var resolvedPoint: GeoPoint? {
+        probe.origin ?? store.lastKnownOrigin
     }
 
-    private var isDemoLocation: Bool {
-        probe.origin == nil && store.lastKnownOrigin == nil
-    }
+    private var isDemoLocation: Bool { resolvedPoint == nil }
 
     private var areaLabel: String {
-        SurpriseLocation.areaLabel(probeLabel: probe.areaLabel, isDemo: isDemoLocation)
+        guard isDemoLocation == false else { return "位置未知" }
+        return SurpriseLocation.areaLabel(probeLabel: probe.areaLabel, isDemo: false)
     }
 
     /// 定位状态一句话（克制，只交代事实）
@@ -385,7 +397,7 @@ struct BurySurpriseView: View {
                         .foregroundStyle(WATheme.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                    Text(SurpriseLocation.coordinateText(resolvedPoint))
+                    Text(resolvedPoint.map(SurpriseLocation.coordinateText) ?? "还没拿到位置，无法埋下")
                         .font(.system(size: 12.5, weight: .regular))
                         .monospacedDigit()
                         .foregroundStyle(WATheme.ink3)
@@ -552,6 +564,9 @@ struct BurySurpriseView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 40)
                         .padding(.top, 2)
+
+                    uploadStatusLine
+                        .padding(.top, 10)
                 }
             }
             .opacity(stage == .done ? 1 : 0.45)
@@ -572,6 +587,47 @@ struct BurySurpriseView: View {
             .padding(.horizontal, WATheme.pagePadding)
             // 让出底部 toast 的高度（两条叠加约 130pt），别让「成就解锁」压住按钮
             .padding(.bottom, 150)
+        }
+    }
+
+    // MARK: 上传状态行（如实说明别人能不能找到）
+
+    @ViewBuilder
+    private var uploadStatusLine: some View {
+        switch uploadState {
+        case .idle:
+            EmptyView()
+        case .uploading:
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text("正在放进地图，让别人也能找到…")
+            }
+            .font(WAType.caption(11))
+            .foregroundStyle(WATheme.ink3)
+        case .done:
+            Label("已共享到地图，附近的步迷可以来找了", systemImage: "checkmark.circle.fill")
+                .font(WAType.caption(11))
+                .foregroundStyle(WATheme.teal)
+        case .notLoggedIn:
+            VStack(spacing: 4) {
+                Label("还只存在这台手机上", systemImage: "iphone")
+                    .font(WAType.caption(11))
+                    .foregroundStyle(WATheme.ink3)
+                Text("网络不通或服务未连上，暂时只有你能看到。")
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
+                    .multilineTextAlignment(.center)
+            }
+        case .failed:
+            VStack(spacing: 4) {
+                Label("上传失败，暂时只有你能看到", systemImage: "exclamationmark.triangle.fill")
+                    .font(WAType.caption(11))
+                    .foregroundStyle(WATheme.ember)
+                Text("检查网络；之后在「我的惊喜」里打开这一页会自动补传。")
+                    .font(WAType.caption(10.5))
+                    .foregroundStyle(WATheme.ink3)
+                    .multilineTextAlignment(.center)
+            }
         }
     }
 
@@ -604,6 +660,12 @@ struct BurySurpriseView: View {
             buryError = "照片没能存下来。再试一次。"
             return
         }
+        // 没有真实位置就不能埋：埋在这里的意义就是「别人能走过来找到」
+        guard let location = resolvedPoint else {
+            buryError = "还没拿到你的真实位置。点上面的「重试定位」，拿到位置再埋。"
+            return
+        }
+        uploadState = .idle
 
         // 记录埋之前已解锁的成就，用差值判断本次新解锁（不动 Shared 层）
         let before = Set(store.profile.achievements.filter { $0.unlockedAt != nil }.map(\.id))
@@ -611,13 +673,27 @@ struct BurySurpriseView: View {
         let buriedSurprise = store.burySurprise(
             message: message.surpriseTrimmed,
             photoName: name,
-            location: resolvedPoint,
+            location: location,
             areaLabel: areaLabel,
             hint: hint.surpriseOptional
         )
         buried = buriedSurprise
         newAchievements = store.profile.achievements.filter {
             $0.unlockedAt != nil && !before.contains($0.id)
+        }
+
+        // 埋完立即上传：别人的「附近的惊喜」才能看到这一条。
+        // 未登录 / 网络失败不影响本地记录，只是别人暂时找不到；登录后可在错误提示里看到原因。
+        uploadState = .uploading
+        let surpriseID = buriedSurprise.id
+        Task { @MainActor in
+            let ok = await SurpriseService.shared.upload(buriedSurprise, photo: photo)
+            if ok {
+                store.markSurpriseUploaded(surpriseID)
+                uploadState = .done
+            } else {
+                uploadState = .failed
+            }
         }
 
         WAHaptics.success()
@@ -659,6 +735,7 @@ struct BurySurpriseView: View {
         photoSinks = false
         glowOut = false
         doneGlow = false
+        uploadState = .idle
         stage = .compose
     }
 

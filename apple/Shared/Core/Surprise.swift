@@ -48,6 +48,12 @@ public struct BuriedSurprise: Codable, Identifiable, Hashable, Sendable {
     public var finderPhotoName: String?
     /// 复刻度评估（0…1），用于「像不像」的温和提示
     public var matchScore: Double?
+    /// 这条惊喜来自账号服务（别人埋的），本机没有作者原图
+    public var isRemote: Bool = false
+    /// 作者是本机用户埋的、且已经成功上传到账号服务
+    public var isUploaded: Bool = false
+    /// 本机用户自己埋的（改名后也认得出来）
+    public var isMineFlag: Bool = false
 
     public init(
         id: String = UUID().uuidString,
@@ -88,7 +94,81 @@ public struct BuriedSurprise: Codable, Identifiable, Hashable, Sendable {
     }
 
     public var isWaiting: Bool { status == .waiting }
-    public var isMine: Bool { authorName == "阿澈" }
+    public var isMine: Bool { isMineFlag || authorName == "阿澈" }
+
+    // MARK: 解码（老数据没有 isRemote / isUploaded / isMineFlag，必须容错）
+    //
+    // 这三个字段是后加的；本地已存的惊喜 JSON 里没有它们，
+    // 用合成的解码器会整包解析失败（→ 用户的惊喜全丢），所以手写 init(from:)。
+    // encode(to:) 仍用合成实现，不需要额外维护。
+
+    private enum CodingKeys: String, CodingKey {
+        case id, authorName, authorEmoji, photoName, message, location, areaLabel
+        case clues, radiusMeters, seekerPoints, authorPoints, createdAt, status
+        case finderName, foundAt, finderPhotoName, matchScore
+        case isRemote, isUploaded, isMineFlag
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        authorName = try c.decodeIfPresent(String.self, forKey: .authorName) ?? ""
+        authorEmoji = try c.decodeIfPresent(String.self, forKey: .authorEmoji) ?? "🫥"
+        photoName = try c.decodeIfPresent(String.self, forKey: .photoName) ?? ""
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
+        location = try c.decode(GeoPoint.self, forKey: .location)
+        areaLabel = try c.decodeIfPresent(String.self, forKey: .areaLabel) ?? ""
+        clues = try c.decodeIfPresent([String].self, forKey: .clues) ?? []
+        radiusMeters = try c.decodeIfPresent(Double.self, forKey: .radiusMeters) ?? 60
+        seekerPoints = try c.decodeIfPresent(Int.self, forKey: .seekerPoints) ?? 80
+        authorPoints = try c.decodeIfPresent(Int.self, forKey: .authorPoints) ?? 40
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        status = try c.decodeIfPresent(Status.self, forKey: .status) ?? .waiting
+        finderName = try c.decodeIfPresent(String.self, forKey: .finderName)
+        foundAt = try c.decodeIfPresent(Date.self, forKey: .foundAt)
+        finderPhotoName = try c.decodeIfPresent(String.self, forKey: .finderPhotoName)
+        matchScore = try c.decodeIfPresent(Double.self, forKey: .matchScore)
+        isRemote = try c.decodeIfPresent(Bool.self, forKey: .isRemote) ?? false
+        isUploaded = try c.decodeIfPresent(Bool.self, forKey: .isUploaded) ?? false
+        isMineFlag = try c.decodeIfPresent(Bool.self, forKey: .isMineFlag) ?? (authorName == "阿澈")
+    }
+
+    /// 服务端条目 → 本机模型（列表接口不返回照片和正文，这是设计约束）
+    public static func remote(
+        id: String,
+        authorEmoji: String,
+        areaLabel: String,
+        clues: [String],
+        location: GeoPoint,
+        radiusMeters: Double,
+        createdAt: Date
+    ) -> BuriedSurprise {
+        BuriedSurprise(
+            id: id,
+            authorName: "有人",
+            authorEmoji: authorEmoji,
+            photoName: "",
+            message: "",
+            location: location,
+            areaLabel: areaLabel,
+            clues: clues,
+            radiusMeters: radiusMeters,
+            createdAt: createdAt
+        ).with(isRemote: true)
+    }
+
+    /// 值语义下的局部修改（结构体字段多，避免每个调用点写 20 行）
+    public func with(
+        isRemote: Bool? = nil,
+        isUploaded: Bool? = nil,
+        isMineFlag: Bool? = nil
+    ) -> BuriedSurprise {
+        var copy = self
+        if let isRemote { copy.isRemote = isRemote }
+        if let isUploaded { copy.isUploaded = isUploaded }
+        if let isMineFlag { copy.isMineFlag = isMineFlag }
+        return copy
+    }
 
     /// 三阶线索：按距离依次解锁，措辞永远不暴露照片内容
     public static func makeClues(from message: String, hint: String?) -> [String] {

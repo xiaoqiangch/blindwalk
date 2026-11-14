@@ -17,6 +17,20 @@ struct AccountView: View {
     @State private var deletePassword = ""
     @State private var showDeleteConfirm = false
     @State private var localMessage: String?
+    /// 微信登录：服务端是否启用 + 是否有码
+    @State private var wechatConfig: WeChatLoginService.Config?
+    @State private var wechatLoading = false
+    private let wechat = WeChatLoginService()
+
+    /// Apple 登录
+    @State private var appleLoading = false
+    private let apple = AppleLoginService()
+
+    /// 短信登录
+    @State private var sms = SmsLoginService.shared
+    @State private var smsPhone = ""
+    @State private var smsCode = ""
+    @State private var smsExpanded = false
 
     @AppStorage("wa.soundEnabled") private var soundEnabled = true
     @AppStorage("wa.hapticsEnabled") private var hapticsEnabled = true
@@ -45,6 +59,8 @@ struct AccountView: View {
             }
             .onAppear {
                 baseURL = account.baseURL
+                Task { wechatConfig = await wechat.loadConfig(baseURL: account.baseURL) }
+                Task { await sms.refreshAvailability(baseURL: account.baseURL) }
                 Task {
                     await account.refresh()
                     baseURL = account.baseURL
@@ -145,10 +161,20 @@ struct AccountView: View {
         }
     }
 
-    // MARK: 未登录：登录 / 注册
+    // MARK: 未登录：微信 / 账号密码
 
     private var loginCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            appleButton
+            smsSection
+            wechatSection
+
+            HStack(spacing: 8) {
+                Rectangle().fill(WATheme.line).frame(height: 1)
+                Text("或用账号密码").font(.footnote).foregroundStyle(WATheme.ink2).fixedSize()
+                Rectangle().fill(WATheme.line).frame(height: 1)
+            }
+
             field("账号服务地址", text: $baseURL, placeholder: "https://xqlounge.top", secure: false)
             field("用户名", text: $username, placeholder: "3–24 个字符", secure: false)
             field("密码", text: $password, placeholder: "至少 6 位", secure: true)
@@ -160,6 +186,8 @@ struct AccountView: View {
                         localMessage = nil
                         if await account.login(username: username, password: password) {
                             localMessage = account.lastMessage
+                            let count = await SurpriseService.shared.flushPending(store: store)
+                            if count > 0 { localMessage = "已登录 · 补传了 \(count) 个之前埋下的惊喜" }
                         }
                     }
                 } label: {
@@ -173,6 +201,8 @@ struct AccountView: View {
                         localMessage = nil
                         if await account.register(username: username, password: password) {
                             localMessage = account.lastMessage
+                            let count = await SurpriseService.shared.flushPending(store: store)
+                            if count > 0 { localMessage = "注册成功 · 补传了 \(count) 个之前埋下的惊喜" }
                         }
                     }
                 } label: {
@@ -193,6 +223,260 @@ struct AccountView: View {
         .background(WATheme.paper)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(WATheme.line, lineWidth: 1))
+    }
+
+    // MARK: Sign in with Apple
+
+    private var appleButton: some View {
+        VStack(spacing: 6) {
+            Button {
+                Task { await loginWithApple() }
+            } label: {
+                HStack(spacing: 8) {
+                    if appleLoading {
+                        ProgressView().controlSize(.small).tint(.white)
+                    } else {
+                        Image(systemName: "apple.logo")
+                            .font(.title3)
+                    }
+                    Text(appleLoading ? "正在验证…" : "通过 Apple 登录")
+                        .font(.body.weight(.medium))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(WAPressEffectStyle())
+            .disabled(appleLoading || account.isBusy)
+
+            Text("Apple 只把你的姓名和邮箱交给步迷，不会拿到你的 Apple ID。")
+                .font(.caption2)
+                .foregroundStyle(WATheme.ink3)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private func loginWithApple() async {
+        appleLoading = true
+        defer { appleLoading = false }
+        localMessage = nil
+        commitBaseURL()
+        do {
+            let credential = try await apple.requestCredential()
+            if await account.loginWithApple(
+                identityToken: credential.identityToken,
+                nonce: credential.nonce,
+                fullName: credential.fullName
+            ) {
+                localMessage = account.lastMessage
+                let count = await SurpriseService.shared.flushPending(store: store)
+                if count > 0 { localMessage = "已用 Apple 登录 · 补传了 \(count) 个之前埋下的惊喜" }
+            } else {
+                localMessage = account.lastError
+            }
+        } catch AppleLoginService.LoginError.cancelled {
+            // 用户取消，不用提示
+        } catch {
+            localMessage = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+        }
+    }
+
+    // MARK: 短信验证码
+
+    @ViewBuilder
+    private var smsSection: some View {
+        if sms.isAvailable {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "phone")
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
+                    Text("手机号登录")
+                        .font(.subheadline.weight(.medium))
+                    Spacer(minLength: 0)
+                    Button(smsExpanded ? "收起" : "展开") {
+                        withAnimation(WAAnimation.quick) { smsExpanded.toggle() }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.amber)
+                }
+
+                if smsExpanded {
+                    HStack(spacing: 8) {
+                        TextField("11 位手机号", text: $smsPhone)
+                            .keyboardType(.numberPad)
+                            .textContentType(.telephoneNumber)
+                            .font(.body)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color(.tertiarySystemFill))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                        Button {
+                            Task { await sendSmsCode() }
+                        } label: {
+                            Text(sendButtonTitle)
+                                .font(.footnote.weight(.medium))
+                                .frame(width: 92, height: 40)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!PhoneFormat.isValid(smsPhone) || isCountingDown || sms.phase == .sending)
+                    }
+
+                    if case .codeSent = sms.phase {
+                        HStack(spacing: 8) {
+                            TextField("6 位验证码", text: $smsCode)
+                                .keyboardType(.numberPad)
+                                .textContentType(.oneTimeCode)
+                                .font(.body)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color(.tertiarySystemFill))
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                            Button {
+                                Task { await verifySmsCode() }
+                            } label: {
+                                Text(sms.phase == .verifying(smsCode) ? "验证中…" : "登录")
+                                    .font(.footnote.weight(.medium))
+                                    .frame(width: 76, height: 40)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!PhoneFormat.isValidCode(smsCode))
+                        }
+                    }
+
+                    if case .error(let message) = sms.phase {
+                        Text(message)
+                            .font(.caption)
+                            .foregroundStyle(WATheme.ember)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(14)
+            .background(WATheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
+        } else if !sms.missing.isEmpty {
+            // 未配置：如实说明缺什么，不假装可用
+            VStack(alignment: .leading, spacing: 3) {
+                Label("手机号登录暂不可用", systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
+                Text("服务端还没配置短信服务（缺 \(sms.missing.joined(separator: "、"))）。")
+                    .font(.caption2)
+                    .foregroundStyle(WATheme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var isCountingDown: Bool {
+        if case .codeSent = sms.phase { return true }
+        return false
+    }
+
+    private var sendButtonTitle: String {
+        switch sms.phase {
+        case .sending: return "发送中…"
+        case .codeSent(let left): return "\(left) 秒后重发"
+        default: return "获取验证码"
+        }
+    }
+
+    private func sendSmsCode() async {
+        commitBaseURL()
+        localMessage = nil
+        await sms.sendCode(phone: smsPhone, baseURL: account.baseURL)
+    }
+
+    private func verifySmsCode() async {
+        commitBaseURL()
+        localMessage = nil
+        guard PhoneFormat.isValidCode(smsCode) else { return }
+        if await account.loginWithSms(phone: smsPhone, code: smsCode) {
+            localMessage = account.lastMessage
+            sms.reset()
+            smsCode = ""
+            let count = await SurpriseService.shared.flushPending(store: store)
+            if count > 0 { localMessage = "已用手机号登录 · 补传了 \(count) 个之前埋下的惊喜" }
+        } else {
+            // 服务端返回的错误（验证码不对 / 过期 / 太频繁）已经写进 sms.phase 更贴切，
+            // 这里把 AccountService 的文案也带出来，避免「什么都没发生」的感觉
+            localMessage = account.lastError
+        }
+    }
+
+    // MARK: 微信登录
+
+    /// 微信区块：能登就一个按钮，不能登就如实说是服务端没配（不假装可用）
+    @ViewBuilder
+    private var wechatSection: some View {
+        if let config = wechatConfig {
+            if config.enabled {
+                Button {
+                    Task { await loginWithWeChat() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if wechatLoading {
+                            ProgressView().controlSize(.small).tint(.white)
+                        } else {
+                            Image(systemName: "message.fill")
+                                .font(.body)
+                        }
+                        Text(wechatLoading ? "正在唤起微信…" : "微信一键登录")
+                            .font(.body.weight(.medium))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color(red: 0.02, green: 0.72, blue: 0.32))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(WAPressEffectStyle())
+                .disabled(wechatLoading || account.isBusy)
+
+                Text("登录后卡片和进度会存到云端，换手机也能找回。")
+                    .font(.caption)
+                    .foregroundStyle(WATheme.ink2)
+            } else {
+                Label("微信登录暂不可用", systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
+                Text("服务端还没配置 \(config.missingList.joined(separator: "、"))。用下面的账号密码登录不受影响。")
+                    .font(.caption)
+                    .foregroundStyle(WATheme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text("正在检查微信登录…").font(.caption).foregroundStyle(WATheme.ink3)
+            }
+        }
+    }
+
+    private func loginWithWeChat() async {
+        guard let config = wechatConfig else { return }
+        wechatLoading = true
+        defer { wechatLoading = false }
+        localMessage = nil
+        do {
+            let code = try await wechat.requestCode(config: config, callbackScheme: "walkaholic")
+            if await account.loginWithWeChat(code: code) {
+                localMessage = account.lastMessage
+                let count = await SurpriseService.shared.flushPending(store: store)
+                if count > 0 { localMessage = "已用微信登录 · 补传了 \(count) 个之前埋下的惊喜" }
+            } else {
+                localMessage = account.lastError
+            }
+        } catch WeChatLoginService.LoginError.cancelled {
+            // 用户自己取消，什么都不用说
+        } catch {
+            localMessage = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+        }
     }
 
     private func field(_ label: String, text: Binding<String>, placeholder: String, secure: Bool) -> some View {

@@ -85,6 +85,60 @@ public enum Mood: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// 抽盒范围：走路去，还是先开车到附近再走
+///
+/// 「远程漫游」解决的问题：城市里真正有意思的地方往往不在你楼下。
+/// 但直接抽 20 公里外的点，用户没法走过去 ——
+/// 所以漫游模式的规则是：**先开车到目的地 1 公里内停车，剩下的路才开始步行探索**。
+public enum ExploreScope: String, Codable, CaseIterable, Identifiable, Sendable {
+    /// 步行：3 公里内，抬脚就走
+    case walk
+    /// 远程漫游：10–45 公里，先开车到附近停车
+    case roam
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .walk: return "走路去"
+        case .roam: return "远程漫游"
+        }
+    }
+
+    public var subtitle: String {
+        switch self {
+        case .walk: return "3 公里内，抬脚就走"
+        case .roam: return "10–45 公里 · 先开车到附近停车，再走过去"
+        }
+    }
+
+    public var symbol: String {
+        switch self {
+        case .walk: return "figure.walk"
+        case .roam: return "car"
+        }
+    }
+
+    /// 远程漫游的下限：低于它就不该用漫游（直接走过去就行）
+    public static let roamMinMeters: Double = 10_000
+    /// 远程漫游的上限：再远就不适合一日往返
+    public static let roamMaxMeters: Double = 45_000
+    /// 停车圈：进入这个半径才开始步行探索，也是线索开始解锁的地方
+    public static let parkingRadiusMeters: Double = 1_000
+    /// 手动「已停车」的容忍半径：GPS 在停车场里常常漂几百米，收紧到 1 公里会让用户
+    /// 明明已经停好车却始终切不到步行段，所以给到 2.2 公里。
+    public static let parkingToleranceMeters: Double = 2_200
+    /// 反过来：手动标记后又把车开走，离开这个半径就自动退回开车段
+    public static let driveResumeMeters: Double = 3_500
+
+    /// 抽到的总里程是否属于「需要先开车」的漫游旅程。
+    /// 只作为**旧数据兜底**：新会话请直接看 `QuestSession.scope`，
+    /// 因为漫游放宽后可能出现 6–8 公里的点，按里程推断会误判成普通散步。
+    public static func isRoamJourney(totalMeters: Int) -> Bool {
+        totalMeters >= Int(roamMinMeters * 0.6)
+    }
+}
+
 /// 时长
 public enum WalkDuration: Int, Codable, CaseIterable, Identifiable, Sendable {
     case m15 = 15, m30 = 30, m60 = 60
@@ -211,13 +265,27 @@ public struct PlaceCard: Codable, Identifiable, Hashable, Sendable {
     public let serial: String
     public let collectedAt: Date
     public var taskDone: Bool
+    /// 到达时用户自己拍的那张照片（本地沙盒文件名，Documents/Surprises/ 同目录）
+    public var photoName: String?
+    /// 同一张照片上传到账号后的路径（如 /api/photos/<placeID>），换机登录也能取回
+    public var photoRemotePath: String?
 
-    public init(id: String = UUID().uuidString, placeID: String, serial: String, collectedAt: Date = Date(), taskDone: Bool = false) {
+    public init(
+        id: String = UUID().uuidString,
+        placeID: String,
+        serial: String,
+        collectedAt: Date = Date(),
+        taskDone: Bool = false,
+        photoName: String? = nil,
+        photoRemotePath: String? = nil
+    ) {
         self.id = id
         self.placeID = placeID
         self.serial = serial
         self.collectedAt = collectedAt
         self.taskDone = taskDone
+        self.photoName = photoName
+        self.photoRemotePath = photoRemotePath
     }
 }
 
@@ -238,6 +306,12 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
     public var target: GeoPoint?
     /// 最近一次定位算出的方位角（度，0=正北）；演示模式为 nil
     public var currentBearing: Double?
+    /// 这一趟是「走路去」还是「远程漫游」。
+    ///
+    /// 为什么要存进会话，而不是每次按 `totalMeters` 推断：
+    /// 漫游放宽后可能抽到 6–8 公里的点，按里程推断会把它当成普通散步，
+    /// 于是「先开车过去」的整段提示与停车圈判定全部消失 —— 用户会以为自己要走过去。
+    public var scope: ExploreScope
 
     public init(
         id: String = UUID().uuidString,
@@ -248,7 +322,8 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
         phase: QuestPhase = .walking,
         unlockedHintCount: Int = 0,
         target: GeoPoint? = nil,
-        currentBearing: Double? = nil
+        currentBearing: Double? = nil,
+        scope: ExploreScope = .walk
     ) {
         self.id = id
         self.placeID = placeID
@@ -259,6 +334,7 @@ public struct QuestSession: Codable, Identifiable, Hashable, Sendable {
         self.unlockedHintCount = unlockedHintCount
         self.target = target
         self.currentBearing = currentBearing
+        self.scope = scope
     }
 
     public static let arriveThreshold = 30
@@ -429,21 +505,22 @@ public struct Profile: Codable, Sendable {
     /// 已收集地点 ID 集合
     public var collectedPlaceIDs: Set<String> { Set(cards.map(\.placeID)) }
 
-    /// 收藏进度（按全库 24 个地点）
+    /// 收藏进度（分母 = 当前已知的真实地点数量）
     public var collectionProgress: Double {
-        guard !PlaceCatalog.all.isEmpty else { return 0 }
-        return Double(collectedPlaceIDs.count) / Double(PlaceCatalog.all.count)
+        let total = PlaceDirectory.shared.all.count
+        guard total > 0 else { return 0 }
+        return min(1, Double(collectedPlaceIDs.count) / Double(total))
     }
 
     public var rareCount: Int {
         cards.filter { card in
-            guard let place = PlaceCatalog.place(id: card.placeID) else { return false }
+            guard let place = PlaceDirectory.shared.place(id: card.placeID) else { return false }
             return place.rarity != .common
         }.count
     }
 
     public var hiddenCount: Int {
-        cards.filter { PlaceCatalog.place(id: $0.placeID)?.rarity == .hidden }.count
+        cards.filter { PlaceDirectory.shared.place(id: $0.placeID)?.rarity == .hidden }.count
     }
 
     /// 本周惊喜值（简化：按最近 7 天到达次数 × 20 + 稀有 + 任务）

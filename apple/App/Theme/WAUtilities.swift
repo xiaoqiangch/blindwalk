@@ -76,40 +76,24 @@ private extension UIColor {
 /// 现在只保留一条中性面材梯，渐变仅作为同一中性内部的极轻微tone shift，
 /// 层次靠「面材 + 发丝描边」拉开，不靠色相。
 enum WAKraft {
-    /// 面材三档（中性冷灰，自上而下略深）
-    static let light = Color(hex: 0xFFFFFF)
-    static let mid = Color(hex: 0xFAFAFB)
-    static let deep = Color(hex: 0xF2F3F5)
+    static let light = WATheme.paper
+    static let mid = WATheme.paper
+    static let deep = WATheme.paper2
 
-    /// 盒体 / 盒盖：中性面 + 一点主色（只在插画内部出现，不当背景）
-    static let boxBody = Color(hex: 0xF0F2FB)
-    static let boxLid = Color(hex: 0xF8F9FD)
+    static let boxBody = WATheme.paper2
+    static let boxLid = WATheme.paper
 
-    /// 主卡面材：仍是中性，只在内部 tone shift
+    /// 原生界面不用渐变面材，统一用系统填充色
     static var cardGradient: LinearGradient {
-        LinearGradient(
-            colors: [light, mid],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        LinearGradient(colors: [WATheme.paper, WATheme.paper], startPoint: .top, endPoint: .bottom)
     }
 
-    /// 等级卡面材
     static var levelGradient: LinearGradient {
-        LinearGradient(
-            colors: [light, mid, deep],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        LinearGradient(colors: [WATheme.paper, WATheme.paper], startPoint: .top, endPoint: .bottom)
     }
 
-    /// 缩略图面材
     static var thumbGradient: LinearGradient {
-        LinearGradient(
-            colors: [WATheme.paper2, WATheme.paper],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        LinearGradient(colors: [WATheme.paper2, WATheme.paper2], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
 
@@ -117,30 +101,33 @@ enum WAKraft {
 // 与 docs/design-system.md §3 的 Display / Title / Body / Caption / 微标 对应，
 // 具体字号按 Web 原型（390pt 稿）实测取值。
 
+// 全部使用系统文字样式（largeTitle / title2 / headline / body / footnote …），
+// 这样字号、行高、字重与系统设置一致，动态字体也能自动缩放。
+
 enum WAType {
-    /// 页面标题：一屏只有一个（回忆册 / 圈子 / 我的）
-    static func pageTitle() -> Font { .system(size: 28, weight: .semibold) }
+    /// 大标题（Tab 根页，配合 inline 或 large navigation title）
+    static func pageTitle() -> Font { .largeTitle.weight(.bold) }
 
     /// 首页主标题
-    static func hero() -> Font { .system(size: 30, weight: .semibold) }
+    static func hero() -> Font { .largeTitle.weight(.bold) }
 
     /// 主按钮文字
-    static func cta(_ size: CGFloat = 16) -> Font { .system(size: size, weight: .semibold) }
+    static func cta(_ size: CGFloat = 16) -> Font { .body.weight(.semibold) }
 
     /// 卡片 / 列表主标题
-    static func rowTitle(_ size: CGFloat = 15) -> Font { .system(size: size, weight: .medium) }
+    static func rowTitle(_ size: CGFloat = 15) -> Font { .body }
 
     /// 正文
-    static func body(_ size: CGFloat = 14) -> Font { .system(size: size, weight: .regular) }
+    static func body(_ size: CGFloat = 14) -> Font { .body }
 
     /// 辅助文字
-    static func caption(_ size: CGFloat = 12.5) -> Font { .system(size: size, weight: .regular) }
+    static func caption(_ size: CGFloat = 12.5) -> Font { .footnote }
 
-    /// 小节标题：句首大写、不追踪、不用全大写
-    static func micro(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .medium) }
+    /// 小节标题
+    static func micro(_ size: CGFloat = 13) -> Font { .subheadline }
 
     /// 数字（等宽）
-    static func number(_ size: CGFloat = 22) -> Font { .system(size: size, weight: .semibold).monospacedDigit() }
+    static func number(_ size: CGFloat = 22) -> Font { .title3.weight(.semibold).monospacedDigit() }
 }
 
 // MARK: - 动态字体
@@ -161,99 +148,15 @@ extension View {
 
 @MainActor
 enum WATabBarChrome {
-    static func install() {
-        guard let window = keyWindow() else { return }
-        window.backgroundColor = UIColor(WATheme.cream)
-
-        guard let tabBar = tabBar(in: window.rootViewController) else { return }
-        tabBar.tintColor = UIColor(WATheme.amberDeep)
-        tabBar.unselectedItemTintColor = UIColor(WATheme.ink3)
-
-        // 底栏背后的系统底色（iOS 26/27 是 systemBackground 白），换成奶油纸。
-        window.rootViewController?.view.backgroundColor = UIColor(WATheme.cream)
-        addPaperStrip(around: tabBar)
-    }
-
-    /// 在浮动玻璃底栏后面垫一条纸面 + 顶部发丝线：
-    /// 玻璃透出的是纸，而不是滚动中的卡片内容（对齐 web 的平底 tab bar）。
-    private static func addPaperStrip(around tabBar: UITabBar) {
-        guard let plate = tabBar.superview,
-              let container = plate.superview else { return }
-
-        let strip = container.viewWithTag(0x8B1B) ?? {
-            let view = UIView()
-            view.tag = 0x8B1B
-            view.isUserInteractionEnabled = false
-            view.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
-            container.insertSubview(view, at: 0)
-            return view
-        }()
-
-        let hairline = strip.viewWithTag(0x8B1C) ?? {
-            let view = UIView()
-            view.tag = 0x8B1C
-            view.autoresizingMask = [.flexibleWidth]
-            strip.addSubview(view)
-            return view
-        }()
-
-        softenSelectionPlatter(in: tabBar)
-
-        let barFrame = tabBar.convert(tabBar.bounds, to: container)
-        strip.frame = CGRect(x: 0, y: barFrame.minY, width: container.bounds.width, height: container.bounds.height - barFrame.minY)
-        strip.backgroundColor = UIColor(WATheme.paper)
-        let hairlineHeight = 1 / UIScreen.main.scale
-        hairline.frame = CGRect(x: 0, y: 0, width: strip.bounds.width, height: hairlineHeight)
-        hairline.backgroundColor = UIColor(WATheme.line)
-        container.bringSubviewToFront(plate)
-    }
-
-    /// 只在选中项底下的「玻璃药丸」上做减法：把它的底色压到几乎透明，
-    /// 玻璃本身和图标 portal 保留（否则图标会一起消失）。
-    private static func softenSelectionPlatter(in view: UIView) {
-        for sub in view.subviews {
-            let name = String(describing: type(of: sub))
-            if name.contains("_UITabSelectionView") {
-                // 选中态用中性面，而不是带主色的淡底：
-                // 底栏一天要被看几百次，它是 chrome，不该是整屏第二个彩色元素
-                sub.backgroundColor = UIColor(WATheme.paper2)
-                sub.alpha = 1
-            }
-            if name.contains("_UITabBarItemPlatterView") {
-                sub.backgroundColor = .clear
-            }
-            softenSelectionPlatter(in: sub)
-        }
-    }
-
-    private static func keyWindow() -> UIWindow? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        for scene in scenes {
-            if let window = scene.windows.first(where: { $0.isKeyWindow }) { return window }
-            if let window = scene.windows.first { return window }
-        }
-        return nil
-    }
-
-    private static func tabBar(in controller: UIViewController?) -> UITabBar? {
-        guard let controller else { return nil }
-        if let tabController = controller as? UITabBarController { return tabController.tabBar }
-        for child in controller.children {
-            if let found = tabBar(in: child) { return found }
-        }
-        return tabBar(in: controller.presentedViewController)
-    }
+    /// v4：不再劫持 UITabBar 的子视图。
+    /// 上一版为了让「浮动玻璃底栏」看起来像网页的平底栏，手动插了一条纸面板并把选中态
+    /// 底色改成自绘色 —— 结果是与系统升级后的底栏结构抢控制权，出现硬边和错位。
+    /// 现在完全交给系统：半透明材质 + 系统选中色就是 iOS 的标准外观。
+    static func install() {}
 }
 
 private struct WATabBarChromeModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .onAppear {
-                WATabBarChrome.install()
-                // 系统底栏在首次布局后才稳定，补一次（幂等）
-                waAfter(0.6) { WATabBarChrome.install() }
-            }
-    }
+    func body(content: Content) -> some View { content }
 }
 
 extension View {

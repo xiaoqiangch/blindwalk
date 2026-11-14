@@ -14,7 +14,15 @@ export async function startTestServer(options = {}) {
     dataDir: dataDir,
     env: options.env || {},
     now: options.now,
-    rateLimiter: options.rateLimiter
+    rateLimiter: options.rateLimiter,
+    // 允许测试注入微信等外部依赖（默认走真实 fetch）
+    wechatConfig: options.wechatConfig,
+    wechatFetch: options.wechatFetch,
+    smsStore: options.smsStore,
+    smsConfig: options.smsConfig,
+    smsFetch: options.smsFetch,
+    appleClientId: options.appleClientId,
+    appleFetch: options.appleFetch
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);

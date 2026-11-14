@@ -34,6 +34,10 @@ import {
 } from './llm.mjs';
 import { renderLoginPage, serveStatic } from './static.mjs';
 import { MapKeysService } from './mapkeys.mjs';
+import { SurpriseAdminService, SurpriseAdminError } from './surprises.mjs';
+import { LlmSettings } from './llmsettings.mjs';
+import { AccountSettingsAdmin, AccountSettingsError } from './accountsettings.mjs';
+import { resolveAccountDbPath } from './surprises.mjs';
 import {
   AuthManager,
   SESSION_TTL_MS,
@@ -98,6 +102,14 @@ function sendError(res, error) {
     const payload = { error: error.message, code: error.code };
     if (error.details !== undefined) payload.details = error.details;
     sendJson(res, error.status, payload);
+    return;
+  }
+  if (error instanceof AccountSettingsError) {
+    sendJson(res, error.status || 400, { error: error.message, code: error.code });
+    return;
+  }
+  if (error instanceof SurpriseAdminError) {
+    sendJson(res, error.status || 400, { error: error.message, code: error.code });
     return;
   }
   const message = error && error.message ? String(error.message) : '服务器内部错误';
@@ -217,14 +229,31 @@ function loadDotEnv(filePath) {
  * 创建 HTTP 服务（测试可注入 store / ingest / 路径）。
  */
 export function createServer(options = {}) {
-  const dataDir = options.dataDir || process.env.WA_DATA_DIR || DEFAULT_DATA_DIR;
+  // WA_ / BW_ 两个前缀都认（线上单元用 BW_，新代码写 WA_）
+  const envFirst = (...names) => {
+    for (const name of names) {
+      const value = process.env[name];
+      if (value !== undefined && String(value).trim() !== '') return value;
+    }
+    return undefined;
+  };
+  const dataDir = options.dataDir || envFirst('WA_DATA_DIR', 'BW_DATA_DIR') || DEFAULT_DATA_DIR;
   const store = options.store || new PoiStore({ dataDir });
-  const publicDir = options.publicDir || process.env.WA_PUBLIC_DIR || DEFAULT_PUBLIC_DIR;
-  const exportPath = options.exportPath || process.env.WA_EXPORT_PATH || DEFAULT_EXPORT_PATH;
+  const publicDir = options.publicDir || envFirst('WA_PUBLIC_DIR', 'BW_PUBLIC_DIR') || DEFAULT_PUBLIC_DIR;
+  const exportPath = options.exportPath || envFirst('WA_EXPORT_PATH', 'BW_EXPORT_PATH') || DEFAULT_EXPORT_PATH;
   const backupPath = path.join(dataDir, 'pois.export.json');
   const ingestCandidates = options.ingestCandidates || fetchCandidates;
   const fetchImpl = options.fetchImpl;
-  const llmEnv = options.llmEnv || process.env;
+  // AI 配置：数据库优先、环境变量兜底；每次请求现算，后台改完立即生效
+  const llmSettings = options.llmSettings || new LlmSettings({
+    db: store.db,
+    env: options.llmEnv || process.env,
+    fetchImpl: options.fetchImpl,
+    now: options.now
+  });
+  // 两者都在 LlmSettings 里合并过了（数据库优先、env 兜底），这里直接现算
+  const currentLlmEnv = () => llmSettings.asEnv();
+  const llmEnv = process.env;
   const auth = options.auth || new AuthManager({
     dataDir: dataDir,
     env: options.authEnv || process.env
@@ -235,6 +264,18 @@ export function createServer(options = {}) {
     env: options.mapKeysEnv || options.env || process.env,
     fetchImpl: options.mapKeyFetch,
     now: options.now
+  });
+  // 用户惊喜审核：直接读写账号库（同机部署，见 admin/server/surprises.mjs）
+  // 微信 / 账号侧设置：直连账号库（和惊喜审核同一套思路，不把管理令牌交给前端）
+  const accountSettings = options.accountSettings || new AccountSettingsAdmin({
+    dbPath: options.accountDbPath || resolveAccountDbPath({ env: options.env || process.env, adminDataDir: dataDir }),
+    env: options.env || process.env,
+    now: options.now
+  });
+  const surprises = options.surprises || new SurpriseAdminService({
+    env: options.env || process.env,
+    dbPath: options.accountDbPath,
+    adminDataDir: dataDir
   });
 
   // ---------- 公开端点：地图 Key（无鉴权，但限制来源） ----------
@@ -296,7 +337,7 @@ export function createServer(options = {}) {
 
     // ---------- 状态 / 统计 ----------
     if (pathname === '/api/llm/status' && method === 'GET') {
-      sendJson(res, 200, llmStatus(llmEnv));
+      sendJson(res, 200, llmStatus(currentLlmEnv()));
       return;
     }
     if (pathname === '/api/stats' && method === 'GET') {
@@ -363,7 +404,7 @@ export function createServer(options = {}) {
       const id = requireString(body.id, 'id');
       const poi = store.get(id);
       if (!poi) throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
-      const result = await normalizePoi(poi, { env: llmEnv, fetchImpl });
+      const result = await normalizePoi(poi, { env: currentLlmEnv(), fetchImpl });
       const updated = store.update(id, {
         why: result.poi.why,
         task: result.poi.task,
@@ -382,7 +423,7 @@ export function createServer(options = {}) {
       const instruction = requireString(body.instruction, 'instruction');
       const poi = store.get(id);
       if (!poi) throw new PoiError('POI 不存在：' + id, 'NOT_FOUND', 404);
-      const result = await editPoi(poi, instruction, { env: llmEnv, fetchImpl });
+      const result = await editPoi(poi, instruction, { env: currentLlmEnv(), fetchImpl });
       const updated = store.update(id, {
         why: result.poi.why,
         task: result.poi.task,
@@ -406,7 +447,7 @@ export function createServer(options = {}) {
         pois.push(poi);
       }
       const result = await analyzePois(pois, {
-        env: llmEnv,
+        env: currentLlmEnv(),
         fetchImpl,
         onApplied: (id, patch) => {
           store.update(id, { safety: patch.safety, llm: patch.llm });
@@ -422,7 +463,7 @@ export function createServer(options = {}) {
       if (!STATUSES.includes(status)) throw new PoiError('status 不合法', 'BAD_REQUEST');
       const pois = store.all().filter((poi) => poi.status === status);
       const result = await analyzePois(pois, {
-        env: llmEnv,
+        env: currentLlmEnv(),
         fetchImpl,
         onApplied: (id, patch) => {
           store.update(id, { safety: patch.safety, llm: patch.llm });
@@ -442,6 +483,85 @@ export function createServer(options = {}) {
         path: '../prototype/web/pois.json',
         count: document.count
       });
+      return;
+    }
+
+    // ---------- 微信 / 账号侧设置（直连账号库） ----------
+    if (pathname === '/api/account/settings' && (method === 'GET' || method === 'PUT')) {
+      if (method === 'GET') {
+        sendJson(res, 200, accountSettings.adminView());
+        return;
+      }
+      const body = await readBody(req);
+      sendJson(res, 200, accountSettings.update(body));
+      return;
+    }
+    if (pathname === '/api/account/settings/status' && method === 'GET') {
+      sendJson(res, 200, accountSettings.status());
+      return;
+    }
+
+    // ---------- AI 设置（在线可改，Key 掩码） ----------
+    if (pathname === '/api/llm/settings' && (method === 'GET' || method === 'PUT')) {
+      if (method === 'GET') {
+        sendJson(res, 200, llmSettings.adminView());
+        return;
+      }
+      const body = await readBody(req);
+      sendJson(res, 200, llmSettings.update(body));
+      return;
+    }
+    if (pathname === '/api/llm/test' && method === 'POST') {
+      sendJson(res, 200, await llmSettings.test());
+      return;
+    }
+
+    // ---------- 用户惊喜审核（读账号库，见 admin/server/surprises.mjs） ----------
+    if (pathname === '/api/surprises' && method === 'GET') {
+      const query = {
+        status: searchParams.get('status') || '',
+        q: searchParams.get('q') || '',
+        limit: searchParams.get('limit'),
+        offset: searchParams.get('offset')
+      };
+      sendJson(res, 200, surprises.list(query));
+      return;
+    }
+    if (pathname === '/api/surprises/status' && method === 'GET') {
+      sendJson(res, 200, surprises.status());
+      return;
+    }
+    const surpriseMatch = pathname.match(/^\/api\/surprises\/([^/]+)$/);
+    if (surpriseMatch) {
+      const id = decodeURIComponent(surpriseMatch[1]);
+      if (method === 'GET') {
+        sendJson(res, 200, surprises.get(id));
+        return;
+      }
+      if (method === 'PUT') {
+        const body = await readBody(req);
+        sendJson(res, 200, surprises.setStatus(id, body.status));
+        return;
+      }
+      if (method === 'DELETE') {
+        sendJson(res, 200, surprises.remove(id));
+        return;
+      }
+      throw new PoiError('不支持的请求方法：' + method, 'BAD_REQUEST');
+    }
+
+    // 作者原图（审核要看图才能判断该不该下架）
+    const surprisePhotoMatch = pathname.match(/^\/api\/surprises\/([^/]+)\/photo$/);
+    if (surprisePhotoMatch) {
+      if (method !== 'GET') throw new PoiError('不支持的请求方法：' + method, 'BAD_REQUEST');
+      const id = decodeURIComponent(surprisePhotoMatch[1]);
+      const photo = surprises.photo(id);
+      res.writeHead(200, {
+        'Content-Type': photo.contentType,
+        'Content-Length': photo.buffer.length,
+        'Cache-Control': 'no-store'
+      });
+      res.end(photo.buffer);
       return;
     }
 

@@ -233,7 +233,7 @@ export function renderLoginPage() {
       if (!password) { show('请输入密码'); return; }
       show('');
       button.disabled = true;
-      fetch('/api/auth/login', {
+      fetch('/admin/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: password })

@@ -123,7 +123,7 @@ public struct WatchSessionSummary: Codable, Equatable, Sendable {
     ) -> WatchSessionSummary {
         let arrived = session.phase == .arrived || session.phase == .revealed || session.phase == .collected
         let resolvedToday = todayCard ?? profile.cards.max { $0.collectedAt < $1.collectedAt }
-        let todayPlace = resolvedToday.flatMap { PlaceCatalog.place(id: $0.placeID) }
+        let todayPlace = resolvedToday.flatMap { PlaceDirectory.shared.place(id: $0.placeID) }
         return WatchSessionSummary(
             phase: session.phase.rawValue,
             placeID: session.placeID,
@@ -144,15 +144,24 @@ public struct WatchSessionSummary: Codable, Equatable, Sendable {
         )
     }
 
-    /// 无 iPhone 连接时的本地演示兜底：直接取 Shared/Core 的 DemoData。
-    public static func demo(now: Date = Date()) -> WatchSessionSummary {
-        let session = DemoData.demoWatchSession(now: now)
-        let place = PlaceCatalog.place(id: session.placeID)
-        return make(
-            session: session,
-            place: place,
-            profile: DemoData.demoProfile(now: now),
+    /// 无 iPhone 连接时手表显示什么。
+    ///
+    /// 以前这里回退到「内置演示数据」（虚构地点 + 12 天连续），等于在真机上展示假期数据。
+    /// 现在只有一条规则：**没有真实数据就显示空状态**，手表上如实说「还没连上 iPhone」。
+    public static func disconnected(now: Date = Date()) -> WatchSessionSummary {
+        make(
+            session: QuestSession(
+                placeID: "",
+                startedAt: now,
+                totalMeters: 0,
+                remainingMeters: 0,
+                phase: .walking,
+                unlockedHintCount: 0
+            ),
+            place: nil,
+            profile: Profile(),
             now: now
         )
     }
 }
+

@@ -56,8 +56,11 @@ function publicListItem(row, fromLat, fromLon) {
 }
 
 /**
- * 建惊喜（需要登录）
- * body: { lat, lon, message, areaLabel, clues[], radiusMeters, photoData?, photoHash? }
+ * 建惊喜（登录用户，或带设备标识的匿名用户）
+ *
+ * 匿名也要能埋：否则「埋下一个」在没注册账号的人手里等于没生效，
+ * 而这条功能的意义就是让别人的「附近惊喜」有内容。
+ * body 同前；匿名时靠 `X-WA-Device` 请求头换一个稳定的匿名 userId。
  */
 export function createSurprise(store, user, body, now) {
   const lat = Number(body && body.lat);
@@ -76,10 +79,11 @@ export function createSurprise(store, user, body, now) {
   }
   const radius = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, Number(body && body.radiusMeters) || 60));
 
+  const anonymous = !user || !user.id;
   const item = {
     id: 'surprise-' + now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
-    userId: user.id,
-    authorName: user.username,
+    userId: anonymous ? String(body && body.anonId || 'anon-unknown') : user.id,
+    authorName: anonymous ? '有个步迷' : user.username,
     authorEmoji: (body && body.authorEmoji) ? String(body.authorEmoji).slice(0, 4) : '🫥',
     lat,
     lon,

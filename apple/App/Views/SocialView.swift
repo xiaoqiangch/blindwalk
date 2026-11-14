@@ -19,24 +19,58 @@ struct SocialView: View {
     ]
 
     var body: some View {
-        ZStack {
-            WAPaperBackground()
+        List {
+            Section {
+                togetherCard
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowBackground(Color.clear)
+            }
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    togetherCard.padding(.top, 12)
-                    leaderboardSection.padding(.top, 20)
-                    feedSection.padding(.top, 20)
+            Section {
+                ForEach(Array(visibleLeaderboard.enumerated()), id: \.element.id) { index, entry in
+                    leaderboardRow(rank: rankOf(entry), entry: entry)
                 }
-                .padding(.horizontal, WATheme.pagePadding)
-                .padding(.top, 6)
-                .padding(.bottom, 26)
+                Button {
+                    withAnimation { showAllLeaderboard.toggle() }
+                } label: {
+                    Text(showAllLeaderboard ? "收起" : "其余 \(max(0, allLeaderboard.count - visibleLeaderboard.count)) 位")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(WATheme.amber)
+            } header: {
+                HStack {
+                    Text("本周榜")
+                    Spacer()
+                    Text("惊喜指数").textCase(nil)
+                        .font(.footnote)
+                        .foregroundStyle(WATheme.ink2)
+                }
+            }
+
+            Section("今晚的惊喜") {
+                if sortedPosts.isEmpty {
+                    Text("还没有人分享今晚的惊喜。")
+                        .foregroundStyle(WATheme.ink2)
+                } else {
+                    ForEach(sortedPosts) { post in
+                        postRow(post)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .background(WATheme.cream)
+        .navigationTitle("圈子")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: refreshTogetherCode) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                }
+                .accessibilityLabel("刷新同频码")
             }
         }
         .waToast($toast)
-        .toolbar(.hidden, for: .navigationBar)
-        .waTabBarChrome()
         .waTypeBounds()
         .onAppear {
             // 仅用于截图/演示：`WA_PREVIEW_TOAST=1` 启动即弹一次 toast，验证层级与位置
@@ -49,174 +83,88 @@ struct SocialView: View {
         }
     }
 
-    // MARK: 顶栏
-
-    private var header: some View {
-        HStack(alignment: .center) {
-            Text("圈子")
-                .font(WAType.pageTitle())
-                .foregroundStyle(WATheme.ink)
-
-            Spacer(minLength: 0)
-
-            Button(action: refreshTogetherCode) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11, weight: .medium))
-                    Text("换一个")
-                        .font(.system(size: 12.5))
-                }
-                .foregroundStyle(WATheme.ink2)
-                .padding(.horizontal, 11)
-                .frame(height: 30)
-                .background(WATheme.paper)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
-            }
-            .buttonStyle(WAPressEffectStyle())
-            .accessibilityLabel("刷新同频码")
-        }
-        .padding(.bottom, 14)
-    }
-
-    // MARK: 同频码卡（web .codecard：整张琥珀卡 + 两圈细环装饰）
+    // MARK: 同频码卡（系统大号颜色卡：tint 底 + 白字）
 
     private var togetherCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text("今晚一起走")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.66))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
                 Text("同频码")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(Color.white.opacity(0.40))
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
             }
 
             Text(store.togetherCode)
-                .font(.system(size: 30, weight: .semibold, design: .monospaced))
-                .tracking(3)
+                .font(.system(.title, design: .monospaced).weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .padding(.top, 12)
+                .textSelection(.enabled)
 
             Text("朋友输这串码，各自开盒，回来交换线索")
-                .font(.system(size: 12.5))
-                .foregroundStyle(Color.white.opacity(0.58))
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 8)
 
             Button(action: copyTogetherCode) {
-                HStack(spacing: 5) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 11, weight: .medium))
-                    Text("复制")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .foregroundStyle(WATheme.ink)
-                .padding(.horizontal, 14)
-                .frame(height: 32)
-                .background(Color.white)
-                .clipShape(Capsule())
+                Label("复制", systemImage: "doc.on.doc")
+                    .font(.subheadline.weight(.medium))
             }
-            .buttonStyle(WAPressEffectStyle())
-            .padding(.top, 16)
+            .buttonStyle(.borderedProminent)
+            .tint(.white)
+            .foregroundStyle(WATheme.amber)
+            .padding(.top, 4)
             .accessibilityLabel("复制同频码 \(store.togetherCode)")
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(WATheme.ink)
+        .background(WATheme.amber)
         .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
     }
 
     // MARK: 本周榜
 
-    private var leaderboardSection: some View {
-        let entries = visibleLeaderboard
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("本周榜")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(WATheme.ink)
-                Spacer(minLength: 0)
-                Text("惊喜指数")
-                    .font(.system(size: 12))
-                    .foregroundStyle(WATheme.ink3)
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    leaderboardRow(rank: rankOf(entry), entry: entry)
-                }
-
-                Button {
-                    withAnimation(WAAnimation.regular) {
-                        showAllLeaderboard.toggle()
-                    }
-                } label: {
-                    Text(showAllLeaderboard ? "收起" : "其余 \(max(0, allLeaderboard.count - entries.count)) 位")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(WATheme.ink3)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 10)
-            .background(WATheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                    .stroke(WATheme.line, lineWidth: 1)
-            )
-        }
-    }
-
     private func leaderboardRow(rank: Int, entry: LeaderboardEntry) -> some View {
         HStack(spacing: 10) {
             Text("\(rank)")
-                .font(.system(size: 12, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(rankColor(rank))
-                .frame(width: 16, alignment: .leading)
+                .frame(width: 18, alignment: .leading)
 
             Text(entry.emoji)
-                .font(.system(size: 13))
-                .frame(width: 26, height: 26)
-                .background(WATheme.paper2)
+                .font(.footnote)
+                .frame(width: 28, height: 28)
+                .background(Color(.secondarySystemFill))
                 .clipShape(Circle())
 
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Text(entry.name)
-                    .font(.system(size: 14, weight: entry.isMe ? .medium : .regular))
-                    .foregroundStyle(WATheme.ink)
+                    .font(.body)
                     .lineLimit(1)
                 if entry.isMe {
                     Text("你")
-                        .font(.system(size: 11))
-                        .foregroundStyle(WATheme.ink3)
+                        .font(.caption)
+                        .foregroundStyle(WATheme.ink2)
                 }
             }
 
             Spacer(minLength: 0)
 
             Text("\(entry.score)")
-                .font(.system(size: 14, weight: .medium))
+                .font(.body.weight(.medium))
                 .monospacedDigit()
-                .foregroundStyle(WATheme.ink)
+                .foregroundStyle(WATheme.ink2)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 44)
-        .background(entry.isMe ? WATheme.amberSoft : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .padding(.vertical, 2)
     }
 
     private func rankColor(_ rank: Int) -> Color {
         switch rank {
-        case 1: return WATheme.amberDeep
+        case 1: return WATheme.amber
         case 2, 3: return WATheme.ink2
         default: return WATheme.ink3
         }
@@ -241,95 +189,59 @@ struct SocialView: View {
         (allLeaderboard.firstIndex(of: entry) ?? 0) + 1
     }
 
-    // MARK: 动态流
-
-    private var feedSection: some View {
-        let posts = sortedPosts
-
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("今晚的惊喜")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(WATheme.ink)
-
-            if posts.isEmpty {
-                WAEmptyState(
-                    title: "还没有人分享今晚的惊喜。",
-                    subtitle: "去开一个盲盒，把第一个留在这里。"
-                )
-            } else {
-                ForEach(posts) { post in
-                    postCard(post)
-                }
-            }
-        }
-    }
-
-    private func postCard(_ post: FeedPost) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
+    private func postRow(_ post: FeedPost) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
                 Text(post.authorEmoji)
-                    .font(.system(size: 14))
-                    .frame(width: 30, height: 30)
-                    .background(WATheme.paper2)
+                    .font(.footnote)
+                    .frame(width: 32, height: 32)
+                    .background(Color(.secondarySystemFill))
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(post.authorName)
-                        .font(.system(size: 13.5, weight: .medium))
-                        .foregroundStyle(WATheme.ink)
+                    HStack(spacing: 6) {
+                        Text(post.authorName)
+                            .font(.subheadline.weight(.semibold))
+                        if post.isMine {
+                            Text("你埋的")
+                                .font(.caption2)
+                                .foregroundStyle(WATheme.ink2)
+                        }
+                    }
                     Text(WAFormat.relative(post.createdAt))
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .monospacedDigit()
-                        .foregroundStyle(WATheme.ink3)
+                        .foregroundStyle(WATheme.ink2)
                 }
 
                 Spacer(minLength: 0)
 
-                if post.isMine {
-                    Text("你埋的")
-                        .font(.system(size: 11))
-                        .foregroundStyle(WATheme.ink3)
-                }
-            }
-            .padding(.bottom, 10)
-
-            HStack(spacing: 8) {
-                Text(post.categoryEmoji)
-                    .font(.system(size: 15))
-                Text(post.placeName)
-                    .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(WATheme.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 6)
                 WARarityBadge(rarity: post.rarity)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(WATheme.paper2)
-            .clipShape(RoundedRectangle(cornerRadius: WATheme.controlRadius, style: .continuous))
-
-            Text(post.caption)
-                .font(.system(size: 14))
-                .foregroundStyle(WATheme.ink2)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 10)
 
             HStack(spacing: 6) {
+                Text(post.categoryEmoji)
+                    .font(.subheadline)
+                Text(post.placeName)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+
+            Text(post.caption)
+                .font(.subheadline)
+                .foregroundStyle(WATheme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
                 ForEach(0..<reactionOrder.count, id: \.self) { index in
                     reactionButton(for: post, key: reactionOrder[index])
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.top, 12)
+            .padding(.top, 2)
         }
-        .padding(14)
-        .background(WATheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous)
-                .stroke(WATheme.line, lineWidth: 1)
-        )
+        .padding(.vertical, 4)
     }
 
     private func reactionButton(for post: FeedPost, key: String) -> some View {
@@ -344,26 +256,22 @@ struct SocialView: View {
             WAHaptics.light()
         } label: {
             HStack(spacing: 4) {
-                if emoji.isEmpty {
-                    Text(key)
-                        .font(.system(size: 12))
-                } else {
+                if !emoji.isEmpty {
                     Text(emoji)
-                        .font(.system(size: 12))
+                        .font(.footnote)
                 }
+                Text(key)
+                    .font(.footnote)
                 Text("\(count)")
-                    .font(.system(size: 12))
+                    .font(.footnote)
                     .monospacedDigit()
             }
-            .foregroundStyle(isTapped ? WATheme.amberDeep : WATheme.ink2)
+            .foregroundStyle(isTapped ? Color.white : WATheme.ink)
             .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: 28)
-            .background(isTapped ? WATheme.amberSoft : WATheme.paper2)
+            .background(isTapped ? WATheme.amber : Color(.secondarySystemFill))
             .clipShape(Capsule())
-            .overlay(
-                Capsule().stroke(isTapped ? WATheme.amber.opacity(0.30) : Color.clear, lineWidth: 1)
-            )
         }
         .buttonStyle(WAPressEffectStyle())
         .accessibilityLabel("\(key) \(count)")

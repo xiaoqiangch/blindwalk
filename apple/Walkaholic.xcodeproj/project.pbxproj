@@ -59,11 +59,26 @@
 		BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */; };
 		BED2E3D61C56FFE69D7CD128 /* WatchMineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303A58E5C96F79C7E61E5762 /* WatchMineView.swift */; };
 		C07C8880FC9CB67C42433CAE /* AccountService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3166A8709169C9CD90B32608 /* AccountService.swift */; };
+		AA11BB22CC33DD44EE55FF54 /* SmsLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF53 /* SmsLoginService.swift */; };
+		AA11BB22CC33DD44EE55FF52 /* AppleLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF51 /* AppleLoginService.swift */; };
+		AA11BB22CC33DD44EE55FF42 /* WeChatLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF41 /* WeChatLoginService.swift */; };
+		AA11BB22CC33DD44EE55FF33 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF32 /* Assets.xcassets */; };
+		AA11BB22CC33DD44EE55FF22 /* PlaceDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF21 /* PlaceDirectory.swift */; };
+		AA11BB22CC33DD44EE55FF23 /* PlaceDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF21 /* PlaceDirectory.swift */; };
+		AA11BB22CC33DD44EE55FF12 /* PlaceDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF11 /* PlaceDetailSheet.swift */; };
+		AA11BB22CC33DD44EE55FF02 /* SurpriseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF01 /* SurpriseService.swift */; };
 		C26F357316EA470DEA7BB520 /* SocialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B5340A7CFC80269A2CE14B /* SocialView.swift */; };
 		C61F053670A332BE0C7CFFC5 /* JourneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE1A9F06329E16054D9DE63 /* JourneyView.swift */; };
 		C74EA64438EFFE7A183B4CA0 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDADD9AAE3636A8464DEBFF /* AccountView.swift */; };
 		CE99051D25C8F2C561DF6A69 /* WatchHintsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43778105E95EAC72B52BB8DA /* WatchHintsView.swift */; };
 		CF76A66805DDA62C81ADBC75 /* SurprisesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */; };
+		C17A2B3C4D5E6F7081920002 /* CityMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920001 /* CityMapView.swift */; };
+		C17A2B3C4D5E6F7081920003 /* WalkTrackStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920004 /* WalkTrackStore.swift */; };
+		C17A2B3C4D5E6F7081920005 /* WalkTrackStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920004 /* WalkTrackStore.swift */; };
+		C17A2B3C4D5E6F7081920006 /* SurpriseReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920007 /* SurpriseReceipt.swift */; };
+		C17A2B3C4D5E6F7081920008 /* SurpriseReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920007 /* SurpriseReceipt.swift */; };
+		C17A2B3C4D5E6F708192000A /* DayMoment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920009 /* DayMoment.swift */; };
+		C17A2B3C4D5E6F708192000B /* DayMoment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17A2B3C4D5E6F7081920009 /* DayMoment.swift */; };
 		CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */; };
 		D14E5970216DCFC601D88D3F /* WatchSessionSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */; };
 		D482C8E10719BC15E7C2CC6A /* WAUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E25DA6A9848FBE5AAD32636 /* WAUtilities.swift */; };
@@ -123,6 +138,13 @@
 		2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurySurpriseView.swift; sourceTree = "<group>"; };
 		303A58E5C96F79C7E61E5762 /* WatchMineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMineView.swift; sourceTree = "<group>"; };
 		3166A8709169C9CD90B32608 /* AccountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountService.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF53 /* SmsLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmsLoginService.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF51 /* AppleLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleLoginService.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF41 /* WeChatLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeChatLoginService.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF32 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF21 /* PlaceDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceDirectory.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF11 /* PlaceDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceDetailSheet.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF01 /* SurpriseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurpriseService.swift; sourceTree = "<group>"; };
 		37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementsView.swift; sourceTree = "<group>"; };
 		3CF616B4BB4AFDA6F272B112 /* WatchProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchProgressView.swift; sourceTree = "<group>"; };
 		41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
@@ -154,6 +176,10 @@
 		BDCD9BBD41FFA1DDB52CA634 /* Walkaholic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Walkaholic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapKeysService.swift; sourceTree = "<group>"; };
 		C609EA79D18AA7BE27481AB8 /* SurprisesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurprisesView.swift; sourceTree = "<group>"; };
+		C17A2B3C4D5E6F7081920001 /* CityMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityMapView.swift; sourceTree = "<group>"; };
+		C17A2B3C4D5E6F7081920004 /* WalkTrackStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkTrackStore.swift; sourceTree = "<group>"; };
+		C17A2B3C4D5E6F7081920007 /* SurpriseReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurpriseReceipt.swift; sourceTree = "<group>"; };
+		C17A2B3C4D5E6F7081920009 /* DayMoment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayMoment.swift; sourceTree = "<group>"; };
 		C7C10AAB4CF143543D417AF3 /* WatchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		CB8EF4087D54404A6C023159 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		CBA8CF4BC1C0A062E8A18418 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -200,6 +226,7 @@
 			children = (
 				41EE4371787B4D1B355BF0AB /* AchievementEngine.swift */,
 				4D1233A5A001F03AB16FDF36 /* BlindBoxEngine.swift */,
+				AA11BB22CC33DD44EE55FF21 /* PlaceDirectory.swift */,
 				85E92A5D2533912EDA3834F6 /* WalkaholicStore.swift */,
 				07AD8FA9203110E51C17F7AD /* ChinaCoordinate.swift */,
 				546E206FAC40B7771C273A42 /* DemoData.swift */,
@@ -214,6 +241,9 @@
 				D3B417ECEC8BDFA94E13FBF5 /* SocialFeed.swift */,
 				9253D71503B5F918050C51F4 /* Surprise.swift */,
 				B2A575421187349E6B9A6708 /* WatchSessionSummary.swift */,
+				C17A2B3C4D5E6F7081920004 /* WalkTrackStore.swift */,
+				C17A2B3C4D5E6F7081920007 /* SurpriseReceipt.swift */,
+				C17A2B3C4D5E6F7081920009 /* DayMoment.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -241,6 +271,7 @@
 			isa = PBXGroup;
 			children = (
 				E25F82415EE382C5092A1911 /* WalkaholicApp.swift */,
+				AA11BB22CC33DD44EE55FF32 /* Assets.xcassets */,
 				AA6391E58C1E19D02073FA90 /* Resources */,
 				D25973A7F3834D557DAB410C /* Services */,
 				6E9417953E12FFCEA0F3A1C8 /* Theme */,
@@ -270,6 +301,10 @@
 			isa = PBXGroup;
 			children = (
 				3166A8709169C9CD90B32608 /* AccountService.swift */,
+				AA11BB22CC33DD44EE55FF53 /* SmsLoginService.swift */,
+				AA11BB22CC33DD44EE55FF51 /* AppleLoginService.swift */,
+				AA11BB22CC33DD44EE55FF41 /* WeChatLoginService.swift */,
+				AA11BB22CC33DD44EE55FF01 /* SurpriseService.swift */,
 				0F8F91F82CD07252A192319D /* AdminPOIService.swift */,
 				79E14316DB285700ADB0BCE9 /* LocationService.swift */,
 				BFE2D35BDE869D08580FD7F4 /* MapKeysService.swift */,
@@ -288,10 +323,12 @@
 			children = (
 				CCDADD9AAE3636A8464DEBFF /* AccountView.swift */,
 				37BC44D9E70600D4BB94CFCA /* AchievementsView.swift */,
+				AA11BB22CC33DD44EE55FF11 /* PlaceDetailSheet.swift */,
 				BC24F3FF9917864859DDAD7C /* BoxFailureView.swift */,
 				F72DDD9DB50EFFF8AFAA31FE /* BoxSetupSheet.swift */,
 				2D50565001E7D9C0188BEE10 /* BurySurpriseView.swift */,
 				F359E858D26B6FD6D1505F63 /* CardsView.swift */,
+				C17A2B3C4D5E6F7081920001 /* CityMapView.swift */,
 				5C79429687D9D63E48268048 /* FogPathView.swift */,
 				689294560BE4BF6181B1453D /* HomeView.swift */,
 				E751DB9408D0CCF63BD15614 /* JourneyMapView.swift */,
@@ -397,6 +434,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA11BB22CC33DD44EE55FF33 /* Assets.xcassets in Resources */,
 				686C9FE71579505FCA0E534D /* mapkeys.example.json in Resources */,
 				7D0C5081A192FE5A86611E7E /* mapkeys.json in Resources */,
 			);
@@ -409,6 +447,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA11BB22CC33DD44EE55FF23 /* PlaceDirectory.swift in Sources */,
+				C17A2B3C4D5E6F7081920005 /* WalkTrackStore.swift in Sources */,
+				C17A2B3C4D5E6F7081920008 /* SurpriseReceipt.swift in Sources */,
+				C17A2B3C4D5E6F708192000B /* DayMoment.swift in Sources */,
 				A8157CE0DA8127F38126584C /* AchievementEngine.swift in Sources */,
 				18D59FC48CF85765B1F7100D /* BlindBoxEngine.swift in Sources */,
 				FFC38BE650857E914E0A6E61 /* WalkaholicStore.swift in Sources */,
@@ -442,7 +484,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				C07C8880FC9CB67C42433CAE /* AccountService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF54 /* SmsLoginService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF52 /* AppleLoginService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF42 /* WeChatLoginService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF02 /* SurpriseService.swift in Sources */,
 				C74EA64438EFFE7A183B4CA0 /* AccountView.swift in Sources */,
+				AA11BB22CC33DD44EE55FF22 /* PlaceDirectory.swift in Sources */,
+				AA11BB22CC33DD44EE55FF12 /* PlaceDetailSheet.swift in Sources */,
 				CFE7D24749ACB8204C931174 /* AchievementEngine.swift in Sources */,
 				BD7F081742A5919F05244105 /* AchievementsView.swift in Sources */,
 				D96CC930944BAD7066F61DF4 /* AdminPOIService.swift in Sources */,
@@ -484,6 +532,10 @@
 				C26F357316EA470DEA7BB520 /* SocialView.swift in Sources */,
 				425A93736B96BE49F53748DF /* Surprise.swift in Sources */,
 				CF76A66805DDA62C81ADBC75 /* SurprisesView.swift in Sources */,
+				C17A2B3C4D5E6F7081920002 /* CityMapView.swift in Sources */,
+				C17A2B3C4D5E6F7081920003 /* WalkTrackStore.swift in Sources */,
+				C17A2B3C4D5E6F7081920006 /* SurpriseReceipt.swift in Sources */,
+				C17A2B3C4D5E6F708192000A /* DayMoment.swift in Sources */,
 				4BF57F97C11C20CA6889EBB8 /* Theme.swift in Sources */,
 				EC7C2987750EFD573BE6EC72 /* WatchSessionSummary.swift in Sources */,
 				741C5CFE2E5C032AE541EDD3 /* WatchStatusChip.swift in Sources */,
@@ -595,6 +647,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = WQ82UGJ72W;
 				INFOPLIST_FILE = "Info/WalkaholicWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
 				INFOPLIST_KEY_WKApplication = YES;
@@ -611,6 +664,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = WQ82UGJ72W;
 				INFOPLIST_FILE = "Info/WalkaholicWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "步迷";
 				INFOPLIST_KEY_WKApplication = YES;

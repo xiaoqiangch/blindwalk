@@ -59,12 +59,47 @@
     </div>
   </section>
 
+  <section class="mapkeys" id="surprises-panel" hidden aria-label="用户惊喜审核" role="dialog" aria-modal="true">
+    <div class="mapkeys__scrim" data-surprises-close aria-hidden="true"></div>
+    <div class="mapkeys__card mapkeys__card--wide">
+      <header class="mapkeys__head">
+        <div>
+          <p class="mapkeys__eyebrow">Surprises · 审核</p>
+          <h2 class="mapkeys__title">用户惊喜</h2>
+          <p class="mapkeys__sub">用户埋下的照片与留言。下架后立刻从所有人的「附近惊喜」里消失。</p>
+        </div>
+        <button type="button" class="btn btn--icon" data-surprises-close aria-label="关闭惊喜审核面板">
+          <span aria-hidden="true" style="font-size:18px;line-height:1">×</span>
+        </button>
+      </header>
+      <div class="mapkeys__body" id="surprises-body"></div>
+    </div>
+  </section>
+
+  <section class="mapkeys" id="settings-panel" hidden aria-label="服务端设置" role="dialog" aria-modal="true">
+    <div class="mapkeys__scrim" data-settings-close aria-hidden="true"></div>
+    <div class="mapkeys__card mapkeys__card--wide">
+      <header class="mapkeys__head">
+        <div>
+          <p class="mapkeys__eyebrow">Server settings</p>
+          <h2 class="mapkeys__title">服务端设置</h2>
+          <p class="mapkeys__sub">AI 模型与微信登录。保存后立即生效，不需要重启服务。</p>
+        </div>
+        <button type="button" class="btn btn--icon" data-settings-close aria-label="关闭设置面板">
+          <span aria-hidden="true" style="font-size:18px;line-height:1">×</span>
+        </button>
+      </header>
+      <div class="mapkeys__body" id="settings-body"></div>
+    </div>
+  </section>
+
   <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
   <div class="modal-root" id="modal-root"></div>
 
   <script src="mock.js"></script>
   <script src="components/ui.js"></script>
   <script src="components/api.js"></script>
+  <script src="components/settings.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

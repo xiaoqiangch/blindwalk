@@ -15,92 +15,112 @@ struct BoxFailureView: View {
     let reports: [POISourceReport]
     var onExpand: () -> Void
     var onRelocate: () -> Void
-    var onDemo: () -> Void
+    /// 失败的具体原因（定位权限 / 超时等），有就显示
+    var diagnostic: String? = nil
+    var onRetryLocation: (() -> Void)? = nil
+    var onOpenSettings: (() -> Void)? = nil
+    /// 这一次是走路还是远程漫游：文案必须说实话，别把「10 公里外没找到」说成「附近没有」
+    var scope: ExploreScope = .walk
 
     private var reasonText: String {
         switch reason {
         case "network":
-            return "网络不给力，地图数据没取到（可能是 OSM/高德都被挡住或超时）"
+            return scope == .roam
+                ? "网络不给力，周边城市的地图数据没取到"
+                : "网络不给力，地图数据没取到"
         case "location":
             return "现在还没有拿到你的真实位置，没法找附近可以走到的真实地点"
         default:
-            return "这一带暂时没有适合走过去的真实地点"
+            return scope == .roam
+                ? "10 公里外的环带里暂时没有搜到适合走的地点"
+                : "这一带暂时没有适合走过去的真实地点"
         }
     }
 
+    private var titleText: String {
+        if reason == "location" { return "还没拿到你的位置" }
+        return scope == .roam ? "周边没有搜到值得开过去的地点" : "附近没有能走过去的地点"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("没找到真实地点，这次不抽了")
-                .font(.system(size: 17, weight: .bold))
+        VStack(alignment: .leading, spacing: 14) {
+            Label(titleText, systemImage: "exclamationmark.triangle")
+                .font(.headline)
                 .foregroundStyle(WATheme.ink)
 
-            Text("\(reasonText)。不会用虚构地点糊弄你。\n试试：换「60 分钟」把范围放大，或改个区域（河边/老城区）。")
-                .font(.system(size: 14))
+            Text("\(reasonText)。不会用虚构地点糊弄你。")
+                .font(.subheadline)
                 .foregroundStyle(WATheme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if scope == .roam {
+                Text("想走走近的，把上面的「怎么去」切回「走路去」。")
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let diagnostic {
+                Text(diagnostic)
+                    .font(.footnote)
+                    .foregroundStyle(WATheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+
             if !reports.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(reports) { report in
                         HStack(alignment: .top, spacing: 6) {
-                            Circle()
-                                .fill(report.ok ? WATheme.teal : WATheme.ember)
-                                .frame(width: 6, height: 6)
-                                .padding(.top, 5)
-                            Text(report.ok ? "\(report.label)：找到 \(report.count) 个" : "\(report.label)：\(report.error.isEmpty ? "失败" : report.error)")
-                                .font(.system(size: 13))
-                                .foregroundStyle(report.ok ? WATheme.ink2 : WATheme.ember)
+                            Image(systemName: report.ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(report.ok ? WATheme.teal : WATheme.ember)
+                            Text(report.ok
+                                 ? "\(report.label)：找到 \(report.count) 个"
+                                 : "\(report.label)：\(report.error.isEmpty ? "失败" : report.error)")
+                                .font(.footnote)
+                                .foregroundStyle(WATheme.ink2)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
-                .padding(10)
+                .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(WATheme.paper2)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Color(.tertiarySystemFill))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
-            HStack(spacing: 10) {
-                Button(action: onExpand) {
-                    Text("扩大范围再找")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(WATheme.paper)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(WATheme.amberDeep)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(WAPressEffectStyle())
-
-                Button(action: onRelocate) {
-                    Text("换个位置")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(WATheme.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(WATheme.paper)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(WATheme.line, lineWidth: 1))
-                }
-                .buttonStyle(WAPressEffectStyle())
-            }
-
-            Button(action: onDemo) {
-                Text("改成演示模式（虚构地点）")
-                    .font(.system(size: 13.5, weight: .medium))
-                    .foregroundStyle(WATheme.ink3)
+            if let onRetryLocation {
+                Button("重新获取位置", action: onRetryLocation)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
             }
-            .buttonStyle(WAPressEffectStyle())
+
+            if let onOpenSettings {
+                Button("打开设置", action: onOpenSettings)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+            }
+
+            Button("扩大范围再找", action: onExpand)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+
+            Button("换个位置", action: onRelocate)
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+
         }
         .padding(16)
         .background(WATheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(WATheme.ember.opacity(0.25), lineWidth: 1)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: WATheme.cardRadius, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 }
@@ -115,45 +135,44 @@ struct LocationInputSheet: View {
     @State private var error: String?
     var onResolved: (GeoPoint) -> Void
 
+    private var canResolve: Bool {
+        !text.trimmingCharacters(in: .whitespaces).isEmpty && !isResolving
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("输入一个地址，或直接填「纬度,经度」")
-                    .font(.system(size: 14))
-                    .foregroundStyle(WATheme.ink2)
-
-                TextField("例如：上海人民广场 或 31.2304,121.4737", text: $text)
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
+            Form {
+                Section {
+                    TextField("地址或「纬度,经度」", text: $text)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                } footer: {
+                    Text("例如：上海人民广场，或 31.2304,121.4737")
+                }
 
                 if let error {
-                    Text(error)
-                        .font(.system(size: 13))
-                        .foregroundStyle(WATheme.ember)
-                }
-
-                Button {
-                    resolve()
-                } label: {
-                    HStack(spacing: 8) {
-                        if isResolving { ProgressView().controlSize(.small) }
-                        Text(isResolving ? "正在定位…" : "用这个位置再找")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(WATheme.paper)
+                    Section {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(WATheme.ember)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(WATheme.amberDeep)
-                    .clipShape(Capsule())
                 }
-                .buttonStyle(WAPressEffectStyle())
-                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || isResolving)
 
-                Spacer(minLength: 0)
+                Section {
+                    Button {
+                        resolve()
+                    } label: {
+                        HStack {
+                            if isResolving {
+                                ProgressView().controlSize(.small)
+                            }
+                            Text(isResolving ? "正在定位…" : "用这个位置再找")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(!canResolve)
+                }
             }
-            .padding(20)
-            .background(WATheme.paper)
             .navigationTitle("换个位置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
