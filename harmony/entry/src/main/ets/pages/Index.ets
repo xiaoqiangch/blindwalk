@@ -28,7 +28,7 @@ import {
   fetchNearbySurprises,
   uploadSurprise
 } from '../core/surpriseRemote';
-import { BuriedSurprise, GeoPoint as GeoPointType } from '../core/types';
+import { BuriedSurprise, ExploreScope, GeoPoint as GeoPointType, PARKING_RADIUS_METERS, QuestPhase } from '../core/types';
 import { DataSourceStatus } from '../core/contract';
 import { WAColor, WAFont, WASize } from '../theme/Theme';
 import { WaBoxArt } from '../components/BoxArt';
@@ -253,6 +253,12 @@ struct Index {
   private async planRouteInBackground(): Promise<void> {
     if (this.routePending) return;
     if (this.kv === undefined) return;
+    const session0 = getStore().snapshot().session;
+    // 开车段不规划步行路线：20 公里的 pedestrian 路线既慢又会把终点形状拼出来
+    if (session0 !== undefined && session0.phase === QuestPhase.Walking &&
+        session0.scope === ExploreScope.Roam && session0.remainingMeters > PARKING_RADIUS_METERS) {
+      return;
+    }
     const deps: QuestFlowDeps = {
       http: this.http,
       kv: this.kv,
@@ -864,6 +870,9 @@ struct Index {
           },
           onChanged: () => {
             this.refresh();
+          },
+          onParkRequestRoute: () => {
+            this.planRouteInBackground();
           }
         })
       }

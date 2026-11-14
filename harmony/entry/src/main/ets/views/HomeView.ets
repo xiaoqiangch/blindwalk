@@ -10,7 +10,7 @@
 
 import { promptAction } from '@kit.ArkUI';
 import { AppSnapshot } from '../core/contract';
-import { Place, PlaceCard, QuestSession, WalkDuration } from '../core/types';
+import { Place, PlaceCard, QuestSession, ExploreScope, WalkDuration } from '../core/types';
 import {
   WaAvatar,
   WaMicroLabel,
@@ -32,6 +32,7 @@ import {
 } from '../components/StoreBridge';
 import { WAColor, WAFont, WASize } from '../theme/Theme';
 import { greeting, kilometers, relativeDay } from '../components/Format';
+import { currentMoment, momentBoxTitle, momentEmoji, momentLine } from '../core/moment';
 
 class FriendInfo {
   name: string;
@@ -157,6 +158,15 @@ export struct HomeView {
     return 1600;
   }
 
+  /** 盲盒卡脚的说明：走路去 = 时长 + 半径；远程漫游 = 环带（与 iOS scopeCaption 一致） */
+  private scopeCaption(): string {
+    if (this.snapshot.selectedScope === ExploreScope.Roam) {
+      return '10–45 公里 · 先开车再走';
+    }
+    return '预计 ' + this.selectedDurationMinutes() + ' 分钟 · ' +
+      kilometers(this.durationRadiusMeters()) + ' 内';
+  }
+
   private statsItems(): StatItem[] {
     const items: StatItem[] = [];
     const weekly: StatItem = {
@@ -248,19 +258,32 @@ export struct HomeView {
   @Builder
   heroText() {
     Column({ space: 6 }) {
-      Text('今天，想去哪儿？')
-        .fontSize(this.isShort() ? 22 : WAFont.hero)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(WAColor.ink)
-        .maxLines(1)
+      // 环境性盲盒：时段决定文案（与 iOS HomeView.hero 一致）
+      Row({ space: 5 }) {
+        Text(momentEmoji(currentMoment()))
+          .fontSize(WAFont.caption)
+        Text(momentBoxTitle(currentMoment()))
+          .fontSize(WAFont.captionSm)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(WAColor.amber)
+      }
+      .alignItems(VerticalAlign.Center)
 
-      Text('不用选。让城市替你选。')
+      Text(momentLine(currentMoment()))
         .fontSize(WAFont.bodySm)
         .fontColor(WAColor.ink2)
+        .lineHeight(20)
+        .width('100%')
+
+      Text('目的地抽到才知道。走过去的路上，它不显示。')
+        .fontSize(WAFont.microSm)
+        .fontColor(WAColor.ink3)
+        .lineHeight(17)
+        .width('100%')
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .margin({ top: 17, bottom: 16 })
+    .margin({ top: 14, bottom: 16 })
   }
 
   @Builder
@@ -313,8 +336,7 @@ export struct HomeView {
 
       Row() {
         Blank()
-        Text('预计 ' + this.selectedDurationMinutes() + ' 分钟 · ' +
-          kilometers(this.durationRadiusMeters()) + ' 内')
+        Text(this.scopeCaption())
           .fontSize(WAFont.micro)
           .fontColor(WAColor.ink3)
       }

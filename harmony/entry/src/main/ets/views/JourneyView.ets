@@ -77,6 +77,9 @@ export struct JourneyView {
   /** 任何 store 状态变化后通知 Index 重读 */
   onChanged: () => void = () => {
   };
+  /** 手动「已停车」后请求规划步行路线（开车段不规划；停车后才画迷雾路径） */
+  onParkRequestRoute: () => void = () => {
+  };
 
   @State private snapshot: AppSnapshot = emptySnapshot();
   @State private nowMs: number = 0;
@@ -478,6 +481,8 @@ export struct JourneyView {
     this.parkedOverride = true;
     this.load();
     this.onChanged();
+    // 切到步行段后才有必要规划步行路线
+    this.onParkRequestRoute();
   }
 
   private confirmParkedAnyway(): void {
@@ -485,6 +490,7 @@ export struct JourneyView {
     this.confirmParkedFar = false;
     this.load();
     this.onChanged();
+    this.onParkRequestRoute();
   }
 
   /** 开车段的导航点：目的地 1 公里、方向随机的落点（不泄露终点） */
@@ -831,14 +837,26 @@ export struct JourneyView {
     Column({ space: 8 }) {
       Row() {
         Row() {
-          Text(String(this.remainingMeters()))
-            .fontSize(this.isShort() ? 46 : WAFont.digits)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(WAColor.ink)
-          Text(' 米')
-            .fontSize(WAFont.titleMd)
-            .fontColor(WAColor.ink2)
-            .margin({ left: 4 })
+          // 漫游里程动辄十几公里：一律用公里读数，「还有 23456 米」没法读
+          if (this.remainingMeters() >= 1000) {
+            Text((this.remainingMeters() / 1000).toFixed(1))
+              .fontSize(this.isShort() ? 46 : WAFont.digits)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(WAColor.ink)
+            Text(' 公里')
+              .fontSize(WAFont.titleMd)
+              .fontColor(WAColor.ink2)
+              .margin({ left: 4 })
+          } else {
+            Text(String(this.remainingMeters()))
+              .fontSize(this.isShort() ? 46 : WAFont.digits)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(WAColor.ink)
+            Text(' 米')
+              .fontSize(WAFont.titleMd)
+              .fontColor(WAColor.ink2)
+              .margin({ left: 4 })
+          }
         }
         .alignItems(VerticalAlign.Bottom)
 
