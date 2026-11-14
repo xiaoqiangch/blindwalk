@@ -228,7 +228,7 @@ export struct RevealView {
         Row({ space: 10 }) {
           Button() {
             Row({ space: 6 }) {
-              SymbolGlyph($r('sys.symbol.camera_fill'))
+              SymbolGlyph($r('sys.symbol.pin'))
                 .fontSize(WAFont.caption)
                 .fontColor([WAColor.ink])
                 .renderingStrategy(SymbolRenderingStrategy.SINGLE)
@@ -254,7 +254,7 @@ export struct RevealView {
           })
 
           Button() {
-            SymbolGlyph($r('sys.symbol.photo_on_rectangle'))
+            SymbolGlyph($r('sys.symbol.square_grid_2x2'))
               .fontSize(WAFont.titleSm)
               .fontColor([WAColor.ink2])
               .renderingStrategy(SymbolRenderingStrategy.SINGLE)

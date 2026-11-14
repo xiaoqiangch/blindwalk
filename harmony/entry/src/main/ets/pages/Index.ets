@@ -575,6 +575,7 @@ struct Index {
           revision: this.revision,
           winWidth: this.winWidth,
           winHeight: this.winHeight,
+          kv: this.kv,
           onChanged: () => {
             this.refresh();
           },

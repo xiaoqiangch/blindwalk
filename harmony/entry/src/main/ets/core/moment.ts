@@ -84,15 +84,21 @@ export function momentLine(moment: DayMoment): string {
   }
 }
 
-/** 时段图标（映射到 sys.symbol.* 名称，UI 直接取） */
+/** 时段图标（系统符号名，仅取编译验证存在的符号，UI 也可直接用 emoji） */
 export function momentSymbol(moment: DayMoment): string {
+  if (moment === DayMoment.Night) return 'star_fill';
+  return 'sun_max';
+}
+
+/** 时段图标（emoji，兜底与 sunrise 的语义等价） */
+export function momentEmoji(moment: DayMoment): string {
   switch (moment) {
-    case DayMoment.Dawn: return 'sunrise';
-    case DayMoment.Morning: return 'sun_max';
-    case DayMoment.Noon: return 'sun_max';
-    case DayMoment.Afternoon: return 'sun_max';
-    case DayMoment.Dusk: return 'sunset';
-    default: return 'moon_stars';
+    case DayMoment.Dawn: return '🌅';
+    case DayMoment.Morning: return '🌤️';
+    case DayMoment.Noon: return '☀️';
+    case DayMoment.Afternoon: return '🌥️';
+    case DayMoment.Dusk: return '🌇';
+    default: return '🌙';
   }
 }
 

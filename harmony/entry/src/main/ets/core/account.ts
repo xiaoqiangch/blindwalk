@@ -508,3 +508,191 @@ export function accountStatusText(config: AccountConfig): string {
   if (config.user === undefined) return '未登录';
   return config.user.username;
 }
+
+// ============================================================
+// 登录方式可用性（account/docs/API.md §3.5）
+// ============================================================
+
+/** 某一种登录方式的服务端可用性 */
+export interface ProviderAvailability {
+  enabled: boolean;
+  /** 缺哪些服务端环境变量（未配置时用于如实说明） */
+  missing: string[];
+  /** 微信 AppID（服务端下发，不含 secret） */
+  appid: string;
+  /** Apple clientId */
+  clientId: string;
+}
+
+/** 全部登录方式 */
+export interface ProvidersAvailability {
+  password: ProviderAvailability;
+  apple: ProviderAvailability;
+  sms: ProviderAvailability;
+  wechat: ProviderAvailability;
+}
+
+function emptyAvailability(): ProviderAvailability {
+  const item: ProviderAvailability = { enabled: false, missing: [], appid: '', clientId: '' };
+  return item;
+}
+
+function readAvailability(value: unknown): ProviderAvailability {
+  const item: ProviderAvailability = emptyAvailability();
+  if (typeof value !== 'object' || value === null) return item;
+  const record: Record<string, unknown> = value as Record<string, unknown>;
+  item.enabled = record['enabled'] === true;
+  const missing: unknown = record['missing'];
+  if (Array.isArray(missing)) {
+    for (let i = 0; i < missing.length; i += 1) {
+      if (typeof missing[i] === 'string') item.missing.push(missing[i] as string);
+    }
+  }
+  if (typeof record['appid'] === 'string') item.appid = record['appid'] as string;
+  if (typeof record['clientId'] === 'string') item.clientId = record['clientId'] as string;
+  return item;
+}
+
+/**
+ * 问一次服务端「哪些登录方式可用」。
+ * 客户端据此决定按钮显示 / 如实说明缺什么，**绝不下发任何 secret**。
+ */
+export async function fetchProviders(
+  client: HttpClient,
+  baseUrl: string
+): Promise<ProvidersAvailability> {
+  const result: ProvidersAvailability = {
+    password: emptyAvailability(),
+    apple: emptyAvailability(),
+    sms: emptyAvailability(),
+    wechat: emptyAvailability()
+  };
+  result.password.enabled = true;
+  let outcome: ApiOutcome;
+  try {
+    outcome = await callApi(client, baseUrl, '/api/auth/providers', 'GET', '', undefined);
+  } catch (error) {
+    return result;
+  }
+  if (outcome.status < 200 || outcome.status >= 300) return result;
+  const providers: unknown = outcome.json['providers'];
+  if (typeof providers !== 'object' || providers === null) return result;
+  const record: Record<string, unknown> = providers as Record<string, unknown>;
+  result.password = readAvailability(record['password']);
+  result.apple = readAvailability(record['apple']);
+  result.sms = readAvailability(record['sms']);
+  result.wechat = readAvailability(record['wechat']);
+  return result;
+}
+
+// ============================================================
+// 短信验证码登录（account/docs/API.md §3.4）
+// ============================================================
+
+/** 发码结果 */
+export interface SmsSendResult {
+  ok: boolean;
+  /** 验证码有效期（秒） */
+  ttlSeconds: number;
+  /** 服务端是否处于开发模式（不发真短信，验证码打到日志） */
+  devMode: boolean;
+  error?: string;
+}
+
+/** 手机号格式（11 位，1 开头） */
+export function isValidPhone(phone: string): boolean {
+  return /^1\d{10}$/.test(phone.trim());
+}
+
+/** 6 位数字验证码 */
+export function isValidSmsCode(code: string): boolean {
+  return /^\d{6}$/.test(code.trim());
+}
+
+/** 发一条验证码（限流由服务端判定，客户端不做本地拦截） */
+export async function sendSmsCode(
+  client: HttpClient,
+  baseUrl: string,
+  phone: string
+): Promise<SmsSendResult> {
+  if (!isValidPhone(phone)) {
+    const invalid: SmsSendResult = { ok: false, ttlSeconds: 0, devMode: false, error: '手机号格式不对' };
+    return invalid;
+  }
+  let outcome: ApiOutcome;
+  try {
+    outcome = await callApi(client, baseUrl, '/api/auth/sms/send', 'POST', '', { phone: phone.trim() });
+  } catch (error) {
+    const failed: SmsSendResult = { ok: false, ttlSeconds: 0, devMode: false, error: errorText(error) };
+    return failed;
+  }
+  if (outcome.status < 200 || outcome.status >= 300) {
+    const failed: SmsSendResult = {
+      ok: false, ttlSeconds: 0, devMode: false,
+      error: errorMessageOf(outcome.json, '发送失败（' + String(outcome.status) + '）')
+    };
+    return failed;
+  }
+  const ttl: unknown = outcome.json['ttlSeconds'];
+  const devMode: unknown = outcome.json['devMode'];
+  const ok: SmsSendResult = {
+    ok: true,
+    ttlSeconds: typeof ttl === 'number' ? ttl : 300,
+    devMode: devMode === true
+  };
+  return ok;
+}
+
+/** 短信验证码登录错误码 → 人话 */
+export function smsErrorText(code: string, fallback: string): string {
+  if (code === 'SMS_NOT_CONFIGURED') return '服务端还没配置短信服务';
+  if (code === 'SMS_TOO_MANY_SENDS') return '发送太频繁，10 分钟后再试';
+  if (code === 'SMS_NO_CODE') return '还没发过验证码，先点「获取验证码」';
+  if (code === 'SMS_EXPIRED') return '验证码已过期，重新获取';
+  if (code === 'SMS_WRONG_CODE') return '验证码不对，再输一次';
+  if (code === 'SMS_TOO_MANY_ATTEMPTS') return '试错次数太多，重新获取验证码';
+  if (code === 'BAD_PHONE') return '手机号格式不对';
+  return fallback;
+}
+
+/** 用手机号 + 验证码登录（没有账号时服务端自动建号） */
+export async function loginWithSms(
+  client: HttpClient,
+  kv: KeyValueStore,
+  baseUrl: string,
+  phone: string,
+  code: string
+): Promise<AccountResult<AccountUser>> {
+  if (!isValidPhone(phone)) {
+    return failResult<AccountUser>('手机号格式不对', 'BAD_PHONE');
+  }
+  if (!isValidSmsCode(code)) {
+    return failResult<AccountUser>('验证码是 6 位数字', 'BAD_CODE');
+  }
+  const body: Record<string, unknown> = { phone: phone.trim(), code: code.trim() };
+  let outcome: ApiOutcome;
+  try {
+    outcome = await callApi(client, baseUrl, '/api/auth/sms/verify', 'POST', '', body);
+  } catch (error) {
+    return failResult<AccountUser>(errorText(error));
+  }
+  if (outcome.status < 200 || outcome.status >= 300) {
+    const codeText: string = errorCodeOf(outcome.json);
+    return failResult<AccountUser>(
+      smsErrorText(codeText, errorMessageOf(outcome.json, '登录失败')),
+      codeText
+    );
+  }
+  const user: AccountUser | undefined = userOf(outcome.json);
+  if (user === undefined) {
+    return failResult<AccountUser>('服务没有返回账号信息');
+  }
+  const config: AccountConfig = {
+    baseUrl: normalizeBaseUrl(baseUrl),
+    user: user
+  };
+  const cookie: string = extractCookie(outcome.headers);
+  if (cookie.length > 0) config.cookie = cookie;
+  writeAccountConfig(kv, config);
+  return okResult(user);
+}

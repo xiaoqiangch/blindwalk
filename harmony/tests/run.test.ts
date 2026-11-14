@@ -92,6 +92,7 @@ import {
   momentAtHour,
   momentAffinity,
   momentBoxTitle,
+  momentEmoji,
   momentLine,
   momentSymbol,
   momentTitle
@@ -3137,7 +3138,9 @@ test('时段：小时 → 6 个档位、文案与图标对齐 iOS DayMoment', ()
   assert.equal(momentBoxTitle(DayMoment.Dusk), '黄昏的盲盒');
   assert.equal(momentLine(DayMoment.Dusk), '天要暗下来，往有水和有光的地方走。');
   assert.equal(momentLine(DayMoment.Night), '夜里的城市只剩灯，去灯最好看的地方。');
-  assert.equal(momentSymbol(DayMoment.Night), 'moon_stars');
+  assert.equal(momentSymbol(DayMoment.Night), 'star_fill');
+  assert.equal(momentEmoji(DayMoment.Night), '🌙');
+  assert.equal(momentEmoji(DayMoment.Dawn), '🌅');
 });
 
 test('时段：权重偏置 黄昏偏水边 / 夜里避开公园（不硬排除）', (): void => {
@@ -3409,6 +3412,28 @@ test('清除数据：reset 后卡片/成就/惊喜/回执/轨迹全部清空', a
   assert.equal(after.mySurprises.length, 0);
   assert.equal(after.unreadReceiptCount, 0);
   assert.equal(after.profile.xp, 0);
+});
+
+test('埋惊喜：一句话与半径落盘，isMine 标记让改名后仍认得自己埋的', async (): Promise<void> => {
+  const kv: MemoryKV = new MemoryKV();
+  await initStore(kv);
+  const store = getStore();
+  const params: BuryParams = buryParams();
+  params.message = '这张是我在等一杯咖啡时拍的。';
+  params.radiusMeters = 60;
+  const buried: BuriedSurprise | undefined = store.burySurprise(params);
+  if (buried === undefined) throw new Error('埋惊喜失败');
+  assert.equal(buried.message, '这张是我在等一杯咖啡时拍的。');
+  assert.equal(buried.radiusMeters, 60);
+  assert.equal(buried.isMine, true);
+  assert.equal(buried.isUploaded, false);
+
+  // 重启后仍在（含扩展字段）
+  await initStore(kv);
+  const reloaded = getStore().snapshot().mySurprises;
+  assert.equal(reloaded.length, 1);
+  assert.equal(reloaded[0].message, '这张是我在等一杯咖啡时拍的。');
+  assert.equal(reloaded[0].isMine, true);
 });
 
 // ============================================================

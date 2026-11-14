@@ -505,7 +505,7 @@ export struct JourneyView {
   driveSection() {
     Column({ space: 14 }) {
       Row({ space: 8 }) {
-        SymbolGlyph($r('sys.symbol.car_fill'))
+        SymbolGlyph($r('sys.symbol.map'))
           .fontSize(WASize.iconSizeSm)
           .fontColor([WAColor.ink])
           .renderingStrategy(SymbolRenderingStrategy.SINGLE)
@@ -614,7 +614,7 @@ export struct JourneyView {
   @Builder
   roamParkedBanner() {
     Row({ space: 6 }) {
-      SymbolGlyph($r('sys.symbol.' + (this.inParkingZone() ? 'figure_walk' : 'parkingsign')))
+      SymbolGlyph($r('sys.symbol.' + (this.inParkingZone() ? 'figure_walk' : 'pin')))
         .fontSize(WAFont.caption)
         .fontColor([WAColor.teal])
         .renderingStrategy(SymbolRenderingStrategy.SINGLE)

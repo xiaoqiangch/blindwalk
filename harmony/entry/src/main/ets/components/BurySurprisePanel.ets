@@ -172,7 +172,9 @@ export struct BurySurprisePanel {
         areaWord: this.areaLabel(),
         hints: hints,
         photoHash: picked.hash,
-        photoUri: picked.uri
+        photoUri: picked.uri,
+        message: this.message,
+        radiusMeters: 60
       });
     } catch (err) {
       buried = undefined;

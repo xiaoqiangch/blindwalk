@@ -13,9 +13,10 @@
  * 响应式：手机 3 列 / 折叠态（矮屏）4 列 / 展开态（宽屏）5 列（docs/foldable.md）。
  */
 
-import { AppSnapshot } from '../core/contract';
+import { AppSnapshot, KeyValueStore } from '../core/contract';
 import { Area, GeoPoint, Place, PlaceCard, Rarity } from '../core/types';
 import { distance as distanceBetween } from '../core/geo';
+import { readAccountConfig } from '../core/account';
 import {
   HINT_EMPTY_CTA,
   HINT_FOOTER,
@@ -97,12 +98,30 @@ export struct CardsView {
   @State private filter: CardFilter = CardFilter.All;
   @State private selectedPlaceID: string = '';
 
+  /** 账号服务地址（远端到达照片的 URL 前缀；未登录为空串） */
+  kv: KeyValueStore | undefined = undefined;
+  private accountBaseUrl: string = '';
+
   aboutToAppear(): void {
     this.load();
+    this.loadAccountBase();
   }
 
   onRevisionChanged(propName: string): void {
     this.load();
+  }
+
+  private loadAccountBase(): void {
+    if (this.kv === undefined) {
+      this.accountBaseUrl = '';
+      return;
+    }
+    try {
+      const config = readAccountConfig(this.kv);
+      this.accountBaseUrl = config.baseUrl.replace(/\/+$/, '');
+    } catch (err) {
+      this.accountBaseUrl = '';
+    }
   }
 
   private load(): void {
@@ -259,6 +278,32 @@ export struct CardsView {
   private isTaskDone(placeID: string): boolean {
     const card: PlaceCard | undefined = this.cardFor(placeID);
     return card === undefined ? false : card.taskDone;
+  }
+
+  /** 有没有到达实拍（本地或远端） */
+  private hasCardPhoto(placeID: string): boolean {
+    const card: PlaceCard | undefined = this.cardFor(placeID);
+    if (card === undefined) return false;
+    const hasLocal: boolean = card.photoName !== undefined && card.photoName.length > 0;
+    const hasRemote: boolean = card.photoRemotePath !== undefined && card.photoRemotePath.length > 0;
+    return hasLocal || hasRemote;
+  }
+
+  /** 本地照片 URI（优先），否则用远端路径拼出来的 URL */
+  private cardPhotoUri(placeID: string): string {
+    const card: PlaceCard | undefined = this.cardFor(placeID);
+    if (card === undefined) return '';
+    if (card.photoName !== undefined && card.photoName.length > 0) return card.photoName;
+    return this.cardPhotoRemote(placeID);
+  }
+
+  /** 远端照片 URL（需要账号服务地址） */
+  private cardPhotoRemote(placeID: string): string {
+    const card: PlaceCard | undefined = this.cardFor(placeID);
+    if (card === undefined) return '';
+    if (card.photoRemotePath === undefined || card.photoRemotePath.length === 0) return '';
+    if (this.accountBaseUrl.length === 0) return '';
+    return this.accountBaseUrl + card.photoRemotePath;
   }
 
   private cycleFilter(): void {
@@ -882,6 +927,29 @@ export struct CardsView {
           .width('100%')
 
           WaHairline()
+
+          // 到达实拍：本地优先（离线也有），否则提示登录后同步
+          if (this.hasCardPhoto(place.id)) {
+            Column({ space: 6 }) {
+              WaMicroLabel({ text: '你拍的' })
+              Image(this.cardPhotoUri(place.id))
+                .width('100%')
+                .height(180)
+                .objectFit(ImageFit.Cover)
+                .borderRadius(WASize.cardRadiusSm)
+                .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusSm })
+                .alt($r('app.media.app_icon'))
+              if (this.cardPhotoRemote(place.id).length > 0) {
+                Text('已上传 · 换机可找回')
+                  .fontSize(WAFont.microSm)
+                  .fontColor(WAColor.teal)
+                  .width('100%')
+                  .textAlign(TextAlign.End)
+              }
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+          }
 
           Text(place.why)
             .fontSize(WAFont.caption)

@@ -15,16 +15,22 @@ import {
   ACCOUNT_BASE_DEFAULT,
   AccountConfig,
   AccountUser,
+  ProvidersAvailability,
   accountStatusText,
   deleteAccount,
+  fetchProviders,
   isLoggedIn,
+  isValidPhone,
+  isValidSmsCode,
   login,
+  loginWithSms,
   logout,
   me,
   normalizeBaseUrl,
   pushProfile,
   readAccountConfig,
   register,
+  sendSmsCode,
   writeAccountConfig
 } from '../core/account';
 import { KeyValueStore } from '../core/contract';
@@ -34,6 +40,17 @@ import { WAColor, WAFont, WASize } from '../theme/Theme';
 /** 面板状态 */
 const MODE_IDLE: string = 'idle';
 const MODE_BUSY: string = 'busy';
+
+/** 空的服务端登录方式（还没问到时的默认值：只留账号密码） */
+function emptyProviders(): ProvidersAvailability {
+  const providers: ProvidersAvailability = {
+    password: { enabled: true, missing: [], appid: '', clientId: '' },
+    apple: { enabled: false, missing: [], appid: '', clientId: '' },
+    sms: { enabled: false, missing: [], appid: '', clientId: '' },
+    wechat: { enabled: false, missing: [], appid: '', clientId: '' }
+  };
+  return providers;
+}
 
 @Component
 export struct WaAccountPanel {
@@ -67,9 +84,25 @@ export struct WaAccountPanel {
   @State private deletePassword: string = '';
   @State private confirmDelete: boolean = false;
   @State private showLogin: boolean = true;
+  /** 服务端可用的登录方式（进面板问一次；失败时只留账号密码） */
+  @State private providers: ProvidersAvailability = emptyProviders();
+  /** 短信登录展开 / 手机号 / 验证码 / 倒计时 */
+  @State private smsOpen: boolean = false;
+  @State private smsPhone: string = '';
+  @State private smsCode: string = '';
+  @State private smsHint: string = '';
+  @State private smsBad: boolean = false;
+  @State private smsCountdown: number = 0;
+  @State private smsBusy: boolean = false;
+  private smsTimer: number = -1;
 
   aboutToAppear(): void {
     this.load();
+    this.loadProviders();
+  }
+
+  aboutToDisappear(): void {
+    this.stopSmsCountdown();
   }
 
   private load(): void {
@@ -77,6 +110,73 @@ export struct WaAccountPanel {
     const config: AccountConfig = readAccountConfig(this.kv);
     this.config = config;
     this.baseUrlText = config.baseUrl;
+  }
+
+  /** 问一次服务端「哪些登录方式可用」（失败时只留账号密码，不假装可用） */
+  private async loadProviders(): Promise<void> {
+    if (this.http === undefined) return;
+    const availability: ProvidersAvailability = await fetchProviders(this.http, this.baseUrlText);
+    this.providers = availability;
+  }
+
+  // ============================================================
+  // 短信验证码登录
+  // ============================================================
+
+  private startSmsCountdown(seconds: number): void {
+    this.stopSmsCountdown();
+    this.smsCountdown = seconds;
+    this.smsTimer = setInterval(() => {
+      this.smsCountdown = this.smsCountdown - 1;
+      if (this.smsCountdown <= 0) this.stopSmsCountdown();
+    }, 1000);
+  }
+
+  private stopSmsCountdown(): void {
+    if (this.smsTimer >= 0) {
+      clearInterval(this.smsTimer);
+      this.smsTimer = -1;
+    }
+  }
+
+  private async doSendSmsCode(): Promise<void> {
+    if (this.http === undefined || this.smsBusy) return;
+    this.smsBusy = true;
+    this.smsHint = '';
+    const result = await sendSmsCode(this.http, this.baseUrlText, this.smsPhone);
+    this.smsBusy = false;
+    if (!result.ok) {
+      this.smsBad = true;
+      this.smsHint = result.error === undefined ? '发送失败' : result.error;
+      return;
+    }
+    this.smsBad = false;
+    this.smsHint = result.devMode
+      ? '开发模式：验证码已打到服务端日志'
+      : '验证码已发送，' + String(result.ttlSeconds) + ' 秒内有效';
+    this.startSmsCountdown(result.ttlSeconds);
+  }
+
+  private async doSmsLogin(): Promise<void> {
+    if (this.kv === undefined || this.http === undefined || this.smsBusy) return;
+    this.smsBusy = true;
+    const result = await loginWithSms(
+      this.http, this.kv, this.baseUrlText, this.smsPhone, this.smsCode
+    );
+    this.smsBusy = false;
+    if (!result.ok) {
+      this.smsBad = true;
+      this.smsHint = result.error === undefined ? '登录失败' : result.error;
+      return;
+    }
+    this.smsBad = false;
+    this.smsHint = '';
+    this.smsCode = '';
+    this.stopSmsCountdown();
+    this.smsCountdown = 0;
+    this.load();
+    this.showMessage('已用手机号登录：' + this.username(), false);
+    this.onChanged();
   }
 
   private loggedIn(): boolean {
@@ -296,6 +396,42 @@ export struct WaAccountPanel {
   @Builder
   loginForm() {
     Column({ space: 10 }) {
+      // ---------- 手机号登录（服务端可用时才显示） ----------
+      if (this.providers.sms.enabled) {
+        this.smsSection()
+      } else if (this.providers.sms.missing.length > 0) {
+        Column({ space: 3 }) {
+          Text('手机号登录暂不可用')
+            .fontSize(WAFont.captionSm)
+            .fontColor(WAColor.ink2)
+          Text('服务端还没配置短信服务（缺 ' + this.providers.sms.missing.join('、') + '）。')
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ink3)
+            .lineHeight(16)
+            .width('100%')
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      }
+
+      if (this.providers.sms.enabled) {
+        Row({ space: 8 }) {
+          Row()
+            .layoutWeight(1)
+            .height(1)
+            .backgroundColor(WAColor.line)
+          Text('或用账号密码')
+            .fontSize(WAFont.microSm)
+            .fontColor(WAColor.ink2)
+          Row()
+            .layoutWeight(1)
+            .height(1)
+            .backgroundColor(WAColor.line)
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+      }
+
       Column({ space: 6 }) {
         Text('用户名')
           .fontSize(WAFont.micro)
@@ -366,6 +502,115 @@ export struct WaAccountPanel {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
+  }
+
+  /** 短信验证码区块：发码 → 验码（两步都由服务端判定） */
+  @Builder
+  smsSection() {
+    Column({ space: 8 }) {
+      Row({ space: 8 }) {
+        SymbolGlyph($r('sys.symbol.message'))
+          .fontSize(WAFont.caption)
+          .fontColor([WAColor.ink2])
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        Text('手机号登录')
+          .fontSize(WAFont.caption)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(WAColor.ink)
+        Blank()
+        Text(this.smsOpen ? '收起' : '展开')
+          .fontSize(WAFont.captionSm)
+          .fontColor(WAColor.amber)
+          .onClick(() => {
+            this.smsOpen = !this.smsOpen;
+          })
+      }
+      .width('100%')
+
+      if (this.smsOpen) {
+        Row({ space: 8 }) {
+          TextInput({ placeholder: '11 位手机号', text: this.smsPhone })
+            .type(InputType.PhoneNumber)
+            .height(42)
+            .fontSize(WAFont.caption)
+            .layoutWeight(1)
+            .backgroundColor(WAColor.paper2)
+            .borderRadius(WASize.cardRadiusXs)
+            .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
+            .onChange((value: string) => {
+              this.smsPhone = value;
+            })
+
+          Button() {
+            Text(this.sendButtonTitle())
+              .fontSize(WAFont.captionSm)
+              .fontColor(WAColor.iconOnBrand)
+          }
+          .type(ButtonType.Capsule)
+          .height(40)
+          .width(96)
+          .backgroundColor(WAColor.amber)
+          .enabled(isValidPhone(this.smsPhone) && this.smsCountdown <= 0 && !this.smsBusy)
+          .opacity(isValidPhone(this.smsPhone) && this.smsCountdown <= 0 && !this.smsBusy ? 1 : 0.5)
+          .onClick(() => {
+            this.doSendSmsCode();
+          })
+        }
+        .width('100%')
+
+        if (this.smsCountdown > 0 || this.smsHint.length > 0) {
+          Row({ space: 8 }) {
+            TextInput({ placeholder: '6 位验证码', text: this.smsCode })
+              .type(InputType.Number)
+              .height(42)
+              .fontSize(WAFont.caption)
+              .layoutWeight(1)
+              .backgroundColor(WAColor.paper2)
+              .borderRadius(WASize.cardRadiusXs)
+              .border({ width: 1, color: WAColor.line, radius: WASize.cardRadiusXs })
+              .onChange((value: string) => {
+                this.smsCode = value;
+              })
+
+            Button() {
+              Text(this.smsBusy ? '验证中…' : '登录')
+                .fontSize(WAFont.captionSm)
+                .fontColor(WAColor.iconOnBrand)
+            }
+            .type(ButtonType.Capsule)
+            .height(40)
+            .width(76)
+            .backgroundColor(WAColor.amber)
+            .enabled(isValidSmsCode(this.smsCode) && !this.smsBusy)
+            .opacity(isValidSmsCode(this.smsCode) && !this.smsBusy ? 1 : 0.5)
+            .onClick(() => {
+              this.doSmsLogin();
+            })
+          }
+          .width('100%')
+        }
+
+        if (this.smsHint.length > 0) {
+          Text(this.smsHint)
+            .fontSize(WAFont.microSm)
+            .fontColor(this.smsBad ? WAColor.ember : WAColor.ink3)
+            .lineHeight(16)
+            .width('100%')
+        }
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding(14)
+    .backgroundColor(WAColor.paper)
+    .borderRadius(WASize.cardRadius)
+    .border({ width: 1, color: WAColor.line, radius: WASize.cardRadius })
+  }
+
+  private sendButtonTitle(): string {
+    if (this.smsBusy) return '发送中…';
+    if (this.smsCountdown > 0) return String(this.smsCountdown) + ' 秒后重发';
+    return '获取验证码';
   }
 
   @Builder

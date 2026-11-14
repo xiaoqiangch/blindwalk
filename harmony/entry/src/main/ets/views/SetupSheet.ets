@@ -19,7 +19,7 @@ import { common } from '@kit.AbilityKit';
 import { getStore } from '../core/store';
 import { AppSnapshot, DataSourceStatus, KeyValueStore } from '../core/contract';
 import { Area, ExploreScope, GeoPoint, Mood, Place, WalkDuration } from '../core/types';
-import { DayMoment, currentMoment, momentBoxTitle, momentLine, momentSymbol } from '../core/moment';
+import { DayMoment, currentMoment, momentBoxTitle, momentEmoji, momentLine } from '../core/moment';
 import { SourceReport } from '../core/http';
 import { HttpClient } from '../core/http';
 import {
@@ -121,7 +121,7 @@ class ScopeOption {
 /** 怎么去（与 iOS BoxSetupSheet.scopeSection 逐字一致） */
 const SCOPES: ScopeOption[] = [
   new ScopeOption(ExploreScope.Walk, '走路去', '3 公里内，抬脚就走', 'figure_walk'),
-  new ScopeOption(ExploreScope.Roam, '远程漫游', '10–45 公里 · 先开车到附近停车，再走过去', 'car_fill')
+  new ScopeOption(ExploreScope.Roam, '远程漫游', '10–45 公里 · 先开车到附近停车，再走过去', 'map')
 ];
 
 @Component
@@ -445,10 +445,10 @@ export struct SetupSheet {
   momentSection() {
     Row({ space: 12 }) {
       Stack({ alignContent: Alignment.Center }) {
-        SymbolGlyph($r('sys.symbol.' + momentSymbol(currentMoment())))
-          .fontSize(WASize.iconSizeSm)
-          .fontColor([WAColor.amber])
-          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+        // 时段图标用内容 emoji 表达（系统符号库不保证有 sunrise/sunset）
+        Text(momentEmoji(currentMoment()))
+          .fontSize(WAFont.titleSm)
+          .textAlign(TextAlign.Center)
       }
       .width(28)
 
